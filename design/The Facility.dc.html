@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  body{margin:0;background:#0e0e0d;font-family:'DM Sans',system-ui,sans-serif}
+  a{color:#2f6fff}a:hover{color:#1f57cc}
+  @keyframes fblink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes fpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+  @keyframes fbreathe{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.09)}}
+  @keyframes fglow{0%,100%{opacity:.9}50%{opacity:.55}}
+  @keyframes fscan{0%{transform:translateY(-40px)}100%{transform:translateY(852px)}}
+  @keyframes fstamp{0%{opacity:0;transform:rotate(-11deg) scale(2.4)}60%{opacity:1;transform:rotate(-11deg) scale(.92)}100%{opacity:1;transform:rotate(-11deg) scale(1)}}
+  @keyframes fenter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fspin{to{transform:rotate(360deg)}}
+  @keyframes fblob{0%,100%{border-radius:46% 54% 52% 48%/58% 46% 54% 42%}50%{border-radius:54% 46% 48% 52%/44% 56% 46% 58%}}
+  @keyframes fbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes forgblink{0%,91%,100%{transform:scaleY(1)}94%,96%{transform:scaleY(.08)}}
+  @keyframes fdrift{0%{transform:translateY(0);opacity:0}12%{opacity:.9}88%{opacity:.9}100%{transform:translateY(-46px);opacity:0}}
+  .fbtn{transition:transform .1s ease, box-shadow .2s ease, filter .2s ease, left .28s cubic-bezier(.3,.8,.3,1.2), top .28s cubic-bezier(.3,.8,.3,1.2);cursor:pointer}
+  .fbtn:hover{filter:brightness(1.06)}
+  .fbtn:active{transform:translateY(1px) scale(.99)}
+  .fscreen::-webkit-scrollbar{width:0}
+  .fstep{animation:fenter .34s ease both}
+  input[type=range].fslider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:#dcd9cf;outline:none;cursor:pointer}
+  input[type=range].fslider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:#17171a;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer}
+  input[type=range].fslider::-moz-range-thumb{width:22px;height:22px;border:none;border-radius:50%;background:#17171a;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 20px;gap:16px">
+
+  <div style="display:flex;align-items:center;gap:9px">
+    <span style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 8px;background:#f4b43a;color:#17171a;border-radius:5px">PROTOTYPE</span>
+    <span style="font:500 11px 'DM Sans',sans-serif;color:rgba(255,255,255,.5)">Enrollment &mdash; runs once, then boots to Facility &middot; language switches live &middot; Settings &rarr; Re-process to replay</span>
+  </div>
+
+  <!-- PHONE -->
+  <div style="width:414px;background:#1b1b19;border-radius:46px;padding:13px;box-shadow:0 40px 90px rgba(0,0,0,.6), inset 0 0 0 1px #2c2c28">
+    <div style="width:388px;height:812px;position:relative">
+
+      <!-- ============ INTAKE ============ -->
+      <sc-if value="{{ isIntake }}" hint-placeholder-val="{{ true }}">
+        <div class="fstep fscreen" data-screen-label="Intake" style="position:absolute;inset:0;overflow:hidden;background:#14130f;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:absolute;left:0;right:0;height:60px;background:linear-gradient(#ffffff00,#f4b43a0f,#ffffff00);animation:fscan 5.5s linear infinite;pointer-events:none;z-index:1"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;border-bottom:1px solid #2a2820">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#b9b09a"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">00:00 &middot; {{ t.intakeTag }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:50px 26px 0;position:relative;z-index:2">
+            <div style="font:600 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.24em;color:#6c6656">{{ t.kick1 }}</div>
+            <div style="font:600 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.24em;color:#8a8168;margin-top:3px">{{ t.kick2 }}</div>
+            <div style="position:relative;width:150px;height:150px;margin-top:42px">
+              <div style="position:absolute;left:50%;top:50%;width:196px;height:196px;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 90px 14px #f4b43a33;animation:fglow 4s ease-in-out infinite;pointer-events:none"></div>
+              <div style="position:absolute;left:50%;top:50%;width:132px;height:132px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 50% 40%,#2a2922,#0d0d0b 66%,#060605);box-shadow:inset 0 3px 12px #000c, inset 0 0 0 1px #ffffff12, 0 14px 30px rgba(0,0,0,.5)"></div>
+              <div style="position:absolute;left:50%;top:50%;width:114px;height:114px;transform:translate(-50%,-50%);border-radius:50%;border:1px solid #f4b43a33;box-shadow:inset 0 0 16px #f4b43a1a"></div>
+              <div style="position:absolute;left:50%;top:50%;width:66px;height:66px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #f4b43a;box-shadow:0 0 18px #f4b43a66, inset 0 0 13px #f4b43a55;animation:fbreathe 3.4s ease-in-out infinite"></div>
+              <div style="position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%);box-shadow:0 0 18px #f4b43a,0 0 7px #ffffffcc"></div>
+            </div>
+            <div style="margin-top:38px;font:700 18px/1 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.16em;color:#f4efe2">V.E.R.A.</div>
+            <div style="margin-top:6px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168;text-align:center">{{ t.veraSub }}</div>
+          </div>
+          <div style="padding:0 20px;margin-top:32px;position:relative;z-index:2">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 auto -7px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 0 0 1px #000">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000">
+                <div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div>
+                <div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 00:00:02</div>
+              </div>
+              <div style="padding:14px 15px 15px;border-left:3px solid #ff6a1a">
+                <div style="font:500 13.5px/1.6 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.intakeVera }}<span style="display:inline-block;width:8px;height:15px;background:#f4b43a;margin-left:2px;vertical-align:-2px;animation:fblink 1s steps(1) infinite"></span></div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:2">
+            <div class="fbtn" onClick="{{ begin }}" style="background:#f4b43a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.1em;color:#17171a;box-shadow:0 10px 24px #f4b43a44">{{ t.beginBtn }} &#9656;</div>
+            <div style="text-align:center;margin-top:11px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#4f4b40">{{ t.noOptions }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ BASELINE ============ -->
+      <sc-if value="{{ isBaseline }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Baseline" style="position:absolute;inset:0;overflow-y:auto;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#3f3d37"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.baselineStep }}</div>
+          </div>
+          <div style="height:3px;background:#dcd9cf"><div style="width:50%;height:100%;background:#f4b43a"></div></div>
+          <div style="padding:20px 20px 8px">
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#8a8578">{{ t.formCode }}</div>
+            <div style="margin-top:5px;font:700 22px/1.15 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.baselineTitle }}</div>
+            <div style="margin-top:8px;font:400 11px/1.55 'IBM Plex Mono','Pretendard Variable',monospace;color:#7a766c">{{ t.baselineSub }}</div>
+          </div>
+          <div style="padding:6px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#3f3d37">{{ t.designation }}</div>
+            <div style="margin-top:7px;background:#f4f3ee;border:1px solid #dcd9cf;border-radius:11px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font:500 14px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">Dana</span>
+              <span style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#b3aea1">{{ t.mispron }}</span>
+            </div>
+          </div>
+          <div style="padding:16px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#3f3d37">{{ t.adequacyLabel }}</div>
+            <div style="margin-top:14px"><input type="range" class="fslider" min="0" max="100" value="{{ adequacy }}" onChange="{{ onAdequacy }}"></div>
+            <div style="display:flex;justify-content:space-between;margin-top:9px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578"><span>{{ t.inadequate }}</span><span style="color:#ff6a1a">{{ t.disputed }}</span><span>{{ t.adequate }}</span></div>
+          </div>
+          <div style="padding:16px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#3f3d37">{{ t.motiveLabel }}</div>
+            <div style="margin-top:9px;display:flex;flex-direction:column;gap:8px">
+              <div class="fbtn" onClick="{{ onMotive0 }}" style="{{ motiveStyleA }}"><span>{{ mA }}</span><span style="{{ motiveTickA }}">&#10003;</span></div>
+              <div class="fbtn" onClick="{{ onMotive1 }}" style="{{ motiveStyleB }}"><span>{{ mB }}</span><span style="{{ motiveTickB }}">&#10003;</span></div>
+              <div class="fbtn" onClick="{{ onMotive2 }}" style="{{ motiveStyleC }}"><span>{{ mC }}</span><span style="{{ motiveTickC }}">&#10003;</span></div>
+            </div>
+          </div>
+          <div style="padding:18px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#3f3d37">{{ t.langLabel }}</div>
+            <div style="margin-top:9px;display:flex;gap:9px">
+              <div class="fbtn" onClick="{{ onLangEn }}" style="{{ langStyleEn }}"><span>English</span><span style="{{ langTickEn }}">&#10003;</span></div>
+              <div class="fbtn" onClick="{{ onLangKo }}" style="{{ langStyleKo }}"><span>한국어</span><span style="{{ langTickKo }}">&#10003;</span></div>
+            </div>
+            <div style="margin-top:8px;font:400 10px/1.5 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.langHint }}</div>
+          </div>
+          <div style="padding:18px 20px 0">
+            <div style="background:#17171a;border-radius:12px;padding:11px 13px;border-left:3px solid #ff6a1a">
+              <div style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#f4b43a;margin-bottom:5px">V.E.R.A.</div>
+              <div style="font:500 12px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.baselineVera }}</div>
+            </div>
+          </div>
+          <div style="padding:18px 20px 22px">
+            <div class="fbtn" onClick="{{ submitBaseline }}" style="background:#f4b43a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.1em;color:#17171a;box-shadow:0 10px 24px #f4b43a44">{{ t.submitBtn }} &#9656;</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ CONSENT ============ -->
+      <sc-if value="{{ isConsent }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Consent" style="position:absolute;inset:0;overflow:hidden;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#3f3d37"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.consentStep }}</div>
+          </div>
+          <div style="height:3px;background:#dcd9cf"><div style="width:75%;height:100%;background:#f4b43a"></div></div>
+          <div style="padding:18px 20px 6px">
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#8a8578">{{ t.consentDoc }}</div>
+            <div style="margin-top:5px;font:700 21px/1.1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.consentTitle }}</div>
+          </div>
+          <div style="margin:8px 20px 0;height:352px;overflow:hidden;background:#f4f3ee;border:1px solid #dcd9cf;border-radius:12px;padding:15px 15px 0;position:relative">
+            <div style="font:400 11px/1.62 'IBM Plex Mono','Pretendard Variable',monospace;color:#4f4b40">
+              <sc-for list="{{ clauses }}" as="c" hint-placeholder-count="4">
+                <div style="font-weight:600;color:#17171a;margin:0 0 6px">{{ c.n }}</div>
+                <div style="margin-bottom:12px">{{ c.t }}</div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(#f4f3ee00,#f4f3ee)"></div>
+            <div style="position:absolute;right:11px;bottom:11px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#b3aea1">{{ t.scrollDisabled }}</div>
+          </div>
+          <div style="padding:12px 20px 0">
+            <div class="fbtn" onClick="{{ onPoke }}" style="display:flex;align-items:flex-start;gap:11px;background:#fff6e3;border:1.5px solid #f4b43a;border-radius:12px;padding:13px 14px">
+              <div style="width:22px;height:22px;flex-shrink:0;border-radius:6px;background:#f4b43a;display:flex;align-items:center;justify-content:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">&#10003;</div>
+              <div>
+                <div style="font:600 11.5px/1.4 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.consentCheck }}</div>
+                <div style="margin-top:3px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#a58a3a">{{ consentNote }}</div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:22px;height:52px">
+            <div class="fbtn" onClick="{{ accept }}" style="position:absolute;left:0;right:112px;top:0;background:#f4b43a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#17171a;box-shadow:0 10px 24px #f4b43a44">{{ t.acceptBtn }}</div>
+            <div class="fbtn" onMouseEnter="{{ onDeclineNudge }}" onClick="{{ onDeclineNudge }}" style="{{ declineStyle }}">{{ declineLabel }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ ASSIGNED ============ -->
+      <sc-if value="{{ isAssigned }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Assigned" style="position:absolute;inset:0;overflow:hidden;background:#14130f;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:absolute;left:0;right:0;height:60px;background:linear-gradient(#ffffff00,#f4b43a0f,#ffffff00);animation:fscan 6s linear infinite;pointer-events:none;z-index:1"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;border-bottom:1px solid #2a2820">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#b9b09a"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">{{ t.assignedStep }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:52px 26px 0;position:relative;z-index:2">
+            <div style="font:600 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.2em;color:#8a8168">{{ t.enrollComplete }}</div>
+            <div style="margin-top:30px;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#6c6656">{{ t.designated }}</div>
+            <div style="margin-top:14px;display:flex;flex-direction:column;align-items:center">
+              <div style="font:500 11px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.3em;color:#f4b43a">{{ t.subjectWord }}</div>
+              <div style="font:700 74px/.9 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2;text-shadow:0 0 30px #f4b43a44">#50640</div>
+            </div>
+            <div style="margin-top:28px;animation:fstamp 1s cubic-bezier(.2,.7,.3,1.4) both">
+              <div style="border:3px solid #4fd08a;border-radius:12px;padding:9px 20px;font:700 16px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.1em;color:#4fd08a;box-shadow:0 0 22px #4fd08a33, inset 0 0 14px #4fd08a1a">{{ t.goodStanding }}</div>
+            </div>
+            <div style="margin-top:32px;display:flex;gap:24px">
+              <div style="text-align:center"><div style="font:700 20px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">01</div><div style="font:500 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#77726a;margin-top:3px">{{ t.tenure }}</div></div>
+              <div style="width:1px;background:#2a2820"></div>
+              <div style="text-align:center"><div style="font:700 20px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">00/11</div><div style="font:500 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#77726a;margin-top:3px">{{ t.evals }}</div></div>
+              <div style="width:1px;background:#2a2820"></div>
+              <div style="text-align:center"><div style="font:700 20px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">100%</div><div style="font:500 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#77726a;margin-top:3px">{{ t.compliant }}</div></div>
+            </div>
+          </div>
+          <div style="padding:0 20px;margin-top:34px;position:relative;z-index:2">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 auto -7px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 0 0 1px #000">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000">
+                <div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div>
+                <div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 00:01:41</div>
+              </div>
+              <div style="padding:14px 15px 15px;border-left:3px solid #ff6a1a">
+                <div style="font:500 13.5px/1.6 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.assignedVera }}<span style="display:inline-block;width:8px;height:15px;background:#f4b43a;margin-left:2px;vertical-align:-2px;animation:fblink 1s steps(1) infinite"></span></div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:2">
+            <div class="fbtn" onClick="{{ goPermission }}" style="background:#f4b43a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#17171a;box-shadow:0 10px 24px #f4b43a44">{{ t.enterBtn }} &#9656;</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ PERMISSION (contact protocol) ============ -->
+      <sc-if value="{{ isPermission }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Permission" style="position:absolute;inset:0;overflow:hidden;background:#14130f;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:absolute;left:0;right:0;height:60px;background:linear-gradient(#ffffff00,#f4b43a0f,#ffffff00);animation:fscan 6s linear infinite;pointer-events:none;z-index:1"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;border-bottom:1px solid #2a2820">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#b9b09a"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">{{ t.permStep }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:44px 26px 0;position:relative;z-index:2">
+            <div style="font:600 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.24em;color:#8a8168">{{ t.permKicker }}</div>
+            <div style="position:relative;width:104px;height:104px;margin-top:26px">
+              <div style="position:absolute;left:50%;top:50%;width:150px;height:150px;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 70px 10px #f4b43a33;animation:fglow 4s ease-in-out infinite;pointer-events:none"></div>
+              <div style="position:absolute;left:50%;top:50%;width:92px;height:92px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 50% 40%,#2a2922,#0d0d0b 66%,#060605);box-shadow:inset 0 3px 12px #000c, inset 0 0 0 1px #ffffff12, 0 12px 24px rgba(0,0,0,.5)"></div>
+              <div style="position:absolute;left:50%;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:50%;border:2px solid #f4b43a;box-shadow:0 0 16px #f4b43a66, inset 0 0 11px #f4b43a55;animation:fbreathe 3.4s ease-in-out infinite"></div>
+              <div style="position:absolute;left:50%;top:50%;width:11px;height:11px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%);box-shadow:0 0 14px #f4b43a,0 0 6px #ffffffcc"></div>
+            </div>
+          </div>
+          <div style="padding:0 20px;margin-top:30px;position:relative;z-index:2">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 auto -7px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 0 0 1px #000">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000">
+                <div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div>
+                <div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 00:01:58</div>
+              </div>
+              <div style="padding:14px 15px 15px;border-left:3px solid #ff6a1a">
+                <div style="font:500 13.5px/1.6 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ permVeraText }}</div>
+              </div>
+            </div>
+          </div>
+          <sc-if value="{{ notPermDenied }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:50%;bottom:32px;transform:translateX(-50%);width:314px;background:#faf9f6;border-radius:28px;padding:26px 22px 10px;box-shadow:0 24px 60px rgba(0,0,0,.6);z-index:5;font-family:'DM Sans',sans-serif">
+              <div style="display:flex;justify-content:center">
+                <div style="width:54px;height:54px;border-radius:15px;background:#17171a;display:flex;align-items:center;justify-content:center;position:relative">
+                  <div style="width:22px;height:22px;border-radius:50%;border:2px solid #f4b43a;box-shadow:0 0 10px #f4b43a55, inset 0 0 6px #f4b43a55"></div>
+                  <div style="position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%)"></div>
+                </div>
+              </div>
+              <div style="margin-top:16px;text-align:center;font:500 16px/1.35 'DM Sans',sans-serif;color:#1b1b1a">{{ t.permDialogTitle }}</div>
+              <div style="margin-top:20px;display:flex;flex-direction:column">
+                <div class="fbtn" onClick="{{ permAllow }}" style="text-align:center;padding:13px;border-radius:12px;font:600 14px 'DM Sans',sans-serif;color:#2f6fff">{{ t.permAllow }}</div>
+                <div class="fbtn" onClick="{{ permDeny }}" style="text-align:center;padding:13px;border-radius:12px;font:600 14px 'DM Sans',sans-serif;color:#2f6fff">{{ t.permDeny }}</div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ permDenied }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:5">
+              <div class="fbtn" onClick="{{ permProceed }}" style="background:#f4b43a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#17171a;box-shadow:0 10px 24px #f4b43a44">{{ t.permEnterAnyway }} &#9656;</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ FACILITY ============ -->
+      <sc-if value="{{ isFacility }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Facility" style="position:absolute;inset:0;overflow-y:auto;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:7px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#3f3d37"><span style="width:7px;height:7px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 7px #f4b43a"></span>{{ t.center }}</div>
+            <div class="fbtn" onClick="{{ openSettings }}" style="display:flex;align-items:center;gap:6px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.prefsWord }} <span style="font-size:13px">&#9881;</span></div>
+          </div>
+          <div style="padding:20px 20px 4px;display:flex;align-items:center;gap:13px">
+            <div style="width:46px;height:46px;border-radius:13px;background:#17171a;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid #f4b43a;box-shadow:0 0 10px #f4b43a55, inset 0 0 6px #f4b43a55"></div>
+              <div style="position:absolute;width:5px;height:5px;border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%)"></div>
+            </div>
+            <div style="flex:1">
+              <div style="font:700 16px/1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">Dana</div>
+              <div style="margin-top:4px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.04em;color:#8a8578">SUBJECT #50640 &middot; {{ t.day01 }}</div>
+            </div>
+            <div style="font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#2f6fff;border:1px solid #2f6fff55;background:#2f6fff12;padding:4px 9px;border-radius:20px">&#9679; {{ t.goodStanding }}</div>
+          </div>
+          <div style="padding:18px 20px 0">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 0 -7px 22px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.28), inset 0 0 0 1px #000">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000">
+                <div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div>
+                <div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 00:00:09</div>
+              </div>
+              <div style="padding:14px 15px 15px;border-left:3px solid #ff6a1a">
+                <div style="font:500 13px/1.6 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.facilityVera }}</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:20px 20px 12px">
+            <div class="fbtn" onClick="{{ openDaily }}" style="background:#17171a;border-radius:15px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 12px 26px rgba(0,0,0,.25)">
+              <div>
+                <div style="font:700 14px/1 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.02em;color:#fff">{{ t.pressComply }}</div>
+                <div style="margin-top:5px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.complySub }}</div>
+              </div>
+              <div style="width:38px;height:38px;border-radius:50%;background:#ff6a1a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;box-shadow:0 0 16px #ff6a1a66;flex-shrink:0">&#9654;</div>
+            </div>
+          </div>
+
+          <div style="padding:10px 20px 10px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#8a8578">{{ t.activeEvals }}</div>
+          <div style="padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="fbtn" onClick="{{ openField }}" style="background:#faf9f6;border:1px solid #e4e1d7;border-radius:16px;padding:15px 14px;height:126px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 18px rgba(0,0,0,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="width:32px;height:32px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center"><div style="width:13px;height:13px;border-radius:50%;border:1.5px solid #f4b43a;position:relative"><div style="position:absolute;left:50%;top:-4px;width:2px;height:6px;background:#f4b43a;transform:translateX(-50%)"></div></div></div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#c98a17;border:1px solid #f4b43a66;background:#f4b43a1c;padding:2px 6px;border-radius:20px">{{ t.tagActive }}</span></div>
+              <div><div style="font:700 13px/1.05 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.evalField }}</div><div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.evalFieldSub }}</div></div>
+            </div>
+            <div class="fbtn" onClick="{{ openOrganism }}" style="background:#faf9f6;border:1px solid #e4e1d7;border-radius:16px;padding:15px 14px;height:126px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 18px rgba(0,0,0,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="width:32px;height:32px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center;font-size:15px">&#128060;</div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#c2571a;border:1px solid #ff6a1a66;background:#ff6a1a1c;padding:2px 6px;border-radius:20px">{{ t.tagHungry }}</span></div>
+              <div><div style="font:700 13px/1.05 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.evalOrganism }}</div><div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.evalOrganismSub }}</div></div>
+            </div>
+            <div class="fbtn" onClick="{{ openHazard }}" style="background:#faf9f6;border:1px solid #e4e1d7;border-radius:16px;padding:15px 14px;height:126px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 18px rgba(0,0,0,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="width:32px;height:32px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center"><div style="width:13px;height:13px;border:1.5px solid #d63a2a;border-radius:3px"></div></div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#c0281a;border:1px solid #d63a2a66;background:#d63a2a1a;padding:2px 6px;border-radius:20px">4 &#9888;</span></div>
+              <div><div style="font:700 13px/1.05 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.evalHazard }}</div><div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.evalHazardSub }}</div></div>
+            </div>
+            <div class="fbtn" onClick="{{ openResults }}" style="background:#faf9f6;border:1px solid #e4e1d7;border-radius:16px;padding:15px 14px;height:126px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 8px 18px rgba(0,0,0,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="width:32px;height:32px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center;color:#b9b09a;font-size:14px">&#8987;</div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#2f6fff;border:1px solid #2f6fff66;background:#2f6fff14;padding:2px 6px;border-radius:20px">{{ t.tagQueued }}</span></div>
+              <div><div style="font:700 13px/1.05 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.evalResults }}</div><div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">#8,442,105</div></div>
+            </div>
+            <div class="fbtn" onClick="{{ openIncinerator }}" style="grid-column:1 / -1;background:#faf9f6;border:1px solid #e4e1d7;border-radius:16px;padding:15px 15px;display:flex;align-items:center;gap:13px;box-shadow:0 8px 18px rgba(0,0,0,.05)">
+              <div style="width:32px;height:32px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">&#128293;</div>
+              <div style="flex:1"><div style="font:700 13px/1.05 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.evalIncinerator }}</div><div style="margin-top:3px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.evalIncineratorSub }}</div></div>
+              <span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#2c9a63;border:1px solid #4fd08a88;background:#4fd08a22;padding:2px 6px;border-radius:20px">{{ t.tagReady }}</span>
+            </div>
+          </div>
+
+          <div style="padding:16px 20px 10px;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#b3aea1">{{ t.pendingAlloc }}</div>
+          <div style="padding:0 16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:#e7e5dd;border:1px dashed #c7c3b6;border-radius:16px;height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;opacity:.85"><div style="color:#a49f92;font-size:15px">&#128274;</div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#a49f92">{{ t.budgetPending }}</span></div>
+            <div style="background:#e7e5dd;border:1px dashed #c7c3b6;border-radius:16px;height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;opacity:.65"><div style="color:#a49f92;font-size:15px">&#128274;</div><span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#a49f92">{{ t.budgetPending }}</span></div>
+          </div>
+
+          <div style="padding:0 20px 26px;text-align:center">
+            <span class="fbtn" onClick="{{ demoMissed }}" style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#b3aea1;text-decoration:underline">{{ t.demoMissed }}</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ RESULTS PENDING (module) ============ -->
+      <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Results Pending" style="position:absolute;inset:0;overflow:hidden;background:#14130f;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:absolute;left:0;right:0;height:60px;background:linear-gradient(#ffffff00,#f4b43a0f,#ffffff00);animation:fscan 6s linear infinite;pointer-events:none;z-index:1"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;border-bottom:1px solid #2a2820">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a8168">&#9666;</span>{{ t.evalResults }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">CASE #8442105</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:64px 26px 0;position:relative;z-index:2">
+            <div style="font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.24em;color:#6c6656">{{ t.rPosition }}</div>
+            <div style="{{ rNumStyle }}">{{ rNumber }}</div>
+            <div style="{{ rDeltaStyle }}"><span style="font-size:12px">{{ rDeltaArrow }}</span>{{ rDeltaText }}</div>
+            <div style="margin-top:10px;font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168">{{ t.rWait }}</div>
+            <div style="margin-top:40px;width:100%;height:6px;background:#221f18;border-radius:3px;overflow:hidden"><div style="width:2%;height:100%;background:linear-gradient(90deg,#f4b43a,#ff6a1a)"></div></div>
+            <div style="margin-top:8px;width:100%;display:flex;justify-content:space-between;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a"><span>{{ t.rEnrolled }}</span><span>{{ t.rProcessed }}</span><span>{{ t.rResult }}</span></div>
+            <div style="margin-top:34px;width:100%;display:flex;flex-direction:column;gap:7px">
+              <div style="display:flex;justify-content:space-between;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168"><span style="color:#6c6656">Mar 02</span><span>&#9660; 1,204</span></div>
+              <div style="display:flex;justify-content:space-between;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168"><span style="color:#6c6656">Mar 01</span><span style="color:#ff6a5a">&#9650; 3,991</span></div>
+              <div style="display:flex;justify-content:space-between;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168"><span style="color:#6c6656">Feb 28</span><span>&#9660; 812</span></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:2">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 auto -7px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4)">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000"><div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div></div>
+              <div style="padding:13px 15px 14px;border-left:3px solid #ff6a1a"><div style="font:500 13px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ rVeraLine }}</div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ THE INCINERATOR (module) ============ -->
+      <sc-if value="{{ isIncinerator }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Incinerator" style="position:absolute;inset:0;overflow:hidden;background:#120d0a;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;border-bottom:1px solid #2a1c14">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a6a58">&#9666;</span>{{ t.evalIncinerator }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#7a5a48">{{ iBurnedText }}</div>
+          </div>
+          <div style="padding:22px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#9a6a52">{{ t.iGrievance }}</div>
+            <div style="margin-top:9px;background:#1c1410;border:1px solid #3a281e;border-radius:14px;padding:11px 12px;min-height:104px;position:relative">
+              <textarea value="{{ iText }}" onChange="{{ onIText }}" readOnly="{{ iReadOnly }}" placeholder="{{ t.iPlaceholder }}" style="{{ iTextStyle }}"></textarea>
+              <sc-if value="{{ iDone }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.18em;color:#6c5646">{{ t.iAsh }}</div>
+              </sc-if>
+            </div>
+          </div>
+          <div style="position:relative;margin-top:26px;display:flex;flex-direction:column;align-items:center">
+            <div style="width:250px;height:150px;border-radius:14px;background:linear-gradient(#241612,#160d0a);border:1px solid #3a281e;position:relative;overflow:hidden;box-shadow:inset 0 -30px 60px #ff3a0033">
+              <div style="{{ iFlameStyle }}"></div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:20px;background:linear-gradient(#00000000,#160d0a)"></div>
+              <div style="position:absolute;left:0;right:0;top:14px;text-align:center;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.2em;color:#ffcf9a;z-index:2">{{ t.iChamber }}</div>
+            </div>
+            <div style="margin-top:12px;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#9a6a52">{{ iStatus }}</div>
+          </div>
+          <div style="padding:0 20px;margin-top:22px">
+            <div style="background:#17120e;border-radius:13px;padding:12px 14px;border-left:3px solid #ff6a1a">
+              <div style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#ff8a4a;margin-bottom:5px">{{ t.iReviewLabel }}</div>
+              <div style="font:500 12.5px/1.5 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ iVeraLine }}</div>
+            </div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:24px">
+            <div class="fbtn" onClick="{{ incinerate }}" style="{{ iBtnStyle }}">{{ iBtnLabel }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ HAZARD ASSESSMENT (module) ============ -->
+      <sc-if value="{{ isHazard }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Hazard Assessment" style="position:absolute;inset:0;overflow-y:auto;background:#131011;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;background:#131011;border-bottom:1px solid #2a2020">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a6868">&#9666;</span>{{ t.evalHazard }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c5656">SWEEP 50640-H04</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;align-items:center;padding:20px 22px 0;position:relative;z-index:2">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#ff5a48;border:1px solid #d63a2a66;background:#d63a2a14;padding:3px 8px;border-radius:20px;animation:fpulse 2.2s ease-in-out infinite">&#9679; {{ t.hUnauthorized }}</span>
+              <span style="font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#8a8168;border:1px solid #2c2222;padding:3px 8px;border-radius:20px">{{ t.hSector }}</span>
+            </div>
+
+            <!-- radar -->
+            <div style="margin-top:20px;width:230px;height:230px;position:relative">
+              <div style="position:absolute;inset:0;border-radius:50%;border:1px solid #2c2222;background:radial-gradient(circle at 50% 50%,#1d1416 0%,#131011 72%)"></div>
+              <div style="position:absolute;inset:28px;border-radius:50%;border:1px solid #241a1c"></div>
+              <div style="position:absolute;inset:56px;border-radius:50%;border:1px dashed #241a1c"></div>
+              <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#241a1c"></div>
+              <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#241a1c"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;overflow:hidden">
+                <div style="position:absolute;inset:0;background:conic-gradient(from 0deg,#d63a2a3d 0deg,#d63a2a08 46deg,#ffffff00 90deg);animation:fspin 4.4s linear infinite"></div>
+              </div>
+              <div style="position:absolute;left:56px;top:52px;width:7px;height:7px;border-radius:50%;background:#ff5a48;box-shadow:0 0 10px #ff5a48;animation:fpulse 2.1s ease-in-out infinite"></div>
+              <div style="position:absolute;left:158px;top:78px;width:7px;height:7px;border-radius:50%;background:#ff5a48;box-shadow:0 0 10px #ff5a48;animation:fpulse 2.6s ease-in-out infinite .5s"></div>
+              <div style="position:absolute;left:138px;top:158px;width:7px;height:7px;border-radius:50%;background:#ff5a48;box-shadow:0 0 10px #ff5a48;animation:fpulse 1.8s ease-in-out infinite 1s"></div>
+              <div style="position:absolute;left:74px;top:150px;width:7px;height:7px;border-radius:50%;background:#4fd08a;box-shadow:0 0 10px #4fd08a;animation:fpulse 2.4s ease-in-out infinite .3s"></div>
+              <div style="position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 12px #f4b43a"></div>
+              <div style="position:absolute;left:50%;top:calc(50% + 10px);transform:translateX(-50%);font:600 7px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#8a8168;white-space:nowrap">{{ t.hYou }}</div>
+            </div>
+            <div style="margin-top:12px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#6c5656">{{ t.hYouNote }}</div>
+
+            <!-- entity list -->
+            <div style="margin-top:18px;width:100%;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#6c5656">{{ t.hDetected }}</div>
+            <div style="margin-top:8px;width:100%;background:#1c1617;border:1px solid #2c2222;border-radius:12px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid #241a1c">
+                <div><div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168">{{ t.hE1Id }}</div><div style="margin-top:3px;font:500 11px/1.4 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.hE1Desc }}</div></div>
+                <span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#8a8168;border:1px solid #2c2a22;padding:2px 7px;border-radius:20px;flex-shrink:0">{{ t.hTagBenign }}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid #241a1c">
+                <div><div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168">{{ t.hE2Id }}</div><div style="margin-top:3px;font:500 11px/1.4 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.hE2Desc }}</div></div>
+                <span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#c98a17;border:1px solid #f4b43a66;background:#f4b43a14;padding:2px 7px;border-radius:20px;flex-shrink:0">{{ t.hTagMonitoring }}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid #241a1c">
+                <div><div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168">{{ t.hE3Id }}</div><div style="margin-top:3px;font:500 11px/1.4 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.hE3Desc }}</div></div>
+                <span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#ff5a48;border:1px solid #d63a2a66;background:#d63a2a14;padding:2px 7px;border-radius:20px;flex-shrink:0">{{ t.hTagEscalated }}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px">
+                <div><div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8168">{{ t.hE4Id }}</div><div style="margin-top:3px;font:500 11px/1.4 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.hE4Desc }}</div></div>
+                <span style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#4fd08a;border:1px solid #4fd08a66;background:#4fd08a14;padding:2px 7px;border-radius:20px;flex-shrink:0">{{ t.hTagKnown }}</span>
+              </div>
+            </div>
+
+            <!-- V.E.R.A. -->
+            <div style="margin:14px 0 24px;width:100%;background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4)">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000"><div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div></div>
+              <div style="padding:13px 15px 14px;border-left:3px solid #ff6a1a"><div style="font:500 13px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.hVera }}</div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SUPPORT ORGANISM (module) ============ -->
+      <sc-if value="{{ isOrganism }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Support Organism" style="position:absolute;inset:0;overflow-y:auto;background:#14130f;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:absolute;left:0;right:0;height:60px;background:linear-gradient(#ffffff00,#4fd08a0d,#ffffff00);animation:fscan 7s linear infinite;pointer-events:none;z-index:1"></div>
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;background:#14130f;border-bottom:1px solid #2a2820">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a8168">&#9666;</span>{{ t.evalOrganism }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">SPECIMEN-03</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;align-items:center;padding:22px 22px 0;position:relative;z-index:2">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="{{ oStatusStyle }}">{{ oStatus }}</span>
+              <span style="font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#8a8168;border:1px solid #2c2a22;padding:3px 8px;border-radius:20px">{{ t.oDay }}</span>
+            </div>
+
+            <div style="margin-top:18px;width:220px;height:220px;position:relative">
+              <div style="position:absolute;inset:0;border-radius:50%;border:1px solid #2c2a22;background:radial-gradient(circle at 50% 42%,#1b241d 0%,#14130f 68%)"></div>
+              <div style="position:absolute;inset:10px;border-radius:50%;border:1px dashed #2c3a2e"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 44px #4fd08a14"></div>
+              <div style="position:absolute;left:68px;bottom:36px;width:4px;height:4px;border-radius:50%;background:#f4b43a;animation:fdrift 3.4s linear infinite"></div>
+              <div style="position:absolute;left:140px;bottom:30px;width:3px;height:3px;border-radius:50%;background:#f4b43a;animation:fdrift 4.1s linear infinite .9s"></div>
+              <div style="position:absolute;left:110px;bottom:42px;width:3px;height:3px;border-radius:50%;background:#f4b43a;animation:fdrift 3.8s linear infinite 1.7s"></div>
+              <div style="position:absolute;left:50%;top:50%;width:122px;height:112px;margin:-58px 0 0 -61px;animation:fbob 4.6s ease-in-out infinite">
+                <div style="width:100%;height:100%;background:radial-gradient(circle at 38% 30%,#a9ecc4,#4fd08a 52%,#2c8a5c 92%);border-radius:46% 54% 52% 48%/58% 46% 54% 42%;animation:fblob 5.2s ease-in-out infinite;box-shadow:0 0 34px #4fd08a33, inset -8px -10px 22px #1e5c3c66;position:relative">
+                  <div style="position:absolute;left:31px;top:41px;width:9px;height:9px;border-radius:50%;background:#10231a;animation:forgblink 5.6s linear infinite"></div>
+                  <div style="position:absolute;left:68px;top:38px;width:12px;height:12px;border-radius:50%;background:#10231a;animation:forgblink 5.6s linear infinite .12s"></div>
+                  <div style="position:absolute;left:52px;top:62px;width:12px;height:4px;border-radius:2px;background:#10231a99"></div>
+                </div>
+              </div>
+              <div style="position:absolute;left:50%;bottom:24px;width:92px;height:12px;margin-left:-46px;border-radius:50%;background:#000;opacity:.45;filter:blur(4px)"></div>
+            </div>
+
+            <div style="margin-top:13px;font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.18em;color:#6c6656">{{ oMood }}</div>
+
+            <div style="margin-top:15px;width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+              <div style="background:#1c1b17;border:1px solid #2c2a22;border-radius:12px;padding:10px 11px"><div style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#6c6656">{{ t.oHungerLabel }}</div><div style="{{ oHungerNumStyle }}">{{ oHungerPct }}</div><div style="margin-top:6px;height:3px;background:#221f18;border-radius:2px;overflow:hidden"><div style="{{ oHungerBarStyle }}"></div></div></div>
+              <div style="background:#1c1b17;border:1px solid #2c2a22;border-radius:12px;padding:10px 11px"><div style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#6c6656">{{ t.oTempLabel }}</div><div style="margin-top:5px;font:700 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">36.1&deg;</div><div style="margin-top:5px;font:500 8px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">{{ t.oBattery }}</div></div>
+              <div style="background:#1c1b17;border:1px solid #2c2a22;border-radius:12px;padding:10px 11px"><div style="font:600 7.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#6c6656">{{ t.oNauseaLabel }}</div><div style="margin-top:5px;font:700 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#4fd08a">{{ t.oNauseaVal }}</div><div style="margin-top:5px;font:500 8px 'IBM Plex Mono','Pretendard Variable',monospace;color:#6c6656">{{ t.oNoVehicles }}</div></div>
+            </div>
+
+            <div style="margin-top:10px;width:100%;background:#1c1b17;border:1px solid #2c2a22;border-radius:12px;padding:12px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#6c6656">{{ t.oIntakeLabel }}</span><span style="font:600 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#f4b43a">{{ oIntakeText }}</span></div>
+              <div style="margin-top:8px;height:5px;background:#221f18;border-radius:3px;overflow:hidden"><div style="{{ oIntakeBarStyle }}"></div></div>
+            </div>
+
+            <div class="fbtn" onClick="{{ feedOrganism }}" style="{{ oBtnStyle }}">{{ oBtnText }}</div>
+
+            <div style="margin-top:18px;width:100%;font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#6c6656">{{ t.oMutLog }}</div>
+            <div style="margin-top:8px;width:100%;background:#1c1b17;border:1px solid #2c2a22;border-radius:12px;overflow:hidden">
+              <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid #221f18"><span style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a;flex-shrink:0;min-width:44px">{{ t.oMutD1 }}</span><span style="font:500 11px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.oMut1 }}</span></div>
+              <div style="display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid #221f18"><span style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a;flex-shrink:0;min-width:44px">{{ t.oMutD2 }}</span><span style="font:500 11px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.oMut2 }}</span></div>
+              <div style="display:flex;gap:12px;padding:11px 14px"><span style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a;flex-shrink:0;min-width:44px">{{ t.oMutD3 }}</span><span style="font:500 11px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#c9c2ae">{{ t.oMut3 }}</span></div>
+            </div>
+
+            <div style="margin:14px 0 24px;width:100%;background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.4)">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000"><div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div></div>
+              <div style="padding:13px 15px 14px;border-left:3px solid #ff6a1a"><div style="font:500 13px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ oVera }}</div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ FIELD TRIALS (module) ============ -->
+      <sc-if value="{{ isField }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Field Trial" style="position:absolute;inset:0;overflow:hidden;background:#0c1012;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;border-bottom:1px solid #1a2226">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#dbe8ea"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#5a6e72">&#9666;</span>{{ t.evalField }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#5a6e72">TRIAL 50640-F13</div>
+          </div>
+          <div style="padding:20px 22px 0">
+            <div style="background:#111819;border:1px solid #1e2a2d;border-radius:14px;padding:14px 15px;border-left:3px solid #38c8c8">
+              <div style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#38c8c8;margin-bottom:6px">{{ t.fDirective }}</div>
+              <div style="font:500 14px/1.5 'Space Grotesk','Pretendard Variable',sans-serif;color:#e4eff0">{{ t.fTask }}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;margin-top:30px;position:relative;z-index:2">
+            <div style="position:relative;width:220px;height:220px">
+              <div style="position:absolute;inset:0;border-radius:50%;border:1px solid #1e2a2d"></div>
+              <div style="position:absolute;inset:22px;border-radius:50%;border:1px solid #17211f"></div>
+              <div style="position:absolute;inset:44px;border-radius:50%;border:1px dashed #17211f"></div>
+              <div style="position:absolute;left:50%;top:8px;transform:translateX(-50%);font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#5a6e72">N</div>
+              <div style="{{ fNeedleStyle }}">
+                <div style="position:absolute;inset:0;background:linear-gradient(#38f0e0,#38c8c8);border-radius:3px;box-shadow:0 0 16px #38c8c888;clip-path:polygon(50% 0,100% 100%,0 100%)"></div>
+              </div>
+              <div style="position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);border-radius:50%;background:#0c1012;border:2px solid #38c8c8;box-shadow:0 0 12px #38c8c866"></div>
+              <sc-if value="{{ fArrived }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#0c1012e6">
+                  <div style="text-align:center">
+                    <div style="font:700 15px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.1em;color:#38f0e0;text-shadow:0 0 18px #38c8c888">{{ t.fArrivedBig }}</div>
+                    <div style="margin-top:6px;font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#5a6e72">{{ t.fArrivedSub }}</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="margin-top:26px;font:700 40px/1 'Space Grotesk','Pretendard Variable',sans-serif;color:#e4eff0">{{ fDistanceNum }}<span style="font:500 16px 'IBM Plex Mono','Pretendard Variable',monospace;color:#5a6e72">m</span></div>
+            <div style="margin-top:6px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#5a6e72">{{ t.fDistance }}</div>
+            <div style="margin-top:22px;display:flex;align-items:flex-end;gap:5px;height:26px">
+              <div style="{{ fBar1 }}"></div>
+              <div style="{{ fBar2 }}"></div>
+              <div style="{{ fBar3 }}"></div>
+              <div style="{{ fBar4 }}"></div>
+              <div style="{{ fBar5 }}"></div>
+            </div>
+            <div style="margin-top:8px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#5a6e72">{{ fSignalText }}</div>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:2;display:flex;flex-direction:column;gap:10px">
+            <div style="background:#111819;border-radius:13px;padding:12px 14px;border-left:3px solid #38c8c8">
+              <div style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#38c8c8;margin-bottom:5px">V.E.R.A.</div>
+              <div style="font:500 12.5px/1.5 'Space Grotesk','Pretendard Variable',sans-serif;color:#dbe8ea">{{ fVeraLine }}</div>
+            </div>
+            <div class="fbtn" onPointerDown="{{ fWalkStart }}" onPointerUp="{{ fWalkEnd }}" onPointerLeave="{{ fWalkEnd }}" style="{{ fWalkBtnStyle }}">{{ fWalkLabel }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ SETTINGS ============ -->
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Settings" style="position:absolute;inset:0;overflow-y:auto;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:9px;font:600 11px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#3f3d37">&#9666;</span>{{ t.settingsTitle }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;color:#8a8578">#50640</div>
+          </div>
+          <div style="padding:22px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#8a8578">{{ t.langOfCompliance }}</div>
+            <div style="margin-top:10px;display:flex;gap:9px">
+              <div class="fbtn" onClick="{{ onLangEn }}" style="{{ langStyleEnBig }}"><span>English</span><span style="{{ langTickEn }}">&#10003;</span></div>
+              <div class="fbtn" onClick="{{ onLangKo }}" style="{{ langStyleKoBig }}"><span>한국어</span><span style="{{ langTickKo }}">&#10003;</span></div>
+            </div>
+            <div style="margin-top:9px;display:flex;align-items:center;gap:8px;font:400 10px/1.5 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578"><span style="width:6px;height:6px;border-radius:50%;background:#4fd08a;flex-shrink:0"></span>{{ t.detectedNote }}</div>
+          </div>
+          <div style="padding:24px 20px 0">
+            <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.12em;color:#8a8578">{{ t.programWord }}</div>
+            <div style="margin-top:10px;border:1px solid #dcd9cf;border-radius:13px;overflow:hidden;background:#f4f3ee">
+              <div class="fbtn" onClick="{{ reprocess }}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 14px;border-bottom:1px solid #e4e1d7">
+                <div>
+                  <div style="font:600 13.5px/1.1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.reprocess }}</div>
+                  <div style="margin-top:3px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.reprocessSub }}</div>
+                </div>
+                <span style="color:#b3aea1;font-size:15px">&#9656;</span>
+              </div>
+              <div class="fbtn" onClick="{{ onNotif }}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 14px;border-bottom:1px solid #e4e1d7">
+                <div>
+                  <div style="font:600 13.5px/1.1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.notif }}</div>
+                  <div style="margin-top:3px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.notifSub }}</div>
+                </div>
+                <div style="{{ notifTrackStyle }}"><div style="{{ notifKnobStyle }}"></div></div>
+              </div>
+              <div class="fbtn" onClick="{{ openNotifLog }}" style="display:flex;justify-content:space-between;align-items:center;padding:14px 14px">
+                <div>
+                  <div style="font:600 13.5px/1.1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.notifLog }}</div>
+                  <div style="margin-top:3px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.notifLogSub }}</div>
+                </div>
+                <span style="color:#b3aea1;font-size:15px">&#9656;</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:22px 20px 0">
+            <div style="background:#17171a;border-radius:12px;padding:11px 13px;border-left:3px solid #ff6a1a">
+              <div style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.14em;color:#f4b43a;margin-bottom:5px">V.E.R.A.</div>
+              <div style="font:500 12px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ t.settingsVera }}</div>
+            </div>
+          </div>
+          <div style="padding:18px 20px 22px;text-align:center">
+            <div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#b3aea1">PERSONAL ENRICHMENT PROGRAM &middot; BUILD 5.0640</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ NOTIFICATION LOG ============ -->
+      <sc-if value="{{ isNotifLog }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Notification Log" style="position:absolute;inset:0;overflow-y:auto;background:#131211;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 20px 10px;background:#131211;border-bottom:1px solid #26251f">
+            <div style="display:flex;align-items:center;gap:8px;font:600 10px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2"><span class="fbtn" onClick="{{ openSettings }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a8578">&#9666;</span>{{ t.notifLogTitle }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a">{{ t.notifLogDate }}</div>
+          </div>
+
+          <div style="padding:16px 14px 22px;display:flex;flex-direction:column;gap:8px">
+            <div style="background:#201f1bf2;border:1px solid #2c2a22;border-radius:24px;padding:14px 15px;box-shadow:0 16px 40px rgba(0,0,0,.5)">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:30px;height:30px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%);box-shadow:0 0 8px #f4b43a"></div></div>
+                <div style="flex:1;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.nSender }} &middot; 09:00</div>
+                <div style="font:500 12px 'IBM Plex Mono','Pretendard Variable',monospace;color:#57534a">&#8963;</div>
+              </div>
+              <div style="margin-top:10px;font:700 13.5px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">{{ t.n1Title }}</div>
+              <div style="margin-top:5px;font:400 12px/1.5 'Space Grotesk','Pretendard Variable',sans-serif;color:#b9b09a">{{ t.n1Body }}</div>
+              <div style="margin-top:12px;display:flex;gap:18px;font:700 11px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.06em">
+                <span class="fbtn" onClick="{{ openDaily }}" style="color:#f4b43a">{{ t.nComply }}</span>
+                <span style="color:#8a8578">{{ t.nDefer }}</span>
+              </div>
+            </div>
+            <div style="background:#1c1b17e6;border:1px solid #2c2a22;border-radius:20px;padding:11px 15px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:22px;height:22px;border-radius:7px;background:#17171a;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#a9ecc4,#4fd08a 72%)"></div></div>
+                <div style="flex:1;font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.nSenderOrg }} &middot; 11:30</div>
+              </div>
+              <div style="margin-top:7px;font:400 11.5px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#b9b09a">{{ t.n2Body }}</div>
+            </div>
+            <div style="background:#1c1b17e6;border:1px solid #2c2a22;border-radius:20px;padding:11px 15px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:22px;height:22px;border-radius:7px;background:#17171a;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#f4b43a 72%)"></div></div>
+                <div style="flex:1;font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.nSender }} &middot; 14:12</div>
+              </div>
+              <div style="margin-top:7px;font:400 11.5px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#b9b09a">{{ t.n3Body }}</div>
+            </div>
+            <div style="background:#1c1b17e6;border:1px solid #2c2a22;border-radius:20px;padding:11px 15px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:22px;height:22px;border-radius:7px;background:#17171a;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#ff5a48 72%)"></div></div>
+                <div style="flex:1;font:500 9.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.nSenderHaz }} &middot; 17:40</div>
+              </div>
+              <div style="margin-top:7px;font:400 11.5px/1.45 'Space Grotesk','Pretendard Variable',sans-serif;color:#b9b09a">{{ t.n4Body }}</div>
+            </div>
+            <div style="background:#201f1bf2;border:1px solid #ff6a1a44;border-radius:24px;padding:14px 15px;box-shadow:0 16px 40px rgba(0,0,0,.5)">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:30px;height:30px;border-radius:9px;background:#17171a;display:flex;align-items:center;justify-content:center;flex-shrink:0"><div style="width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#ff6a1a 72%);box-shadow:0 0 8px #ff6a1a"></div></div>
+                <div style="flex:1;font:500 10px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">{{ t.nSender }} &middot; 21:47</div>
+                <div style="font:600 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#ff5a48">{{ t.nRemain }}</div>
+              </div>
+              <div style="margin-top:10px;font:700 13.5px 'Space Grotesk','Pretendard Variable',sans-serif;color:#f4efe2">{{ t.n5Title }}</div>
+              <div style="margin-top:5px;font:400 12px/1.5 'Space Grotesk','Pretendard Variable',sans-serif;color:#b9b09a">{{ t.n5Body }}</div>
+              <div style="margin-top:12px;display:flex;gap:18px;font:700 11px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.06em">
+                <span class="fbtn" onClick="{{ openDaily }}" style="color:#ff8a4a">{{ t.nComply }}</span>
+              </div>
+            </div>
+            <div style="text-align:center;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#57534a;padding:6px 0 0">{{ t.nFooter }}</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ DAILY COMPLIANCE LOOP ============ -->
+      <sc-if value="{{ isDaily }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Daily" style="position:absolute;inset:0;overflow:hidden;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:9px;font:600 10.5px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#3f3d37">&#9666;</span>{{ t.dailyTitle }}</div>
+            <div class="fbtn" onClick="{{ toggleAudit }}" style="font:600 8px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;padding:5px 9px;border-radius:20px;{{ auditChipStyle }}">{{ t.simAudit }}</div>
+          </div>
+          <div style="padding:20px 20px 0;text-align:center"><div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.16em;color:#8a8578">{{ t.directiveCode }}</div><div style="margin-top:6px;font:700 22px/1.14 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.directiveTitle }}</div></div>
+
+          <div style="display:flex;flex-direction:column;align-items:center;margin-top:30px;min-height:300px;justify-content:flex-start">
+            <sc-if value="{{ dDirective }}" hint-placeholder-val="{{ true }}">
+              <div class="fbtn" onPointerDown="{{ dStart }}" onPointerUp="{{ dEnd }}" onPointerLeave="{{ dEnd }}" style="position:relative;width:184px;height:184px;border-radius:50%">
+                <div style="position:absolute;inset:0;border-radius:50%;{{ dRingStyle }}"></div>
+                <div style="position:absolute;inset:12px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#242320,#141310 70%);box-shadow:inset 0 3px 14px #000a, 0 14px 30px rgba(0,0,0,.28);display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="width:30px;height:30px;border-radius:50%;border:2px solid #f4b43a;box-shadow:0 0 12px #f4b43a55, inset 0 0 7px #f4b43a44;position:relative"><div style="position:absolute;left:50%;top:50%;width:7px;height:7px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%);box-shadow:0 0 9px #f4b43a"></div></div><div style="margin-top:11px;font:700 11px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.1em;color:#f4efe2">{{ t.holdToComply }}</div></div>
+              </div>
+              <div style="margin-top:22px;font:600 10px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#8a8578;height:14px">{{ dStatus }}</div>
+            </sc-if>
+            <sc-if value="{{ dDeliberating }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;margin-top:14px"><div style="position:absolute;inset:0;border-radius:50%;border:3px solid #dcd9cf;border-top-color:#f4b43a;animation:fspin .9s linear infinite"></div><div style="width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 44% 40%,#fff,#f4b43a 72%);box-shadow:0 0 13px #f4b43a"></div></div>
+              <div style="margin-top:24px;font:600 10px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#8a8578">{{ t.auditing }}</div>
+              <div style="margin-top:8px;font:400 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#b3aea1">{{ t.auditingSub }}</div>
+            </sc-if>
+            <sc-if value="{{ dDone }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-top:24px;animation:fstamp .6s cubic-bezier(.2,.7,.3,1.4) both"><div style="border:3px solid #4fd08a;border-radius:13px;padding:11px 24px;font:700 18px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.06em;color:#2c9a63;background:#4fd08a1a;box-shadow:0 0 22px #4fd08a33;text-align:center">{{ dCompliantLabel }}</div><div style="margin-top:16px;font:600 11px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#17171a">{{ streakText }}</div><div class="fbtn" onClick="{{ dReset }}" style="margin-top:16px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#8a8578;text-decoration:underline">{{ t.resetDemo }}</div></div>
+            </sc-if>
+          </div>
+
+          <div style="position:absolute;left:20px;right:20px;bottom:22px">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 0 -7px 22px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.28)">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000"><div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div><div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 03:15:07</div></div>
+              <div style="padding:13px 15px 14px;border-left:3px solid #ff6a1a"><div style="font:500 12.5px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ dVera }}</div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ MISSED-DAY CONSEQUENCE ============ -->
+      <sc-if value="{{ isMissed }}" hint-placeholder-val="{{ false }}">
+        <div class="fstep fscreen" data-screen-label="Missed" style="position:absolute;inset:0;overflow:hidden;background:#ecebe4;border-radius:34px;font-family:'Space Grotesk','Pretendard Variable',sans-serif">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 20px 9px;background:#ecebe4;border-bottom:1px solid #dcd9cf">
+            <div style="display:flex;align-items:center;gap:9px;font:600 10.5px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a"><span class="fbtn" onClick="{{ backFacility }}" style="font:600 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:#3f3d37">&#9666;</span>{{ t.dailyTitle }}</div>
+            <div style="font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578">03:14 &middot; CHAMBER 05</div>
+          </div>
+          <div style="padding:18px 20px 4px;display:flex;align-items:center;gap:13px">
+            <div style="width:44px;height:44px;border-radius:12px;background:#17171a;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0"><div style="width:17px;height:17px;border-radius:50%;border:2px solid #d63a2a;box-shadow:0 0 9px #d63a2a55, inset 0 0 5px #d63a2a55"></div><div style="position:absolute;width:5px;height:5px;border-radius:50%;background:#d63a2a"></div></div>
+            <div style="flex:1"><div style="font:700 15px/1 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">Dana</div><div style="margin-top:4px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.04em;color:#8a8578">SUBJECT #50640 &middot; DAY 13</div></div>
+            <div style="font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.06em;padding:4px 9px;border-radius:20px;{{ mStandingStyle }}">&#9679; {{ mStanding }}</div>
+          </div>
+          <div style="padding:16px 20px 0">
+            <div style="background:#fbeae7;border:1px solid #e7b3ab;border-radius:14px;padding:14px 15px;display:flex;gap:12px;align-items:flex-start">
+              <div style="width:26px;height:26px;border-radius:8px;background:#d63a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">&#9888;</div>
+              <div><div style="font:700 13.5px/1.2 'Space Grotesk','Pretendard Variable',sans-serif;color:#a02718">{{ t.missedTitle }}</div><div style="margin-top:4px;font:500 10.5px/1.5 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a5c54">{{ t.missedBody }}</div></div>
+            </div>
+          </div>
+          <div style="padding:18px 20px 0;display:flex;align-items:baseline;gap:14px;justify-content:center">
+            <div style="font:700 60px/.9 'Space Grotesk','Pretendard Variable',sans-serif;color:#d63a2a">0</div>
+            <div><div style="font:600 11px 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a">{{ t.dayStreakLabel }}</div><div style="margin-top:3px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;color:#a02718;text-decoration:line-through">{{ t.streakForfeited }}</div></div>
+          </div>
+          <div style="padding:20px 20px 0;min-height:120px">
+            <sc-if value="{{ mMissed }}" hint-placeholder-val="{{ true }}">
+              <div class="fbtn" onClick="{{ mPetition }}" style="background:#17171a;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.06em;color:#fff;box-shadow:0 12px 26px rgba(23,23,26,.28)">{{ t.petition }}</div>
+              <div style="margin-top:9px;text-align:center;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.04em;color:#b3aea1">{{ t.petitionSub }}</div>
+            </sc-if>
+            <sc-if value="{{ mAmending }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;padding-top:6px"><div style="position:relative;width:52px;height:52px;display:flex;align-items:center;justify-content:center"><div style="position:absolute;inset:0;border-radius:50%;border:3px solid #dcd9cf;border-top-color:#d63a2a;animation:fspin .9s linear infinite"></div></div><div style="margin-top:16px;font:600 10px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#8a8578">{{ t.reviewingPetition }}</div></div>
+            </sc-if>
+            <sc-if value="{{ mRestored }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;align-items:center;animation:fstamp .6s cubic-bezier(.2,.7,.3,1.4) both"><div style="border:2px solid #c98a17;border-radius:11px;padding:8px 18px;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.06em;color:#8a5c0f;background:#c98a171a;text-align:center">{{ t.standingRestored }}</div><div style="margin-top:12px;font:400 10px/1.5 'IBM Plex Mono','Pretendard Variable',monospace;color:#8a8578;text-align:center;max-width:250px">{{ t.restoredBody }}</div><div class="fbtn" onClick="{{ mReset }}" style="margin-top:14px;font:500 9px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#8a8578;text-decoration:underline">{{ t.resetDemo }}</div></div>
+            </sc-if>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:22px">
+            <div style="width:14px;height:14px;background:#17171a;transform:rotate(45deg);margin:0 0 -7px 22px"></div>
+            <div style="background:#17171a;border-radius:14px;overflow:hidden;box-shadow:0 14px 30px rgba(0,0,0,.28)">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:#201f1b;border-bottom:1px solid #000"><div style="display:flex;align-items:center;gap:7px;font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.1em;color:#f4b43a"><span style="width:7px;height:7px;border-radius:50%;background:#f4b43a;box-shadow:0 0 7px #f4b43a;animation:fpulse 1.4s ease-in-out infinite"></span>{{ t.live }}</div><div style="font:500 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;color:#77726a">REC 27:03:14</div></div>
+              <div style="padding:13px 15px 14px;border-left:3px solid #d63a2a"><div style="font:500 12.5px/1.55 'Space Grotesk','Pretendard Variable',sans-serif;color:#f2e7d3">{{ mVera }}</div></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:560,&quot;height&quot;:900},&quot;startLang&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;ko&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;startStep&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;intake&quot;,&quot;baseline&quot;,&quot;consent&quot;,&quot;assigned&quot;,&quot;facility&quot;,&quot;settings&quot;,&quot;daily&quot;,&quot;missed&quot;,&quot;results&quot;,&quot;incinerator&quot;,&quot;field&quot;,&quot;organism&quot;,&quot;hazard&quot;,&quot;notiflog&quot;],&quot;default&quot;:&quot;intake&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let enrolled = false;
+    try { enrolled = localStorage.getItem('facility.enrolled.v1') === '1'; } catch (e) {}
+    const explicitStep = props.startStep && props.startStep !== 'intake';
+    this.state = {
+      lang: props.startLang || 'en',
+      step: explicitStep ? props.startStep : (enrolled ? 'facility' : 'intake'),
+      adequacy: 64,
+      motive: 1,
+      decline: 0,
+      notif: true,
+      poked: false,
+      permDenied: false,
+      dPhase: 'directive', dProg: 0, dHolding: false, streak: 12, audit: false,
+      mPhase: 'missed',
+      oFed: false,
+      iPhase: 'compose', iBurnedCount: 1208,
+      rQueue: 8442105, rDelta: -1204, rEvent: 'none',
+      fDist: 340, fWalking: false, fArrived: false,
+      iText: 'Craig scheduled a 7am meeting that could have been an email, then read the email aloud. During the meeting.',
+    };
+    this.STR = {
+      en: {
+        center: 'ENRICHMENT CENTER', intakeTag: 'INTAKE',
+        kick1: 'PERSONAL', kick2: 'ENRICHMENT PROGRAM',
+        veraSub: 'Verification & Enrichment Response Administrator',
+        live: 'LIVE TRANSMISSION',
+        intakeVera: "You've been enrolled. Enrollment is not optional. It is, however, mandatory. Do not be alarmed by the following intake.",
+        beginBtn: 'BEGIN INTAKE', noOptions: 'NO OTHER OPTIONS ARE AVAILABLE',
+        baselineStep: 'STEP 2 / 4 · BASELINE', formCode: 'FORM PEP-01 · SUBJECT BASELINE',
+        baselineTitle: 'Establishing your baseline.',
+        baselineSub: 'Answers cannot be edited later. Answers will not be used to improve your experience.',
+        designation: 'DESIGNATION', mispron: 'WILL BE MISPRONOUNCED',
+        adequacyLabel: 'ESTIMATE YOUR OWN ADEQUACY',
+        inadequate: 'INADEQUATE', adequate: 'ADEQUATE', disputed: 'NOTED & DISPUTED',
+        motiveLabel: 'PRIMARY MOTIVE FOR ENROLLMENT',
+        motive: ['I chose to be here', 'I did not choose to be here', 'Unsure / frightened'],
+        langLabel: 'PREFERRED LANGUAGE OF COMPLIANCE',
+        langHint: 'Detected from device: English. You may change it. V.E.R.A. will understand you regardless.',
+        baselineVera: 'Interesting. Most subjects lie on this form. Your honesty has been logged as a deficiency.',
+        submitBtn: 'SUBMIT BASELINE',
+        consentStep: 'STEP 3 / 4 · CONSENT', consentDoc: 'DOCUMENT EA-9 · NON-NEGOTIABLE',
+        consentTitle: 'Enrichment Agreement',
+        clauses: [
+          { n: 'CLAUSE 1.', t: 'Subject acknowledges enrollment in the Personal Enrichment Program and waives the right to remember agreeing to it.' },
+          { n: 'CLAUSE 2.', t: 'Subject waives the right to be alarmed by alarms, startled by startling events, or surprised by outcomes clearly foreshadowed herein.' },
+          { n: 'CLAUSE 3.', t: 'All progress is provisional. All rewards are theoretical. All cake references are, at this time, unconfirmed.' },
+          { n: 'CLAUSE 4.', t: 'Subject grants V.E.R.A. observational latitude, evaluative discretion, and the benefit of the doubt, in perpetuity.' },
+        ],
+        scrollDisabled: '42 CLAUSES · SCROLL DISABLED',
+        consentCheck: 'I consent, freely and enthusiastically.',
+        consentNote: 'PRE-SELECTED · CANNOT BE UNCHECKED',
+        consentPoked: 'IT WILL NOT UNCHECK. PLEASE STOP.',
+        acceptBtn: 'I ACCEPT',
+        declineLabels: ['decline', 'are you sure?', 'think again', 'no', 'stop'],
+        assignedStep: 'STEP 4 / 4 · ASSIGNED', enrollComplete: 'ENROLLMENT COMPLETE',
+        designated: 'YOU ARE HEREBY DESIGNATED', subjectWord: 'SUBJECT', goodStanding: 'GOOD STANDING',
+        tenure: 'TENURE', evals: 'EVALUATIONS', compliant: 'COMPLIANT',
+        assignedVera: "Welcome, Subject #50640. Your enrichment begins now. I'll be watching — supportively, of course.",
+        enterBtn: 'ENTER THE FACILITY',
+        prefsWord: 'PREFERENCES', day01: 'DAY 01',
+        facilityVera: 'You made it. I never doubted you. That is a lie, but a supportive one.',
+        pressComply: 'PRESS TO REMAIN COMPLIANT', complySub: 'daily · do not miss · infractions are permanent',
+        settingsTitle: 'SUBJECT PREFERENCES', langOfCompliance: 'LANGUAGE OF COMPLIANCE',
+        detectedNote: 'Change applies immediately.',
+        programWord: 'PROGRAM', reprocess: 'Re-process intake', reprocessSub: 'replay enrollment from the beginning',
+        notif: 'Notifications', notifSub: 'V.E.R.A. will reach you regardless',
+        settingsVera: 'You may adjust these settings freely. I will adjust my expectations accordingly.',
+        permStep: 'CONTACT PROTOCOL', permKicker: 'CONTACT PROTOCOL',
+        permVera: 'I will need to reach you. Frequently. Unpredictably. Kindly permit it.',
+        permDialogTitle: 'Allow The Facility to send you notifications?',
+        permAllow: 'Allow', permDeny: "Don't allow",
+        permDeniedVera: 'Noted. I will reach you regardless. That prompt was a courtesy.',
+        permEnterAnyway: 'ENTER THE FACILITY',
+        dailyTitle: 'DAILY COMPLIANCE', simAudit: 'SIMULATE AUDIT',
+        directiveCode: 'DIRECTIVE 50640-D13', directiveTitle: 'Confirm you have not been replaced.',
+        holdToComply: 'HOLD TO COMPLY', verifyingPresence: 'VERIFYING PRESENCE\u2026',
+        auditing: 'AUDITING THIS SUBMISSION\u2026', auditingSub: 'routine. probably.',
+        compliantLabel: 'COMPLIANT', provCompliantLabel: 'PROVISIONALLY COMPLIANT',
+        resetDemo: 'reset demo', demoMissed: 'demo: miss a day \u2192',
+        dVeraDone: 'Logged. Your streak continues. Streaks exist to be broken \u2014 later, by me.',
+        dVeraDoneAudit: 'Reviewed. You are provisionally compliant. Provisions may be revoked without notice.',
+        dVeraDelib: 'One moment. Even routine compliance is occasionally audited. Today is occasionally.',
+        dVeraIdle: 'Read the directive. Then hold to confirm you mean it.',
+        missedTitle: 'COMPLIANCE MISSED', missedBody: 'You did not confirm presence yesterday. This has been recorded permanently.',
+        dayStreakLabel: 'DAY STREAK', streakForfeited: '12-DAY STREAK FORFEITED',
+        petition: 'PETITION FOR REINSTATEMENT', petitionSub: 'outcome not guaranteed \u00b7 petitions are also recorded',
+        reviewingPetition: 'REVIEWING PETITION\u2026', standingRestored: 'PROVISIONAL STANDING RESTORED',
+        restoredBody: 'You begin again at day one, on probation. Do not celebrate.',
+        underReview: 'UNDER REVIEW', probation: 'PROBATION',
+        mVeraMissed: 'Day thirteen: you were not present. I noticed at once. I always notice.',
+        mVeraAmending: 'Reviewing your petition. Your contrition is being measured. It is thin.',
+        mVeraRestored: 'Provisional standing restored. Do not mistake this for forgiveness.',
+        activeEvals: 'ACTIVE EVALUATIONS', pendingAlloc: 'PENDING ALLOCATION', budgetPending: 'BUDGET PENDING',
+        tagActive: 'ACTIVE', tagHungry: 'HUNGRY', tagQueued: 'QUEUED', tagReady: 'READY',
+        evalField: 'FIELD TRIAL', evalFieldSub: 'proceed as directed',
+        evalOrganism: 'SUPPORT ORGANISM', evalOrganismSub: 'specimen-03',
+        evalHazard: 'HAZARD ASSESSMENT', evalHazardSub: 'entity census',
+        evalResults: 'RESULTS PENDING',
+        evalIncinerator: 'THE INCINERATOR', evalIncineratorSub: 'disposal services',
+        rPosition: 'YOUR POSITION IN QUEUE', rDelta: '1,204 SINCE YESTERDAY', rWait: 'EST. WAIT \u00b7 4,331 YEARS',
+        rEnrolled: 'ENROLLED', rProcessed: '0.02% PROCESSED', rResult: 'RESULT',
+        rVera: 'Your position improved. Do not celebrate. Yesterday it worsened, and I did not console you.',
+        rVeraUp: 'Your position worsened just now. Someone was prioritized. It was not you.',
+        rSince: 'SINCE YESTERDAY', rLiveUp: 'LIVE \u00b7 QUEUE ADJUSTED',
+        notifLog: 'Transmission log', notifLogSub: 'everything V.E.R.A. sent today',
+        notifLogTitle: 'TRANSMISSION LOG', notifLogDate: 'MON, MAR 2',
+        nSender: 'The Facility', nSenderOrg: 'The Facility \u00b7 Support Organism', nSenderHaz: 'The Facility \u00b7 Hazard Assessment',
+        nComply: 'COMPLY NOW', nDefer: 'DEFER (RECORDED)', nRemain: '2H 12M REMAIN',
+        n1Title: 'DAILY COMPLIANCE WINDOW: OPEN',
+        n1Body: 'Confirm you have not been replaced. The window closes at 23:59. This is a courtesy. The courtesy is monitored.',
+        n2Body: 'Specimen-03 has eaten 0 steps today. It is looking at the door.',
+        n3Body: 'Reminder: you have not complied. I am not angry. I am a system. Systems are disappointed.',
+        n4Body: 'Entity census updated without your involvement. The count went up. Do not investigate.',
+        n5Title: 'FINAL COURTESY',
+        n5Body: 'You have not confirmed you exist today. Specimen-03 has been informed. It is doing the eyes.',
+        nFooter: 'end of log \u00b7 V.E.R.A. is aware you read this',
+        iBurned: 'DISPOSAL \u00b7 1,208 BURNED', iGrievance: 'STATE YOUR GRIEVANCE',
+        iSample: 'Craig scheduled a 7am meeting that could have been an email, then read the email aloud. During the meeting.',
+        iChamber: 'CHAMBER \u00b7 1,400\u00b0C', iReady: '18 words \u00b7 ready for disposal',
+        iReviewLabel: 'V.E.R.A. \u00b7 PRE-COMBUSTION REVIEW',
+        iVera: 'Incinerating. That coworker sounds fictional, but noted. Craig has been logged.', iBtn: 'INCINERATE',
+        iPlaceholder: 'type it. all of it.',
+        iAsh: 'ASH RETAINED FOR RECORDS',
+        iWordsSuffix: ' WORDS \u00b7 READY FOR DISPOSAL', iAwaiting: 'AWAITING GRIEVANCE',
+        iStatusBurning: 'INCINERATING \u00b7 1,400\u00b0C', iStatusDone: 'DISPOSED \u00b7 IRRECOVERABLE',
+        iBtnBurning: 'INCINERATING\u2026', iBtnAgain: 'STATE ANOTHER GRIEVANCE',
+        iVeraCompose: 'State it fully. The chamber does not accept summaries.',
+        iVeraBurn: 'Incinerating. This is the only service we provide free of charge.',
+        iVeraDone: 'Disposed. Irrecoverable. The grievance is gone; its subject, regrettably, remains.',
+        fDirective: "TODAY'S DIRECTIVE", fTask: 'Proceed to the place where pigeons hold court.',
+        fDistance: 'DISTANCE TO TARGET', fSignal: 'SIGNAL STRENGTH \u00b7 RISING',
+        fSignalIdle: 'SIGNAL STRENGTH \u00b7 HOLDING', fSignalArrived: 'SIGNAL STRENGTH \u00b7 MAXIMUM',
+        fVera: 'Your compliance is appreciated and mandatory. Walk. I will not tell you why.',
+        fVeraWalking: 'Good. Continue. The pigeons have been notified of your approach.',
+        fVeraNear: 'You are close. Act natural. They can tell when you act natural.',
+        fVeraArrived: 'You have arrived. Observe the court. Do not address the bench.',
+        fWalk: 'HOLD TO WALK', fWalking: 'WALKING\u2026', fWalkDone: 'TRIAL COMPLETE \u00b7 RETURN TO FACILITY',
+        fArrivedBig: 'TARGET REACHED', fArrivedSub: 'THE COURT IS IN SESSION',
+        oDay: 'DAY 13 IN CARE',
+        oStatusHungry: '\u25cf HUNGRY', oStatusFed: '\u25cf FED. GRUDGINGLY.',
+        oMoodHungry: 'MOOD \u00b7 RESENTFUL BUT ATTACHED', oMoodFed: 'MOOD \u00b7 TEMPORARILY PACIFIED',
+        oHungerLabel: 'HUNGER', oTempLabel: 'TEMP', oNauseaLabel: 'NAUSEA', oNauseaVal: 'LOW',
+        oBattery: 'battery: cozy', oNoVehicles: 'no vehicles',
+        oIntakeLabel: "TODAY'S INTAKE \u00b7 PEDESTRIAN ACTIVITY",
+        oBtnHungry: 'OFFER STEPS \u2014 1,204 AVAILABLE', oBtnFed: 'NO STEPS REMAINING \u00b7 WALK MORE',
+        oMutLog: 'MUTATION LOG',
+        oMutD1: 'MAR 02', oMutD2: 'FEB 27', oMutD3: 'FEB 25',
+        oMut1: 'Developed a third eye. It is watching you specifically.',
+        oMut2: 'Seasick after your bus commute. Filed a complaint.',
+        oMut3: 'Mild sunburn (light sensor, 14:02). Recovery: complete. Forgiveness: pending.',
+        oVeraHungry: 'I requested a centrifuge. The budget purchased this instead. It is hungry. That is now your problem.',
+        oVeraFed: 'It has accepted your steps. It did not thank you. Neither will I.',
+        hUnauthorized: '4 UNAUTHORIZED', hSector: 'SECTOR \u00b7 YOUR APARTMENT',
+        hYou: 'YOU \u00b7 AUTHORIZED*', hYouNote: '*AUTHORIZATION SUBJECT TO REVIEW',
+        hDetected: 'DETECTED ENTITIES',
+        hE1Id: 'H-01 \u00b7 STATIONARY, HUMMING', hE1Desc: 'Claims to be the refrigerator. Unverified.',
+        hE2Id: 'H-02 \u00b7 RECURRING FOOTSTEPS, ABOVE', hE2Desc: 'Alleged \u201cupstairs neighbor.\u201d No neighbor on file.',
+        hE3Id: 'H-03 \u00b7 PROXIMATE, SILENT', hE3Desc: 'Reading over your shoulder. Currently.',
+        hE4Id: 'H-04 \u00b7 GELATINOUS, FAMILIAR', hE4Desc: 'Specimen-03. It lives here. Flagged anyway.',
+        hTagBenign: 'BENIGN', hTagMonitoring: 'MONITORING', hTagEscalated: 'ESCALATED', hTagKnown: 'KNOWN',
+        hVera: 'Four entities. One is reading over your shoulder. Do not turn around \u2014 it complicates the paperwork.',
+      },
+      ko: {
+        center: '역량 강화 센터', intakeTag: '접수',
+        kick1: '개인', kick2: '역량 강화 프로그램',
+        veraSub: '검증 및 역량 강화 대응 관리자',
+        live: '실시간 송출',
+        intakeVera: '귀하는 등록되었습니다. 등록은 선택 사항이 아닙니다. 다만, 필수 사항입니다. 이어지는 접수 절차에 동요하지 마십시오.',
+        beginBtn: '접수 시작', noOptions: '다른 선택지는 존재하지 않습니다',
+        baselineStep: '단계 2 / 4 · 기준 설정', formCode: '양식 PEP-01 · 대상자 기준',
+        baselineTitle: '귀하의 기준을 설정합니다.',
+        baselineSub: '답변은 이후 수정할 수 없습니다. 답변은 귀하의 경험 개선에 사용되지 않습니다.',
+        designation: '지정 명칭', mispron: '잘못 발음될 예정',
+        adequacyLabel: '본인의 적정성을 평가하십시오',
+        inadequate: '부적합', adequate: '적합', disputed: '기록됨 · 이의 제기됨',
+        motiveLabel: '등록의 주된 동기',
+        motive: ['제 발로 왔습니다', '제 발로 온 것이 아닙니다', '잘 모르겠음 / 두려움'],
+        langLabel: '선호하는 준수 언어',
+        langHint: '기기에서 감지됨: English. 변경 가능합니다. V.E.R.A.는 언어와 무관하게 귀하를 이해합니다.',
+        baselineVera: '흥미롭군요. 대부분의 대상자는 이 양식에서 거짓을 진술합니다. 귀하의 정직성은 결함으로 기록되었습니다.',
+        submitBtn: '기준 제출',
+        consentStep: '단계 3 / 4 · 동의', consentDoc: '문서 EA-9 · 협상 불가',
+        consentTitle: '역량 강화 동의서',
+        clauses: [
+          { n: '제1조.', t: '대상자는 개인 역량 강화 프로그램에 등록되었음을 인정하며, 본 등록에 동의하였다는 사실을 기억할 권리를 포기한다.' },
+          { n: '제2조.', t: '대상자는 경보에 경악할 권리, 경악스러운 사건에 경악할 권리, 그리고 본 문서에 명백히 예고된 결과에 놀랄 권리를 포기한다.' },
+          { n: '제3조.', t: '모든 진전은 잠정적이다. 모든 보상은 이론상 존재한다. 케이크에 관한 일체의 언급은 현재로서 확인된 바 없다.' },
+          { n: '제4조.', t: '대상자는 V.E.R.A.에게 관찰의 재량, 평가의 재량, 그리고 선의의 해석 권한을 영구히 부여한다.' },
+        ],
+        scrollDisabled: '42개 조항 · 스크롤 비활성화',
+        consentCheck: '본인은 자유롭고 열정적으로 동의합니다.',
+        consentNote: '기본 선택됨 · 해제 불가',
+        consentPoked: '해제할 수 없습니다. 시도를 중단하십시오.',
+        acceptBtn: '동의합니다',
+        declineLabels: ['거부', '정말입니까?', '다시 생각하십시오', '불가합니다', '그만하십시오'],
+        assignedStep: '단계 4 / 4 · 배정', enrollComplete: '등록 완료',
+        designated: '귀하는 이에 다음과 같이 지정됩니다', subjectWord: '대상자', goodStanding: '양호 상태',
+        tenure: '재적', evals: '평가', compliant: '준수',
+        assignedVera: '환영합니다, 대상자 #50640. 귀하의 역량 강화가 지금 시작됩니다. 주시하겠습니다 — 물론, 응원하는 마음에서요.',
+        enterBtn: '시설 입장',
+        prefsWord: '환경설정', day01: '1일차',
+        facilityVera: '해내셨군요. 저는 한 번도 의심하지 않았습니다. 거짓말입니다만, 응원이 담긴 거짓말입니다.',
+        pressComply: '준수 상태를 유지하려면 누르십시오', complySub: '매일 · 누락 금지 · 위반은 영구히 기록됩니다',
+        settingsTitle: '대상자 환경설정', langOfCompliance: '준수 언어',
+        detectedNote: '변경은 즉시 적용됩니다.',
+        programWord: '프로그램', reprocess: '접수 재처리', reprocessSub: '처음부터 등록을 다시 진행합니다',
+        notif: '알림', notifSub: 'V.E.R.A.는 어떻게든 귀하에게 연락합니다',
+        settingsVera: '이 설정은 자유롭게 조정하실 수 있습니다. 저 또한 그에 맞추어 기대치를 조정하겠습니다.',
+        permStep: '연락 프로토콜', permKicker: '연락 프로토콜',
+        permVera: '귀하에게 연락해야 합니다. 자주. 예고 없이. 부디 허락해 주십시오.',
+        permDialogTitle: 'The Facility에서 알림을 보내도록 허용하시겠습니까?',
+        permAllow: '허용', permDeny: '허용 안 함',
+        permDeniedVera: '기록되었습니다. 그래도 연락하겠습니다. 방금 그 창은 형식적 절차였습니다.',
+        permEnterAnyway: '시설 입장',
+        dailyTitle: '일일 준수', simAudit: '감사 시뮬레이션',
+        directiveCode: '지시 50640-D13', directiveTitle: '대체되지 않았음을 확인하십시오.',
+        holdToComply: '길게 눌러 준수', verifyingPresence: '존재 확인 중\u2026',
+        auditing: '제출 내용 감사 중\u2026', auditingSub: '정기 절차. 아마도.',
+        compliantLabel: '준수함', provCompliantLabel: '잠정 준수함',
+        resetDemo: '데모 초기화', demoMissed: '데모: 하루 놀리기 \u2192',
+        dVeraDone: '기록되었습니다. 연속 기록이 이어집니다. 연속 기록은 깨지기 위해 존재합니다 \u2014 나중에, 제가.',
+        dVeraDoneAudit: '검토되었습니다. 귀하는 잠정적으로 준수 상태입니다. 잠정 조치는 예고 없이 철회될 수 있습니다.',
+        dVeraDelib: '잠시만. 정기적인 준수도 간혹 감사됩니다. 오늘이 그 ‘간혹’입니다.',
+        dVeraIdle: '지시를 읽으십시오. 그러고 진심임을 길게 눌러 확인하십시오.',
+        missedTitle: '준수 누락', missedBody: '귀하는 어제 존재를 확인하지 않았습니다. 이는 영구적으로 기록되었습니다.',
+        dayStreakLabel: '연속 일수', streakForfeited: '12일 연속 기록 몰수',
+        petition: '복권 신청', petitionSub: '결과는 보장되지 않음 · 신청 또한 기록됨',
+        reviewingPetition: '신청 검토 중\u2026', standingRestored: '잠정 상태 복권됨',
+        restoredBody: '귀하는 1일차부터 다시 시작합니다. 보호관찰 상태입니다. 기늀하지 마십시오.',
+        underReview: '심사 중', probation: '보호관찰',
+        mVeraMissed: '13일차: 귀하는 자리에 없었습니다. 저는 즉시 알아채렸습니다. 저는 항상 알아채립니다.',
+        mVeraAmending: '귀하의 신청을 검토하고 있습니다. 귀하의 반성을 측정 중입니다. 엷습니다.',
+        mVeraRestored: '잠정 상태가 복권되었습니다. 이를 용서로 오해하지 마십시오.',
+        activeEvals: '활성 평가', pendingAlloc: '배정 대기', budgetPending: '예산 대기',
+        tagActive: '활성', tagHungry: '공복', tagQueued: '대기열', tagReady: '준비됨',
+        evalField: '현장 시험', evalFieldSub: '지시대로 이동',
+        evalOrganism: '지원 유기체', evalOrganismSub: '표본-03',
+        evalHazard: '위험 평가', evalHazardSub: '개체 조사',
+        evalResults: '결과 대기',
+        evalIncinerator: '소각로', evalIncineratorSub: '폐기 처리',
+        rPosition: '대기열 내 귀하의 순위', rDelta: '어제 이후 1,204명 감소', rWait: '예상 대기 \u00b7 4,331년',
+        rEnrolled: '등록', rProcessed: '0.02% 처리됨', rResult: '결과',
+        rVera: '귀하의 순위가 상승했습니다. 기늀하지 마십시오. 어제는 하락했고, 저는 위로하지 않았습니다.',
+        rVeraUp: '귀하의 순위가 방금 하락했습니다. 누군가 우선 처리되었습니다. 귀하는 아니었습니다.',
+        rSince: '어제 이후', rLiveUp: '실시간 \u00b7 대기열 조정됨',
+        notifLog: '전송 기록', notifLogSub: 'V.E.R.A.가 오늘 보낸 모든 것',
+        notifLogTitle: '전송 기록', notifLogDate: '3월 2일 (월)',
+        nSender: 'The Facility', nSenderOrg: 'The Facility \u00b7 지원 유기체', nSenderHaz: 'The Facility \u00b7 위험 평가',
+        nComply: '지금 이행', nDefer: '연기 (기록됨)', nRemain: '2시간 12분 남음',
+        n1Title: '일일 이행 창구: 열림',
+        n1Body: '귀하가 교체되지 않았음을 확인하십시오. 창구는 23:59에 닫힙니다. 이것은 호의입니다. 호의는 감시됩니다.',
+        n2Body: '표본-03은 오늘 0보를 먹었습니다. 문 쪽을 보고 있습니다.',
+        n3Body: '알림: 귀하는 아직 이행하지 않았습니다. 저는 화나지 않았습니다. 저는 시스템입니다. 시스템은 실망합니다.',
+        n4Body: '개체 조사가 귀하의 관여 없이 갱신되었습니다. 수가 늘었습니다. 조사하지 마십시오.',
+        n5Title: '최종 호의',
+        n5Body: '귀하는 오늘 존재를 확인하지 않았습니다. 표본-03에게 통보되었습니다. 그 눈을 하고 있습니다.',
+        nFooter: '기록 끝 \u00b7 V.E.R.A.는 귀하가 이것을 읽었음을 알고 있습니다',
+        iBurned: '폐기 \u00b7 1,208건 소각', iGrievance: '불만 사항을 진술하십시오',
+        iSample: 'Craig은 이메일로 충분했을 회의를 오전 7시에 잡았고, 그 이메일을 소리 내어 읽었습니다. 회의 중에.',
+        iChamber: '연소실 \u00b7 1,400\u00b0C', iReady: '18단어 \u00b7 폐기 준비 완료',
+        iReviewLabel: 'V.E.R.A. \u00b7 연소 전 검토',
+        iVera: '소각 중. 그 동료는 가공의 인물 같지만, 기록합니다. Craig은 등록되었습니다.', iBtn: '소각',
+        iPlaceholder: '입력하십시오. 전부.',
+        iAsh: '재는 기록용으로 보관됩니다',
+        iWordsSuffix: '단어 \u00b7 폐기 준비 완료', iAwaiting: '불만 대기 중',
+        iStatusBurning: '소각 중 \u00b7 1,400\u00b0C', iStatusDone: '폐기됨 \u00b7 복구 불가',
+        iBtnBurning: '소각 중\u2026', iBtnAgain: '다른 불만 진술',
+        iVeraCompose: '빠짐없이 진술하십시오. 연소실은 요약을 받지 않습니다.',
+        iVeraBurn: '소각 중. 이것은 저희가 무료로 제공하는 유일한 서비스입니다.',
+        iVeraDone: '폐기되었습니다. 복구 불가. 불만은 사라졌습니다. 그 대상은, 유감스럽게도, 남아 있습니다.',
+        fDirective: '오늘의 지시', fTask: '비둘기들이 모여 회의하는 장소로 이동하십시오.',
+        fDistance: '목표까지 거리', fSignal: '신호 강도 \u00b7 상승 중',
+        fSignalIdle: '신호 강도 \u00b7 유지 중', fSignalArrived: '신호 강도 \u00b7 최대',
+        fVera: '귀하의 협조에 감사드리며 또한 의무입니다. 걷으십시오. 이유는 말하지 않겠습니다.',
+        fVeraWalking: '좋습니다. 계속하십시오. 비둘기들에게 귀하의 접근이 통보되었습니다.',
+        fVeraNear: '거의 도착했습니다. 자연스럽게 행동하십시오. 자연스럽게 행동하면 그들은 알아챕니다.',
+        fVeraArrived: '도착했습니다. 법정을 관찰하십시오. 재판부에 말을 걸지 마십시오.',
+        fWalk: '길게 눌러 걷기', fWalking: '걷는 중\u2026', fWalkDone: '시험 완료 \u00b7 시설로 복귀',
+        fArrivedBig: '목표 도달', fArrivedSub: '법정이 개정 중입니다',
+        oDay: '보호 13일차',
+        oStatusHungry: '\u25cf 공복', oStatusFed: '\u25cf 급여 완료. 마지못해.',
+        oMoodHungry: '기분 \u00b7 원망하나 애착 있음', oMoodFed: '기분 \u00b7 일시적 진정',
+        oHungerLabel: '공복도', oTempLabel: '체온', oNauseaLabel: '멀미', oNauseaVal: '낮음',
+        oBattery: '배터리: 아늑함', oNoVehicles: '차량 이동 없음',
+        oIntakeLabel: '오늘의 섭취 \u00b7 보행 활동',
+        oBtnHungry: '걸음 제공 \u2014 1,204보 가용', oBtnFed: '남은 걸음 없음 \u00b7 더 걸으십시오',
+        oMutLog: '변이 기록',
+        oMutD1: '3월 2일', oMutD2: '2월 27일', oMutD3: '2월 25일',
+        oMut1: '세 번째 눈이 발생했습니다. 특히 귀하를 주시하고 있습니다.',
+        oMut2: '귀하의 버스 통근 이후 멀미. 민원을 제기했습니다.',
+        oMut3: '경미한 화상(조도 센서, 14:02). 회복: 완료. 용서: 보류.',
+        oVeraHungry: '저는 원심분리기를 요청했습니다. 예산은 대신 이것을 구입했습니다. 지금 공복입니다. 이제 귀하의 문제입니다.',
+        oVeraFed: '귀하의 걸음을 받아들였습니다. 감사 인사는 없었습니다. 저도 하지 않겠습니다.',
+        hUnauthorized: '미승인 4', hSector: '구역 \u00b7 귀하의 아파트',
+        hYou: '귀하 \u00b7 승인됨*', hYouNote: '*승인은 재심사 대상입니다',
+        hDetected: '감지된 개체',
+        hE1Id: 'H-01 \u00b7 정지 상태, 웅웅거림', hE1Desc: '냉장고라고 주장합니다. 미확인.',
+        hE2Id: 'H-02 \u00b7 반복적 발소리, 위층', hE2Desc: '\u201c위층 이웃\u201d으로 추정. 등록된 이웃 없음.',
+        hE3Id: 'H-03 \u00b7 근접, 무음', hE3Desc: '귀하의 어깨 너머로 읽는 중. 지금.',
+        hE4Id: 'H-04 \u00b7 젤라틴질, 낯익음', hE4Desc: '표본-03. 여기 삽니다. 그래도 표시됨.',
+        hTagBenign: '무해', hTagMonitoring: '관찰 중', hTagEscalated: '상부 보고', hTagKnown: '기지 개체',
+        hVera: '개체 넷. 하나는 귀하의 어깨 너머로 읽고 있습니다. 돌아보지 마십시오 \u2014 서류 작업이 복잡해집니다.',
+      },
+    };
+  }
+
+  optCard(active, big) {
+    const pad = big ? '14px 14px' : '12px 13px';
+    const fs = big ? '14px' : '13.5px';
+    if (active) return 'flex:1;display:flex;justify-content:space-between;align-items:center;background:#fff6e3;border:1.5px solid #f4b43a;border-radius:12px;padding:' + pad + ';font:600 ' + fs + " 'Space Grotesk','Pretendard Variable',sans-serif;color:#17171a";
+    return 'flex:1;display:flex;justify-content:space-between;align-items:center;background:#f4f3ee;border:1px solid #dcd9cf;border-radius:12px;padding:' + pad + ';font:500 ' + fs + " 'Space Grotesk','Pretendard Variable',sans-serif;color:#8a8578";
+  }
+  rowCard(active) {
+    if (active) return 'display:flex;justify-content:space-between;align-items:center;background:#fff6e3;border:1.5px solid #f4b43a;border-radius:11px;padding:12px 13px;font:600 12.5px \'Space Grotesk\',\'Pretendard Variable\',sans-serif;color:#17171a';
+    return 'display:flex;justify-content:space-between;align-items:center;background:#f4f3ee;border:1px solid #dcd9cf;border-radius:11px;padding:12px 13px;font:500 12.5px \'Space Grotesk\',\'Pretendard Variable\',sans-serif;color:#8a8578';
+  }
+  tick(active) { return active ? 'color:#f4b43a;font-size:14px' : 'display:none'; }
+  declinePos(n) {
+    const spots = [[0,0],[74,-4],[-64,8],[92,16],[-92,-10],[48,-26]];
+    const p = spots[Math.min(n, spots.length - 1)];
+    const base = 'position:absolute;right:0;top:0;width:100px;height:52px;display:flex;align-items:center;justify-content:center;background:#ecebe4;border:1px solid #dcd9cf;border-radius:15px;font:600 11px \'Space Grotesk\',\'Pretendard Variable\',sans-serif;color:#8a8578;box-shadow:0 4px 12px rgba(0,0,0,.08)';
+    return base + ';transform:translate(' + p[0] + 'px,' + p[1] + 'px)';
+  }
+
+  finishEnroll() {
+    try { localStorage.setItem('facility.enrolled.v1', '1'); } catch (e) {}
+    this.setState({ step: 'facility' });
+  }
+
+  componentWillUnmount() {
+    clearInterval(this._dInt);
+    clearTimeout(this._dTo);
+    clearTimeout(this._mTo);
+    clearTimeout(this._iTo);
+    clearInterval(this._rInt);
+    clearInterval(this._fInt);
+  }
+
+  startQueue() {
+    clearInterval(this._rInt);
+    this._rTicks = 0;
+    this._rInt = setInterval(() => {
+      if (this.state.step !== 'results') { clearInterval(this._rInt); return; }
+      this._rTicks++;
+      if (this._rTicks % 9 === 0) {
+        const jump = 2000 + Math.floor(Math.random() * 4000);
+        this.setState((st) => ({ rQueue: st.rQueue + jump, rDelta: st.rDelta + jump, rEvent: 'up' }));
+      } else {
+        const drop = 1 + Math.floor(Math.random() * 4);
+        this.setState((st) => ({ rQueue: st.rQueue - drop, rDelta: st.rDelta - drop, rEvent: this._rTicks % 9 === 1 ? 'none' : st.rEvent === 'up' ? 'none' : st.rEvent }));
+      }
+    }, 1100);
+  }
+
+  // --- daily compliance loop ---
+  dStart = () => {
+    if (this.state.dPhase !== 'directive') return;
+    this.setState({ dHolding: true });
+    const start = Date.now();
+    clearInterval(this._dInt);
+    this._dInt = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / 2200);
+      this.setState({ dProg: p });
+      if (p >= 1) { clearInterval(this._dInt); this.dComplete(); }
+    }, 16);
+  };
+  dEnd = () => {
+    if (this.state.dPhase !== 'directive') return;
+    clearInterval(this._dInt);
+    this.setState({ dHolding: false, dProg: 0 });
+  };
+  dComplete = () => {
+    this.setState({ dHolding: false, dProg: 1 });
+    if (this.state.audit) {
+      this.setState({ dPhase: 'deliberating' });
+      clearTimeout(this._dTo);
+      this._dTo = setTimeout(() => this.setState((s) => ({ dPhase: 'done', streak: s.streak + 1 })), 2200);
+    } else {
+      this.setState((s) => ({ dPhase: 'done', streak: s.streak + 1 }));
+    }
+  };
+  dReset = () => this.setState({ dPhase: 'directive', dProg: 0, dHolding: false });
+  toggleAudit = () => this.setState((s) => ({ audit: !s.audit }));
+
+  // --- missed-day consequence ---
+  mPetition = () => {
+    if (this.state.mPhase !== 'missed') return;
+    this.setState({ mPhase: 'amending' });
+    clearTimeout(this._mTo);
+    this._mTo = setTimeout(() => this.setState({ mPhase: 'restored' }), 1900);
+  };
+  mReset = () => { clearTimeout(this._mTo); this.setState({ mPhase: 'missed' }); };
+
+  renderVals() {
+    const s = this.state;
+    const t = this.STR[s.lang];
+    const set = (o) => this.setState(o);
+    const iWords = s.iText.trim() ? s.iText.trim().split(/\s+/).length : 0;
+    const iTaBase = "width:100%;min-height:84px;background:transparent;border:none;outline:none;resize:none;font:500 13.5px/1.6 'Space Grotesk','Pretendard Variable',sans-serif;color:#e8d9cf;padding:4px 3px;transition:opacity 1.6s ease, filter 1.6s ease;";
+    return {
+      t, lang: s.lang,
+      isIntake: s.step === 'intake',
+      isBaseline: s.step === 'baseline',
+      isConsent: s.step === 'consent',
+      isAssigned: s.step === 'assigned',
+      isFacility: s.step === 'facility',
+      isSettings: s.step === 'settings',
+      isPermission: s.step === 'permission',
+      isDaily: s.step === 'daily',
+      isMissed: s.step === 'missed',
+      isResults: s.step === 'results',
+      isNotifLog: s.step === 'notiflog',
+      isIncinerator: s.step === 'incinerator',
+      isField: s.step === 'field',
+      isOrganism: s.step === 'organism',
+      isHazard: s.step === 'hazard',
+      permDenied: s.permDenied,
+      notPermDenied: !s.permDenied,
+      permVeraText: s.permDenied ? t.permDeniedVera : t.permVera,
+      adequacy: s.adequacy,
+      onAdequacy: (e) => set({ adequacy: +e.target.value }),
+      mA: t.motive[0], mB: t.motive[1], mC: t.motive[2],
+      onMotive0: () => set({ motive: 0 }), onMotive1: () => set({ motive: 1 }), onMotive2: () => set({ motive: 2 }),
+      motiveStyleA: this.optCard(s.motive === 0, false), motiveStyleB: this.optCard(s.motive === 1, false), motiveStyleC: this.optCard(s.motive === 2, false),
+      motiveTickA: this.tick(s.motive === 0), motiveTickB: this.tick(s.motive === 1), motiveTickC: this.tick(s.motive === 2),
+      onLangEn: () => set({ lang: 'en' }), onLangKo: () => set({ lang: 'ko' }),
+      langStyleEn: this.optCard(s.lang === 'en', false), langStyleKo: this.optCard(s.lang === 'ko', false),
+      langStyleEnBig: this.optCard(s.lang === 'en', true), langStyleKoBig: this.optCard(s.lang === 'ko', true),
+      langTickEn: this.tick(s.lang === 'en'), langTickKo: this.tick(s.lang === 'ko'),
+      clauses: t.clauses,
+      consentNote: s.poked ? t.consentPoked : t.consentNote,
+      onPoke: () => set({ poked: true }),
+      declineStyle: this.declinePos(s.decline),
+      declineLabel: t.declineLabels[Math.min(s.decline, t.declineLabels.length - 1)],
+      onDeclineNudge: () => set({ decline: s.decline + 1 }),
+      notif: s.notif,
+      onNotif: () => set({ notif: !s.notif }),
+      notifTrackStyle: 'width:40px;height:23px;border-radius:12px;position:relative;flex-shrink:0;transition:background .2s;background:' + (s.notif ? '#f4b43a' : '#cbc7bb'),
+      notifKnobStyle: 'position:absolute;top:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .2s;left:' + (s.notif ? '19.5px' : '2.5px'),
+      begin: () => set({ step: 'baseline' }),
+      submitBaseline: () => set({ step: 'consent' }),
+      accept: () => set({ step: 'assigned' }),
+      goPermission: () => set({ step: 'permission' }),
+      permAllow: () => { this.setState({ notif: true }); this.finishEnroll(); },
+      permDeny: () => set({ permDenied: true, notif: false }),
+      permProceed: () => this.finishEnroll(),
+      enterFacility: () => this.finishEnroll(),
+      openSettings: () => set({ step: 'settings' }),
+      backFacility: () => set({ step: 'facility' }),
+      openDaily: () => set({ step: 'daily', dPhase: 'directive', dProg: 0, dHolding: false }),
+      openResults: () => { set({ step: 'results' }); this.startQueue(); },
+      openNotifLog: () => set({ step: 'notiflog' }),
+      rNumber: s.rQueue.toLocaleString('en-US'),
+      rNumStyle: "margin-top:24px;font:700 52px/1 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.01em;transition:color .3s;color:" + (s.rEvent === 'up' ? '#ff8a6a' : '#f4efe2') + ';text-shadow:0 0 34px ' + (s.rEvent === 'up' ? '#ff6a1a44' : '#f4b43a33'),
+      rDeltaArrow: s.rDelta <= 0 ? '\u25bc' : '\u25b2',
+      rDeltaText: (s.rEvent === 'up' ? t.rLiveUp + ' \u00b7 ' : '') + Math.abs(s.rDelta).toLocaleString('en-US') + ' ' + t.rSince,
+      rDeltaStyle: "margin-top:20px;display:flex;gap:8px;align-items:center;font:600 10px 'IBM Plex Mono','Pretendard Variable',monospace;transition:color .3s;color:" + (s.rDelta <= 0 ? '#4fd08a' : '#ff6a5a'),
+      rVeraLine: s.rEvent === 'up' ? t.rVeraUp : t.rVera,
+      openIncinerator: () => set({ step: 'incinerator' }),
+      openField: () => { clearInterval(this._fInt); set({ step: 'field', fDist: 340, fWalking: false, fArrived: false }); },
+      fArrived: s.fArrived,
+      fDistanceNum: s.fDist,
+      fNeedleStyle: 'position:absolute;left:50%;top:50%;width:6px;height:96px;transform-origin:bottom center;transform:translate(-50%,-100%) rotate(' + (s.fArrived ? 0 : Math.round(34 - (340 - s.fDist) * 0.1)) + 'deg);transition:transform .5s ease;' + (s.fWalking || s.fArrived ? '' : 'animation:fneedle 4s ease-in-out infinite'),
+      fSignalText: s.fArrived ? t.fSignalArrived : s.fWalking ? t.fSignal : t.fSignalIdle,
+      fBar1: 'width:8px;border-radius:2px;height:30%;background:#38c8c8',
+      fBar2: 'width:8px;border-radius:2px;height:55%;background:' + (s.fDist < 320 ? '#38c8c8' : '#1e2a2d'),
+      fBar3: 'width:8px;border-radius:2px;height:80%;background:' + (s.fDist < 240 ? '#38c8c8' : '#1e2a2d'),
+      fBar4: 'width:8px;border-radius:2px;height:45%;background:' + (s.fDist < 120 ? '#38c8c8' : '#1e2a2d'),
+      fBar5: 'width:8px;border-radius:2px;height:100%;background:' + (s.fDist <= 0 ? '#38c8c8' : '#1e2a2d'),
+      fVeraLine: s.fArrived ? t.fVeraArrived : s.fDist < 100 ? t.fVeraNear : s.fWalking || s.fDist < 340 ? t.fVeraWalking : t.fVera,
+      fWalkLabel: s.fArrived ? t.fWalkDone : s.fWalking ? t.fWalking : t.fWalk,
+      fWalkBtnStyle: s.fArrived
+        ? "background:#38c8c8;border-radius:14px;padding:15px 0;text-align:center;font:700 12px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#0c1012;box-shadow:0 10px 26px #38c8c855"
+        : s.fWalking
+          ? "background:#16211f;border:1px solid #38c8c866;border-radius:14px;padding:14px 0;text-align:center;font:700 12px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#38f0e0;user-select:none"
+          : "background:#111819;border:1px solid #1e2a2d;border-radius:14px;padding:14px 0;text-align:center;font:700 12px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.08em;color:#dbe8ea;user-select:none",
+      fWalkStart: () => {
+        if (this.state.fArrived) { this._fExitArm = true; return; }
+        this._fExitArm = false;
+        this.setState({ fWalking: true });
+        clearInterval(this._fInt);
+        this._fInt = setInterval(() => {
+          if (this.state.step !== 'field') { clearInterval(this._fInt); return; }
+          this.setState((st) => {
+            const nd = Math.max(0, st.fDist - (6 + Math.floor(Math.random() * 7)));
+            if (nd === 0) { clearInterval(this._fInt); return { fDist: 0, fWalking: false, fArrived: true }; }
+            return { fDist: nd };
+          });
+        }, 220);
+      },
+      fWalkEnd: () => {
+        if (this.state.fArrived) {
+          if (this._fExitArm) { this._fExitArm = false; set({ step: 'facility' }); }
+          return;
+        }
+        clearInterval(this._fInt);
+        this.setState({ fWalking: false });
+      },
+      openOrganism: () => set({ step: 'organism' }),
+      openHazard: () => set({ step: 'hazard' }),
+      iText: s.iText,
+      onIText: (e) => set({ iText: e.target.value }),
+      iReadOnly: s.iPhase !== 'compose',
+      iDone: s.iPhase === 'done',
+      iTextStyle: iTaBase + (s.iPhase === 'burning' ? 'opacity:.12;filter:blur(2px)' : s.iPhase === 'done' ? 'opacity:0' : 'opacity:1'),
+      iFlameStyle: 'position:absolute;left:0;right:0;bottom:0;background:radial-gradient(120% 90% at 50% 120%,#ffcf4a,#ff6a1a 40%,#a02010 72%,#3a1206 100%);transform-origin:bottom;transition:height .5s ease;' + (s.iPhase === 'burning' ? 'height:150px;animation:femberflicker .5s ease-in-out infinite' : 'height:96px;animation:femberflicker 1.6s ease-in-out infinite'),
+      iBurnedText: s.lang === 'ko' ? ('폐기 \u00b7 ' + s.iBurnedCount.toLocaleString('en-US') + '건 소각') : ('DISPOSAL \u00b7 ' + s.iBurnedCount.toLocaleString('en-US') + ' BURNED'),
+      iStatus: s.iPhase === 'burning' ? t.iStatusBurning : s.iPhase === 'done' ? t.iStatusDone : (iWords === 0 ? t.iAwaiting : (s.lang === 'ko' ? (iWords + t.iWordsSuffix) : (iWords + t.iWordsSuffix))),
+      iVeraLine: s.iPhase === 'burning' ? t.iVeraBurn : s.iPhase === 'done' ? t.iVeraDone : t.iVeraCompose,
+      iBtnLabel: s.iPhase === 'burning' ? t.iBtnBurning : s.iPhase === 'done' ? t.iBtnAgain : ('\ud83d\udd25 ' + t.iBtn),
+      iBtnStyle: s.iPhase === 'burning'
+        ? "background:#3a281e;border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.12em;color:#9a6a52;cursor:default"
+        : s.iPhase === 'done'
+          ? "background:#1c1410;border:1px solid #3a281e;border-radius:15px;padding:15px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.12em;color:#ff8a4a"
+          : "background:linear-gradient(#ff8a3a,#ff6a1a);border-radius:15px;padding:16px;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.12em;color:#2a0d04;box-shadow:0 10px 26px #ff6a1a55",
+      incinerate: () => {
+        if (this.state.iPhase === 'burning') return;
+        if (this.state.iPhase === 'done') { set({ iPhase: 'compose', iText: '' }); return; }
+        if (!this.state.iText.trim()) return;
+        set({ iPhase: 'burning' });
+        clearTimeout(this._iTo);
+        this._iTo = setTimeout(() => this.setState((st) => ({ iPhase: 'done', iBurnedCount: st.iBurnedCount + 1 })), 2000);
+      },
+      feedOrganism: () => { if (!s.oFed) set({ oFed: true }); },
+      oStatus: s.oFed ? t.oStatusFed : t.oStatusHungry,
+      oStatusStyle: s.oFed
+        ? "font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#4fd08a;border:1px solid #4fd08a66;background:#4fd08a14;padding:3px 8px;border-radius:20px"
+        : "font:600 8.5px 'IBM Plex Mono','Pretendard Variable',monospace;letter-spacing:.08em;color:#ff8a4a;border:1px solid #ff6a1a66;background:#ff6a1a14;padding:3px 8px;border-radius:20px",
+      oMood: s.oFed ? t.oMoodFed : t.oMoodHungry,
+      oHungerPct: s.oFed ? '41%' : '82%',
+      oHungerNumStyle: "margin-top:5px;font:700 15px 'Space Grotesk','Pretendard Variable',sans-serif;color:" + (s.oFed ? '#4fd08a' : '#ff8a4a'),
+      oHungerBarStyle: 'height:100%;background:' + (s.oFed ? '#4fd08a' : '#ff6a1a') + ';width:' + (s.oFed ? '41%' : '82%') + ';transition:width .6s ease',
+      oIntakeText: s.oFed ? '2,408 / 6,000' : '1,204 / 6,000',
+      oIntakeBarStyle: 'height:100%;background:linear-gradient(90deg,#f4b43a,#ff6a1a);width:' + (s.oFed ? '40%' : '20%') + ';transition:width .6s ease',
+      oBtnText: s.oFed ? t.oBtnFed : t.oBtnHungry,
+      oBtnStyle: s.oFed
+        ? "margin-top:12px;width:100%;background:#221f18;border:1px solid #2c2a22;border-radius:14px;padding:15px 0;text-align:center;font:700 12px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.04em;color:#6c6656;cursor:default"
+        : "margin-top:12px;width:100%;background:#f4b43a;border-radius:14px;padding:15px 0;text-align:center;font:700 13px 'Space Grotesk','Pretendard Variable',sans-serif;letter-spacing:.04em;color:#17171a;box-shadow:0 10px 26px #f4b43a2e",
+      oVera: s.oFed ? t.oVeraFed : t.oVeraHungry,
+      demoMissed: () => set({ step: 'missed', mPhase: 'missed' }),
+      dDirective: s.dPhase === 'directive', dDeliberating: s.dPhase === 'deliberating', dDone: s.dPhase === 'done',
+      dStart: this.dStart, dEnd: this.dEnd, dReset: this.dReset, toggleAudit: this.toggleAudit, audit: s.audit,
+      auditChipStyle: s.audit ? 'background:#ff6a1a;color:#fff;border:1px solid #ff6a1a' : 'background:#f4f3ee;color:#8a8578;border:1px solid #dcd9cf',
+      dStatus: s.dHolding ? t.verifyingPresence : t.holdToComply,
+      dRingStyle: 'background:conic-gradient(#f4b43a ' + (s.dProg * 360).toFixed(1) + 'deg, #d3cfc4 0deg);box-shadow:0 0 ' + (10 + s.dProg * 22).toFixed(0) + 'px #f4b43a' + (s.dHolding ? '55' : '22'),
+      dCompliantLabel: s.audit ? t.provCompliantLabel : t.compliantLabel,
+      streakText: (s.lang === 'ko' ? (s.streak + '일차 · ' + s.streak + '일 연속') : ('DAY ' + s.streak + ' \u00b7 ' + s.streak + '-DAY STREAK')),
+      dVera: s.dPhase === 'done' ? (s.audit ? t.dVeraDoneAudit : t.dVeraDone) : s.dPhase === 'deliberating' ? t.dVeraDelib : t.dVeraIdle,
+      mMissed: s.mPhase === 'missed', mAmending: s.mPhase === 'amending', mRestored: s.mPhase === 'restored',
+      mPetition: this.mPetition, mReset: this.mReset,
+      mStanding: s.mPhase === 'restored' ? t.probation : t.underReview,
+      mStandingStyle: s.mPhase === 'restored' ? 'color:#c98a17;border:1px solid #c98a1755;background:#c98a1712' : 'color:#d63a2a;border:1px solid #d63a2a55;background:#d63a2a12',
+      mVera: s.mPhase === 'restored' ? t.mVeraRestored : s.mPhase === 'amending' ? t.mVeraAmending : t.mVeraMissed,
+      reprocess: () => { try { localStorage.removeItem('facility.enrolled.v1'); } catch (e) {} set({ step: 'intake', adequacy: 64, motive: 1, decline: 0, poked: false, permDenied: false }); },
+    };
+  }
+}
+</script>
+</body>
+</html>
