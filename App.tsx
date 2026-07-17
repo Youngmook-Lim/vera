@@ -8,9 +8,11 @@ import {
   SpaceGrotesk_700Bold,
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { palette } from './src/core/theme';
+import { useFacilityStore } from './src/core/store';
 import { ScreenRouter } from './src/shell/ScreenRouter';
 
 export default function App() {
@@ -25,7 +27,12 @@ export default function App() {
     'Pretendard-Bold': require('./assets/fonts/Pretendard-Bold.otf'),
   });
 
-  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: palette.dark.bg }} />;
+  const hydrated = useFacilityStore((s) => s.hydrated);
+  useEffect(() => {
+    void useFacilityStore.getState().hydrate();
+  }, []);
+
+  if (!fontsLoaded || !hydrated) return <View style={{ flex: 1, backgroundColor: palette.dark.bg }} />;
 
   return (
     <SafeAreaProvider>
