@@ -6,6 +6,8 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
+  withDelay,
+  withSequence,
 } from 'react-native-reanimated';
 import type { Lang } from '../../core/i18n';
 import { font, ms, palette } from '../../core/theme';
@@ -13,13 +15,20 @@ import { shellStrings } from '../strings';
 
 // Dark transmission card from the mock: amber pulsing LIVE dot (1.4s),
 // REC stamp, 3px orange left border on the line.
-export function VeraPanel({ line, lang, rec = 'REC 00:00:09' }: { line: string; lang: Lang; rec?: string }) {
+export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false }: { line: string; lang: Lang; rec?: string; cursor?: boolean }) {
   const pulse = useSharedValue(1);
+  const blink = useSharedValue(1);
   useEffect(() => {
     // 700ms there + reverse = the mock's 1.4s fpulse cycle
     pulse.value = withRepeat(withTiming(0.35, { duration: 700, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [pulse]);
+    blink.value = withRepeat(
+      withSequence(withTiming(1, { duration: 20 }), withDelay(480, withTiming(0, { duration: 20 })), withDelay(480, withTiming(0, { duration: 0 }))),
+      -1,
+      false,
+    );
+  }, [pulse, blink]);
   const dotStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const cursorStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
   const t = shellStrings[lang];
 
   return (
@@ -71,6 +80,7 @@ export function VeraPanel({ line, lang, rec = 'REC 00:00:09' }: { line: string; 
           }}
         >
           {line}
+          {cursor ? <Animated.Text style={[{ color: palette.accent.amber }, cursorStyle]}>▍</Animated.Text> : null}
         </Text>
       </View>
     </View>
