@@ -32,3 +32,10 @@ test('placeholder back arrow returns to facility', async () => {
   await fireEvent.press(getByLabelText('back'));
   expect(useFacilityStore.getState().step).toBe('facility');
 });
+
+test('pressing the header title also goes back', async () => {
+  useFacilityStore.setState({ step: 'field' });
+  const { getByText } = await render(<PlaceholderScreen title="FIELD TRIAL" />);
+  await fireEvent.press(getByText('FIELD TRIAL'));
+  expect(useFacilityStore.getState().step).toBe('facility');
+});

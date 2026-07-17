@@ -17,24 +17,23 @@ export function PlaceholderScreen({ title }: { title: string }) {
     <View style={{ flex: 1, backgroundColor: palette.dark.bg, paddingTop: insets.top }}>
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
           paddingHorizontal: 20,
           paddingVertical: 12,
           borderBottomWidth: 1,
           borderBottomColor: '#2a2820',
         }}
       >
+        {/* arrow + title are one target: the glyph alone is too small a tap zone */}
         <Pressable
-          hitSlop={12}
+          hitSlop={16}
           onPress={() => setStep('facility')}
           accessibilityRole="button"
           accessibilityLabel="back"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' }}
         >
           <Text style={{ fontFamily: font('display', 600), fontSize: ms(15), color: '#8a8168' }}>◂</Text>
+          <Text style={{ fontFamily: font('display', 600, lang), fontSize: ms(10), color: '#f4efe2' }}>{title}</Text>
         </Pressable>
-        <Text style={{ fontFamily: font('display', 600, lang), fontSize: ms(10), color: '#f4efe2' }}>{title}</Text>
       </View>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 }}>
         <Text
