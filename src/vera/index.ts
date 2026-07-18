@@ -41,7 +41,7 @@ const corpus = {
     },
     deliberating: {
       en: 'One moment. Even routine compliance is occasionally audited. Today is occasionally.',
-      ko: `잠시만. 정기적인 준수도 간혹 감사됩니다. 오늘이 그 '간혹'입니다.`,
+      ko: `잠시만. 정기적인 준수도 간혹 감사됩니다. 오늘이 그 ‘간혹’입니다.`,
     },
     done: {
       en: 'Logged. Your streak continues. Streaks exist to be broken — later, by me.',

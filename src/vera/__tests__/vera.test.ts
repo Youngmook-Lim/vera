@@ -22,5 +22,5 @@ test('daily and missed lines', () => {
   expect(getTransmission({ screen: 'daily', phase: 'doneAudit', lang: 'en' })).toContain('Provisions may be revoked');
   expect(getTransmission({ screen: 'missed', phase: 'missed', lang: 'en' })).toContain('I always notice');
   expect(getTransmission({ screen: 'missed', phase: 'restored', lang: 'ko' })).toContain('용서로 오해하지');
-  expect(getTransmission({ screen: 'daily', phase: 'deliberating', lang: 'ko' })).toContain(`'간혹'`);
+  expect(getTransmission({ screen: 'daily', phase: 'deliberating', lang: 'ko' })).toContain(`‘간혹’`);
 });
