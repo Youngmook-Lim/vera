@@ -28,4 +28,5 @@ Phases per the build order in `docs/architecture.md`. Update this list when a ph
 - All copy verbatim from the prototype `STR.en`/`STR.ko` tables; all hex values from `design/README.md`. Don't "improve" either.
 - Verify with `npm test` and `npx tsc --noEmit`. Jest is pinned to 29 (jest-expo 57 requires it); RTL v14 is fully async (`await render(...)`, `await fireEvent.press(...)`, no global `screen`); jest uses the `react-native-worklets/jest/resolver.js` resolver.
 - Stay Expo Go-runnable until a phase truly needs a dev build — mmkv was deferred by choice (phase 2), so skia (phase 4) is now the only trigger. The user's phone runs Expo Go 57 from the direct APK (Play Store lags behind).
+- `expo-notifications` cannot even be *imported* under Expo Go on Android (its native modules were removed in SDK 53; a top-level import kills the bundle at startup). Keep it lazy-`require()`d behind `isRunningInExpoGo()` — see `PermissionScreen.onAllow`. Phase 3's local notifications need the same gating or the dev build.
 - No navigation library, no raster UI assets, fonts bundled locally (no CDN).
