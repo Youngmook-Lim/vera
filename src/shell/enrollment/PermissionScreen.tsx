@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +22,14 @@ export function PermissionScreen() {
   const onAllow = async () => {
     setNotif(true);
     try {
-      // Real OS permission, best-effort. In Expo Go the prompt belongs to the
-      // Expo Go app itself; a dev build makes it The Facility's own.
-      await Notifications.requestPermissionsAsync();
+      // expo-notifications' native modules are absent from Expo Go (SDK 53+):
+      // even importing the package there crashes the bundle, so gate AND
+      // lazy-load. On a dev build this fires the real OS prompt.
+      if (!isRunningInExpoGo()) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const Notifications = require('expo-notifications');
+        await Notifications.requestPermissionsAsync();
+      }
     } catch {
       // never block enrollment on the OS
     }

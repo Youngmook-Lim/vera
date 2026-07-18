@@ -9,10 +9,14 @@ jest.mock('expo-notifications', () => ({
 }));
 const { requestPermissionsAsync } = jest.requireMock('expo-notifications');
 
+jest.mock('expo', () => ({ isRunningInExpoGo: jest.fn() }));
+const { isRunningInExpoGo } = jest.requireMock('expo');
+
 beforeEach(async () => {
   await storage.remove(KEYS.enrolled);
   useFacilityStore.setState({ step: 'permission', lang: 'en', permDenied: false, notif: true });
   requestPermissionsAsync.mockClear();
+  isRunningInExpoGo.mockReturnValue(false);
 });
 
 test('allow requests the real permission and finishes enrollment', async () => {
@@ -21,6 +25,15 @@ test('allow requests the real permission and finishes enrollment', async () => {
   await fireEvent.press(getByText('Allow'));
   await waitFor(() => expect(useFacilityStore.getState().step).toBe('facility'));
   expect(requestPermissionsAsync).toHaveBeenCalled();
+  expect(await storage.get(KEYS.enrolled)).toBe('1');
+});
+
+test('allow inside Expo Go skips the OS call but still finishes enrollment', async () => {
+  isRunningInExpoGo.mockReturnValue(true);
+  const { getByText } = await render(<PermissionScreen />);
+  await fireEvent.press(getByText('Allow'));
+  await waitFor(() => expect(useFacilityStore.getState().step).toBe('facility'));
+  expect(requestPermissionsAsync).not.toHaveBeenCalled();
   expect(await storage.get(KEYS.enrolled)).toBe('1');
 });
 
