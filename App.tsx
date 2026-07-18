@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { palette } from './src/core/theme';
 import { useFacilityStore } from './src/core/store';
 import { ScreenRouter } from './src/shell/ScreenRouter';
+import { syncScheduledTransmissions } from './src/core/notifications';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -31,6 +32,12 @@ export default function App() {
   useEffect(() => {
     void useFacilityStore.getState().hydrate();
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const { notif, lang } = useFacilityStore.getState();
+    void syncScheduledTransmissions(notif, lang);
+  }, [hydrated]);
 
   if (!fontsLoaded || !hydrated) return <View style={{ flex: 1, backgroundColor: palette.dark.bg }} />;
 
