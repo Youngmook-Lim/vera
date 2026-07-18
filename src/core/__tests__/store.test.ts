@@ -74,3 +74,11 @@ test('finishEnroll persists the gate and enters the facility', async () => {
   expect(await storage.get(KEYS.enrolled)).toBe('1');
   expect(await storage.get(KEYS.notif)).toBe('1');
 });
+
+test('hydrate falls back to fresh-install defaults when storage reads fail', async () => {
+  const spy = jest.spyOn(storage, 'get').mockRejectedValue(new Error('disk failure'));
+  await useFacilityStore.getState().hydrate();
+  expect(useFacilityStore.getState().hydrated).toBe(true);
+  expect(useFacilityStore.getState().step).toBe('intake');
+  spy.mockRestore();
+});

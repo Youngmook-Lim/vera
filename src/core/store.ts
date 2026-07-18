@@ -78,17 +78,23 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     set({ step: 'facility' });
   },
   hydrate: async () => {
-    const [enrolled, storedLang, storedNotif] = await Promise.all([
-      storage.get(KEYS.enrolled),
-      storage.get(KEYS.lang),
-      storage.get(KEYS.notif),
-    ]);
-    const deviceKo = getLocales()[0]?.languageCode === 'ko';
-    set({
-      step: enrolled === '1' ? 'facility' : 'intake',
-      lang: storedLang === 'ko' || (storedLang === null && deviceKo) ? 'ko' : 'en',
-      notif: storedNotif !== '0',
-      hydrated: true,
-    });
+    try {
+      const [enrolled, storedLang, storedNotif] = await Promise.all([
+        storage.get(KEYS.enrolled),
+        storage.get(KEYS.lang),
+        storage.get(KEYS.notif),
+      ]);
+      const deviceKo = getLocales()[0]?.languageCode === 'ko';
+      set({
+        step: enrolled === '1' ? 'facility' : 'intake',
+        lang: storedLang === 'ko' || (storedLang === null && deviceKo) ? 'ko' : 'en',
+        notif: storedNotif !== '0',
+        hydrated: true,
+      });
+    } catch {
+      // Storage failure: fall back to fresh-install defaults rather than a
+      // dead splash — replaying enrollment is the better worst case.
+      set({ step: 'intake', hydrated: true });
+    }
   },
 }));
