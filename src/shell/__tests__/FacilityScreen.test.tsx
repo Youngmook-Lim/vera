@@ -4,7 +4,13 @@ import { useFacilityStore } from '../../core/store';
 import { FacilityScreen } from '../FacilityScreen';
 
 beforeEach(() => {
-  useFacilityStore.setState({ step: 'facility', lang: 'en' });
+  useFacilityStore.setState({
+    step: 'facility',
+    lang: 'en',
+    standing: 'good',
+    enrolledAt: null,
+    missedPending: false,
+  });
 });
 
 test('renders identity, transmission, tiles, and locked vitrines', async () => {
@@ -36,4 +42,24 @@ test('renders Korean when lang is ko', async () => {
   const { getByText } = await render(<FacilityScreen />);
   expect(getByText('현장 시험')).toBeTruthy();
   expect(getByText('역량 강화 센터')).toBeTruthy();
+});
+
+test('shows real tenure and standing', async () => {
+  const past = new Date();
+  past.setDate(past.getDate() - 12);
+  useFacilityStore.setState({
+    enrolledAt: `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`,
+    standing: 'probation',
+  });
+  const { getByText, queryByText } = await render(<FacilityScreen />);
+  expect(getByText(/DAY 13/)).toBeTruthy();
+  expect(getByText(/PROBATION/)).toBeTruthy();
+  expect(queryByText(/GOOD STANDING/)).toBeNull();
+});
+
+test('comply card routes to missed when a miss is pending', async () => {
+  useFacilityStore.setState({ missedPending: true });
+  const { getByText } = await render(<FacilityScreen />);
+  await fireEvent.press(getByText('PRESS TO REMAIN COMPLIANT'));
+  expect(useFacilityStore.getState().step).toBe('missed');
 });

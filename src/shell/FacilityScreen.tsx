@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../core/i18n';
+import { tenureDays } from '../core/compliance';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette, tagSchemes } from '../core/theme';
 import { isLocked, registry } from '../modules/registry';
@@ -59,6 +60,12 @@ const tileFrame = {
   borderWidth: 1,
   borderColor: palette.light.border,
   borderRadius: 16,
+} as const;
+
+const STANDING_PILL = {
+  good: { text: palette.accent.blue, border: '#2f6fff55', bg: '#2f6fff12' },
+  review: { text: '#d63a2a', border: '#d63a2a55', bg: '#d63a2a12' },
+  probation: { text: '#c98a17', border: '#c98a1755', bg: '#c98a1712' },
 } as const;
 
 function TileTitle({ tile, lang }: { tile: TileData; lang: Lang }) {
@@ -138,8 +145,14 @@ function LockedVitrine({ slot, label, lang }: { slot: LockedSlot; label: string;
 export function FacilityScreen() {
   const lang = useFacilityStore((s) => s.lang);
   const setStep = useFacilityStore((s) => s.setStep);
+  const standing = useFacilityStore((s) => s.standing);
+  const enrolledAt = useFacilityStore((s) => s.enrolledAt);
+  const missedPending = useFacilityStore((s) => s.missedPending);
   const insets = useSafeAreaInsets();
   const t = shellStrings[lang];
+  const pill = STANDING_PILL[standing];
+  const standingLabel =
+    standing === 'good' ? t.goodStanding : standing === 'review' ? t.underReview : t.probation;
 
   const active = registry.filter((e): e is ModuleDef => !isLocked(e));
   const squares = active.filter((m) => m.layout === 'square');
@@ -216,14 +229,14 @@ export function FacilityScreen() {
                 color: palette.light.textDim,
               }}
             >
-              SUBJECT #50640 · {dayLabel(1, lang)}
+              SUBJECT #50640 · {dayLabel(tenureDays(enrolledAt, new Date()), lang)}
             </Text>
           </View>
           <View
             style={{
               borderWidth: 1,
-              borderColor: '#2f6fff55',
-              backgroundColor: '#2f6fff12',
+              borderColor: pill.border,
+              backgroundColor: pill.bg,
               paddingVertical: 4,
               paddingHorizontal: 9,
               borderRadius: 20,
@@ -234,10 +247,10 @@ export function FacilityScreen() {
                 fontFamily: font('mono', 600, lang),
                 fontSize: ms(8.5),
                 letterSpacing: ms(8.5) * 0.06,
-                color: palette.accent.blue,
+                color: pill.text,
               }}
             >
-              ● {t.goodStanding}
+              ● {standingLabel}
             </Text>
           </View>
         </View>
@@ -260,7 +273,7 @@ export function FacilityScreen() {
         {/* daily comply card */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
           <Pressable
-            onPress={() => setStep('daily')}
+            onPress={() => setStep(missedPending ? 'missed' : 'daily')}
             style={{
               backgroundColor: palette.light.ink,
               borderRadius: 15,
