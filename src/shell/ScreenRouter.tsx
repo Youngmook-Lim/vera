@@ -1,23 +1,42 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { BackHandler } from 'react-native';
-import { useFacilityStore } from '../core/store';
+import { useFacilityStore, type Step } from '../core/store';
 import { isLocked, registry } from '../modules/registry';
 import type { ModuleDef } from '../modules/types';
+import { AssignedScreen } from './enrollment/AssignedScreen';
+import { BaselineScreen } from './enrollment/BaselineScreen';
+import { ConsentScreen } from './enrollment/ConsentScreen';
+import { IntakeScreen } from './enrollment/IntakeScreen';
+import { PermissionScreen } from './enrollment/PermissionScreen';
 import { FacilityScreen } from './FacilityScreen';
 import { PlaceholderScreen } from './PlaceholderScreen';
+
+const ENROLLMENT_STEPS: readonly Step[] = ['intake', 'baseline', 'consent', 'assigned', 'permission'];
+const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent'];
+
+const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
+  intake: IntakeScreen,
+  baseline: BaselineScreen,
+  consent: ConsentScreen,
+  assigned: AssignedScreen,
+  permission: PermissionScreen,
+  facility: FacilityScreen,
+};
 
 // Conditional rendering IS the router (docs/architecture.md): instant swaps
 // on a single step value, no navigation library.
 export function ScreenRouter() {
   const step = useFacilityStore((s) => s.step);
 
-  // Android system back mirrors the ◂ arrow: any screen → facility.
-  // From facility itself, fall through to the default (leave the app).
+  // Android system back: enrollment is non-optional (consume, stay put);
+  // facility falls through to the default (leave the app); everything else
+  // mirrors the ◂ arrow back to facility.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       const state = useFacilityStore.getState();
       if (state.step === 'facility') return false;
+      if (ENROLLMENT_STEPS.includes(state.step)) return true;
       state.setStep('facility');
       return true;
     });
@@ -25,13 +44,14 @@ export function ScreenRouter() {
   }, []);
 
   // Light-enamel screens get dark status icons; V.E.R.A.'s dark screens, light.
-  const bar = <StatusBar style={step === 'facility' ? 'dark' : 'light'} />;
+  const bar = <StatusBar style={LIGHT_STEPS.includes(step) ? 'dark' : 'light'} />;
 
-  if (step === 'facility') {
+  const Shell = SHELL_SCREENS[step];
+  if (Shell) {
     return (
       <>
         {bar}
-        <FacilityScreen />
+        <Shell />
       </>
     );
   }
@@ -40,7 +60,7 @@ export function ScreenRouter() {
   return (
     <>
       {bar}
-      {/* non-module steps (settings, daily, enrollment, …) arrive in phases 2–3 */}
+      {/* non-module steps (settings, daily, …) arrive in phases 3–5 */}
       {mod ? <mod.Screen /> : <PlaceholderScreen title={step.toUpperCase()} />}
     </>
   );
