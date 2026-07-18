@@ -10,10 +10,17 @@ beforeEach(async () => {
   await storage.remove(KEYS.enrolled);
   await storage.remove(KEYS.lang);
   await storage.remove(KEYS.notif);
+  await storage.remove(KEYS.streak);
+  await storage.remove(KEYS.standing);
+  await storage.remove(KEYS.lastComply);
+  await storage.remove(KEYS.enrolledAt);
+  await storage.remove(KEYS.missedPending);
+  await storage.remove(KEYS.forfeited);
   getLocales.mockReturnValue([{ languageCode: 'en' }]);
   useFacilityStore.setState({
     step: 'intake', lang: 'en', hydrated: false,
     adequacy: 64, motive: 1, decline: 0, poked: false, permDenied: false, notif: true,
+    streak: 0, standing: 'good', lastComply: null, enrolledAt: null, missedPending: false, forfeited: 0,
   });
 });
 
@@ -81,4 +88,56 @@ test('hydrate falls back to fresh-install defaults when storage reads fail', asy
   expect(useFacilityStore.getState().hydrated).toBe(true);
   expect(useFacilityStore.getState().step).toBe('intake');
   spy.mockRestore();
+});
+
+const at = (s: string) => new Date(`${s}T12:00:00`);
+
+test('completeComply starts a streak, then increments day over day', async () => {
+  await useFacilityStore.getState().completeComply(at('2026-07-18'));
+  expect(useFacilityStore.getState().streak).toBe(1);
+  expect(await storage.get(KEYS.lastComply)).toBe('2026-07-18');
+
+  await useFacilityStore.getState().completeComply(at('2026-07-19'));
+  expect(useFacilityStore.getState().streak).toBe(2);
+  expect(await storage.get(KEYS.streak)).toBe('2');
+});
+
+test('completeComply after a gap restarts at 1', async () => {
+  useFacilityStore.setState({ streak: 12, lastComply: '2026-07-10' });
+  await useFacilityStore.getState().completeComply(at('2026-07-18'));
+  expect(useFacilityStore.getState().streak).toBe(1);
+});
+
+test('hydrate detects a missed day once: forfeits streak, standing under review', async () => {
+  await storage.set(KEYS.enrolled, '1');
+  await storage.set(KEYS.enrolledAt, '2026-07-01');
+  await storage.set(KEYS.streak, '12');
+  await storage.set(KEYS.lastComply, '2026-07-10');
+  await useFacilityStore.getState().hydrate();
+  const s = useFacilityStore.getState();
+  expect(s.missedPending).toBe(true);
+  expect(s.streak).toBe(0);
+  expect(s.forfeited).toBe(12);
+  expect(s.standing).toBe('review');
+  expect(await storage.get(KEYS.streak)).toBe('0');
+  expect(await storage.get(KEYS.missedPending)).toBe('1');
+  expect(await storage.get(KEYS.forfeited)).toBe('12');
+
+  // second hydrate must not double-forfeit
+  await useFacilityStore.getState().hydrate();
+  expect(useFacilityStore.getState().forfeited).toBe(12);
+});
+
+test('petitionReinstatement moves to probation and clears the pending flag', async () => {
+  useFacilityStore.setState({ standing: 'review', missedPending: true });
+  await useFacilityStore.getState().petitionReinstatement();
+  expect(useFacilityStore.getState().standing).toBe('probation');
+  expect(useFacilityStore.getState().missedPending).toBe(false);
+  expect(await storage.get(KEYS.standing)).toBe('probation');
+  expect(await storage.get(KEYS.missedPending)).toBeNull();
+});
+
+test('finishEnroll records the enrollment day', async () => {
+  await useFacilityStore.getState().finishEnroll();
+  expect(await storage.get(KEYS.enrolledAt)).toBeTruthy();
 });

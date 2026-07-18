@@ -4,6 +4,12 @@ export const KEYS = {
   enrolled: 'facility.enrolled.v1',
   lang: 'facility.lang.v1',
   notif: 'facility.notif.v1',
+  streak: 'facility.streak.v1',
+  standing: 'facility.standing.v1',
+  lastComply: 'facility.lastComply.v1',
+  enrolledAt: 'facility.enrolledAt.v1',
+  missedPending: 'facility.missedPending.v1',
+  forfeited: 'facility.forfeited.v1',
 } as const;
 
 // Seam over the storage engine (AsyncStorage today; mmkv could replace it
