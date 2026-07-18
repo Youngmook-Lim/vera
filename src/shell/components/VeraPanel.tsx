@@ -15,7 +15,7 @@ import { shellStrings } from '../strings';
 
 // Dark transmission card from the mock: amber pulsing LIVE dot (1.4s),
 // REC stamp, 3px orange left border on the line.
-export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false }: { line: string; lang: Lang; rec?: string; cursor?: boolean }) {
+export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false, accent = palette.accent.orange }: { line: string; lang: Lang; rec?: string; cursor?: boolean; accent?: string }) {
   const pulse = useSharedValue(1);
   const blink = useSharedValue(1);
   useEffect(() => {
@@ -68,7 +68,7 @@ export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false }: 
           paddingHorizontal: 15,
           paddingBottom: 15,
           borderLeftWidth: 3,
-          borderLeftColor: palette.accent.orange,
+          borderLeftColor: accent,
         }}
       >
         <Text

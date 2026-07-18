@@ -16,3 +16,10 @@ test('enrollment lines', () => {
   expect(getTransmission({ screen: 'permission', denied: false, lang: 'en' })).toContain('Kindly permit it');
   expect(getTransmission({ screen: 'permission', denied: true, lang: 'en' })).toContain('That prompt was a courtesy');
 });
+
+test('daily and missed lines', () => {
+  expect(getTransmission({ screen: 'daily', phase: 'idle', lang: 'en' })).toContain('hold to confirm you mean it');
+  expect(getTransmission({ screen: 'daily', phase: 'doneAudit', lang: 'en' })).toContain('Provisions may be revoked');
+  expect(getTransmission({ screen: 'missed', phase: 'missed', lang: 'en' })).toContain('I always notice');
+  expect(getTransmission({ screen: 'missed', phase: 'restored', lang: 'ko' })).toContain('용서로 오해하지');
+});

@@ -8,7 +8,7 @@ import { isLocked, registry } from '../modules/registry';
 import type { LockedSlot, ModuleDef, TileData } from '../modules/types';
 import { getTransmission } from '../vera';
 import { VeraPanel } from './components/VeraPanel';
-import { shellStrings } from './strings';
+import { dayLabel, shellStrings } from './strings';
 
 function TagPill({ tile, lang }: { tile: TileData; lang: Lang }) {
   const c = tagSchemes[tile.tagScheme];
@@ -216,7 +216,7 @@ export function FacilityScreen() {
                 color: palette.light.textDim,
               }}
             >
-              SUBJECT #50640 · {t.day01}
+              SUBJECT #50640 · {dayLabel(1, lang)}
             </Text>
           </View>
           <View

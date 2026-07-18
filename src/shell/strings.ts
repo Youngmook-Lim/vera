@@ -1,3 +1,4 @@
+import { tmpl, type Lang } from '../core/i18n';
 import type { Strings } from '../core/i18n';
 
 // Copy verbatim from STR.en / STR.ko in design/The Facility.dc.html, except
@@ -6,7 +7,9 @@ import type { Strings } from '../core/i18n';
 const en = {
   center: 'ENRICHMENT CENTER',
   prefsWord: 'PREFERENCES',
-  day01: 'DAY 01',
+  dayN: 'DAY {n}',
+  underReview: 'UNDER REVIEW',
+  probation: 'PROBATION',
   goodStanding: 'GOOD STANDING',
   live: 'LIVE TRANSMISSION',
   pressComply: 'PRESS TO REMAIN COMPLIANT',
@@ -24,7 +27,9 @@ export type ShellStrings = typeof en;
 const ko: ShellStrings = {
   center: '역량 강화 센터',
   prefsWord: '환경설정',
-  day01: '1일차',
+  dayN: '{n}일차',
+  underReview: '심사 중',
+  probation: '보호관찰',
   goodStanding: '양호 상태',
   live: '실시간 송출',
   pressComply: '준수 상태를 유지하려면 누르십시오',
@@ -38,3 +43,7 @@ const ko: ShellStrings = {
 };
 
 export const shellStrings: Strings<ShellStrings> = { en, ko };
+
+// en zero-pads (mock shows DAY 01); ko reads naturally unpadded (1일차).
+export const dayLabel = (tenure: number, lang: Lang): string =>
+  tmpl(shellStrings[lang].dayN, { n: lang === 'en' ? String(tenure).padStart(2, '0') : String(tenure) });

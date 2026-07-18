@@ -2,7 +2,9 @@ import type { Lang } from '../core/i18n';
 
 export type TransmissionContext =
   | { screen: 'facility' | 'intake' | 'baseline' | 'assigned'; lang: Lang }
-  | { screen: 'permission'; denied: boolean; lang: Lang };
+  | { screen: 'permission'; denied: boolean; lang: Lang }
+  | { screen: 'daily'; phase: 'idle' | 'deliberating' | 'done' | 'doneAudit'; lang: Lang }
+  | { screen: 'missed'; phase: 'missed' | 'amending' | 'restored'; lang: Lang };
 
 // v1: authored corpus (from the prototype's STR tables). If a live LLM ever
 // lands, it goes behind this same signature — callers never know
@@ -32,11 +34,49 @@ const corpus = {
     en: 'Noted. I will reach you regardless. That prompt was a courtesy.',
     ko: '기록되었습니다. 그래도 연락하겠습니다. 방금 그 창은 형식적 절차였습니다.',
   },
+  daily: {
+    idle: {
+      en: 'Read the directive. Then hold to confirm you mean it.',
+      ko: '지시를 읽으십시오. 그러고 진심임을 길게 눌러 확인하십시오.',
+    },
+    deliberating: {
+      en: 'One moment. Even routine compliance is occasionally audited. Today is occasionally.',
+      ko: `잠시만. 정기적인 준수도 간혹 감사됩니다. 오늘이 그 '간혹'입니다.`,
+    },
+    done: {
+      en: 'Logged. Your streak continues. Streaks exist to be broken — later, by me.',
+      ko: '기록되었습니다. 연속 기록이 이어집니다. 연속 기록은 깨지기 위해 존재합니다 — 나중에, 제가.',
+    },
+    doneAudit: {
+      en: 'Reviewed. You are provisionally compliant. Provisions may be revoked without notice.',
+      ko: '검토되었습니다. 귀하는 잠정적으로 준수 상태입니다. 잠정 조치는 예고 없이 철회될 수 있습니다.',
+    },
+  },
+  missed: {
+    missed: {
+      en: 'Day thirteen: you were not present. I noticed at once. I always notice.',
+      ko: '13일차: 귀하는 자리에 없었습니다. 저는 즉시 알아챘습니다. 저는 항상 알아챕니다.',
+    },
+    amending: {
+      en: 'Reviewing your petition. Your contrition is being measured. It is thin.',
+      ko: '귀하의 신청을 검토하고 있습니다. 귀하의 반성을 측정 중입니다. 엷습니다.',
+    },
+    restored: {
+      en: 'Provisional standing restored. Do not mistake this for forgiveness.',
+      ko: '잠정 상태가 복권되었습니다. 이를 용서로 오해하지 마십시오.',
+    },
+  },
 } as const;
 
 export function getTransmission(ctx: TransmissionContext): string {
   if (ctx.screen === 'permission') {
     return (ctx.denied ? corpus.permissionDenied : corpus.permission)[ctx.lang];
+  }
+  if (ctx.screen === 'daily') {
+    return corpus.daily[ctx.phase][ctx.lang];
+  }
+  if (ctx.screen === 'missed') {
+    return corpus.missed[ctx.phase][ctx.lang];
   }
   return corpus[ctx.screen][ctx.lang];
 }
