@@ -95,11 +95,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     set({ streak: nextStreak, lastComply: today });
   },
   petitionReinstatement: async () => {
+    const amnestiedLastComply = prevDayKey(new Date());
     await Promise.all([
       storage.set(KEYS.standing, 'probation'),
       storage.remove(KEYS.missedPending),
+      storage.set(KEYS.lastComply, amnestiedLastComply),
     ]);
-    set({ standing: 'probation', missedPending: false });
+    set({ standing: 'probation', missedPending: false, lastComply: amnestiedLastComply });
   },
   finishEnroll: async () => {
     const { lang, notif } = get();

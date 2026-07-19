@@ -1,5 +1,4 @@
-import { tmpl, type Lang } from '../core/i18n';
-import type { Strings } from '../core/i18n';
+import { tmpl, type Lang, type Strings } from '../core/i18n';
 
 // Copy verbatim from STR.en / STR.ko in design/The Facility.dc.html, except
 // the underConstruction* keys — new phase-1 copy for placeholder screens

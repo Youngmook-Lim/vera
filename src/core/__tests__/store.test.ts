@@ -141,3 +141,19 @@ test('finishEnroll records the enrollment day', async () => {
   await useFacilityStore.getState().finishEnroll();
   expect(await storage.get(KEYS.enrolledAt)).toBeTruthy();
 });
+
+test('petition amnesties the miss: cold-restart hydrate does not re-forfeit', async () => {
+  await storage.set(KEYS.enrolled, '1');
+  await storage.set(KEYS.enrolledAt, '2026-07-01');
+  await storage.set(KEYS.streak, '12');
+  await storage.set(KEYS.lastComply, '2026-07-10');
+  await useFacilityStore.getState().hydrate(); // detects the miss, forfeits
+  expect(useFacilityStore.getState().missedPending).toBe(true);
+
+  await useFacilityStore.getState().petitionReinstatement();
+  await useFacilityStore.getState().hydrate(); // cold restart
+  const s = useFacilityStore.getState();
+  expect(s.standing).toBe('probation'); // must NOT regress to 'review'
+  expect(s.missedPending).toBe(false);  // must NOT re-arm
+  expect(s.forfeited).toBe(12);         // must NOT be overwritten
+});
