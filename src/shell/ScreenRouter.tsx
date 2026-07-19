@@ -4,6 +4,8 @@ import { BackHandler } from 'react-native';
 import { useFacilityStore, type Step } from '../core/store';
 import { isLocked, registry } from '../modules/registry';
 import type { ModuleDef } from '../modules/types';
+import { DailyScreen } from './daily/DailyScreen';
+import { MissedScreen } from './daily/MissedScreen';
 import { AssignedScreen } from './enrollment/AssignedScreen';
 import { BaselineScreen } from './enrollment/BaselineScreen';
 import { ConsentScreen } from './enrollment/ConsentScreen';
@@ -13,7 +15,7 @@ import { FacilityScreen } from './FacilityScreen';
 import { PlaceholderScreen } from './PlaceholderScreen';
 
 const ENROLLMENT_STEPS: readonly Step[] = ['intake', 'baseline', 'consent', 'assigned', 'permission'];
-const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent'];
+const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent', 'daily', 'missed'];
 
 const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
   intake: IntakeScreen,
@@ -22,6 +24,8 @@ const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
   assigned: AssignedScreen,
   permission: PermissionScreen,
   facility: FacilityScreen,
+  daily: DailyScreen,
+  missed: MissedScreen,
 };
 
 // Conditional rendering IS the router (docs/architecture.md): instant swaps
@@ -60,7 +64,7 @@ export function ScreenRouter() {
   return (
     <>
       {bar}
-      {/* non-module steps (settings, daily, …) arrive in phases 3–5 */}
+      {/* settings and notiflog arrive in phase 5 */}
       {mod ? <mod.Screen /> : <PlaceholderScreen title={step.toUpperCase()} />}
     </>
   );

@@ -13,8 +13,39 @@ jest.mock('expo-localization', () => ({
 }));
 jest.mock('@react-native-community/slider', () => 'Slider');
 
-beforeEach(() => {
-  useFacilityStore.setState({ step: 'facility', lang: 'en' });
+// The ring's completion is animation glue; drive the screen through a stub.
+jest.mock('../daily/ComplyRing', () => {
+  const React = require('react');
+  const { Pressable, Text } = require('react-native');
+  return {
+    ComplyRing: ({ onComplete }: { onComplete: () => void }) =>
+      React.createElement(
+        Pressable,
+        { onPress: onComplete, accessibilityLabel: 'ring-stub' },
+        React.createElement(Text, null, 'RING'),
+      ),
+  };
+});
+
+beforeEach(async () => {
+  useFacilityStore.setState({
+    step: 'facility',
+    lang: 'en',
+    streak: 0,
+    standing: 'good',
+    lastComply: null,
+    enrolledAt: null,
+    missedPending: false,
+    forfeited: 0,
+  });
+  await Promise.all([
+    storage.remove(KEYS.streak),
+    storage.remove(KEYS.standing),
+    storage.remove(KEYS.lastComply),
+    storage.remove(KEYS.enrolledAt),
+    storage.remove(KEYS.missedPending),
+    storage.remove(KEYS.forfeited),
+  ]);
   jest.restoreAllMocks();
 });
 
@@ -82,4 +113,26 @@ test('first run walks intake through to the facility and persists the gate', asy
   await waitFor(() => expect(useFacilityStore.getState().step).toBe('facility'));
   expect(r.getByText(/SUBJECT #50640/)).toBeTruthy();
   expect(await storage.get(KEYS.enrolled)).toBe('1');
+});
+
+test('daily and missed steps render the real screens', async () => {
+  useFacilityStore.setState({ step: 'daily', lastComply: null });
+  const daily = await render(<ScreenRouter />);
+  expect(daily.getByText('Confirm you have not been replaced.')).toBeTruthy();
+
+  useFacilityStore.setState({ step: 'missed', standing: 'review', forfeited: 5 });
+  const missed = await render(<ScreenRouter />);
+  expect(missed.getByText('COMPLIANCE MISSED')).toBeTruthy();
+});
+
+test('miss detected at hydrate routes comply card to the consequence', async () => {
+  await storage.set(KEYS.enrolled, '1');
+  await storage.set(KEYS.enrolledAt, '2026-01-01');
+  await storage.set(KEYS.streak, '7');
+  await storage.set(KEYS.lastComply, '2026-01-05');
+  await useFacilityStore.getState().hydrate();
+  const r = await render(<ScreenRouter />);
+  await fireEvent.press(r.getByText('PRESS TO REMAIN COMPLIANT'));
+  expect(useFacilityStore.getState().step).toBe('missed');
+  expect(r.getByText('7-DAY STREAK FORFEITED')).toBeTruthy();
 });
