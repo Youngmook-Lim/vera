@@ -42,15 +42,15 @@ test('shows the real since-yesterday delta from the last visit', async () => {
   await storage.set(KEYS.lastSeenQueue, String(start - 5000)); // improved by 5,000
   const { getByText } = await render(<Screen />);
   await act(async () => {}); // flush the storage read microtask
-  expect(getByText((t) => t.includes('5,000') && t.includes(resultsStrings.en.rSince))).toBeTruthy();
+  expect(getByText(/5,000.*SINCE YESTERDAY/)).toBeTruthy();
   expect(await storage.get(KEYS.lastSeenQueue)).toBe(String(start));
 });
 
 test('clears the ticker on unmount', async () => {
   jest.useFakeTimers();
-  const clearSpy = jest.spyOn(global, 'clearInterval');
+  const clearSpy = jest.spyOn(globalThis, 'clearInterval');
   const { unmount } = await render(<Screen />);
-  unmount();
+  await unmount();
   expect(clearSpy).toHaveBeenCalled();
   clearSpy.mockRestore();
 });
