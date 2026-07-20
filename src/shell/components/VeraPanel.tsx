@@ -21,14 +21,17 @@ export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false, ac
   useEffect(() => {
     // 700ms there + reverse = the mock's 1.4s fpulse cycle
     pulse.value = withRepeat(withTiming(0.35, { duration: 700, easing: Easing.inOut(Easing.ease) }), -1, true);
+    // Hard on/off blink (~1s), like the mock's steps(1).
     blink.value = withRepeat(
-      withSequence(withTiming(1, { duration: 20 }), withDelay(480, withTiming(0, { duration: 20 })), withDelay(480, withTiming(0, { duration: 0 }))),
+      withSequence(withTiming(1, { duration: 10 }), withDelay(520, withTiming(0, { duration: 10 })), withDelay(520, withTiming(0, { duration: 0 }))),
       -1,
       false,
     );
   }, [pulse, blink]);
   const dotStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
-  const cursorStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
+  // Toggle color, not opacity: opacity on an inline nested <Text> isn't honored
+  // natively, so the cursor rendered static; animating color does blink.
+  const cursorStyle = useAnimatedStyle(() => ({ color: blink.value > 0.5 ? palette.accent.amber : 'transparent' }));
   const t = shellStrings[lang];
 
   return (
