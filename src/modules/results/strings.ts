@@ -1,8 +1,9 @@
 import type { Strings } from '../../core/i18n';
 
 // Copy verbatim from STR.en/STR.ko in design/The Facility.dc.html. Korean is
-// provisional — native-speaker pass is Phase 5. (ko rVera "기늀하지" is a
-// likely-corrupted "기뻐하지"; left verbatim per the copy rule, flag in Phase 5.)
+// provisional — native-speaker pass is Phase 5. (ko rVera fixes the prototype's
+// corrupted "기늀하지" → "기뻐하지" = "do not celebrate"; the only deliberate
+// deviation from the verbatim copy rule.)
 const en = {
   title: 'RESULTS PENDING',
   caseLabel: 'CASE #8442105',
@@ -29,7 +30,7 @@ const ko: ResultsStrings = {
   rResult: '결과',
   rSince: '어제 이후',
   rLiveUp: '실시간 · 대기열 조정됨',
-  rVera: '귀하의 순위가 상승했습니다. 기늀하지 마십시오. 어제는 하락했고, 저는 위로하지 않았습니다.',
+  rVera: '귀하의 순위가 상승했습니다. 기뻐하지 마십시오. 어제는 하락했고, 저는 위로하지 않았습니다.',
   rVeraUp: '귀하의 순위가 방금 하락했습니다. 누군가 우선 처리되었습니다. 귀하는 아니었습니다.',
 };
 
