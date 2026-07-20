@@ -30,6 +30,7 @@ interface FacilityState {
   lang: Lang;
   hydrated: boolean;
   // enrollment (mock defaults: adequacy 64, motive 1)
+  name: string;
   adequacy: number;
   motive: number;
   decline: number;
@@ -45,6 +46,7 @@ interface FacilityState {
   forfeited: number;
   setStep: (step: Step) => void;
   setLang: (lang: Lang) => void;
+  setName: (name: string) => void;
   setAdequacy: (adequacy: number) => void;
   setMotive: (motive: number) => void;
   nudgeDecline: () => void;
@@ -61,6 +63,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   step: 'intake', // hydrate() decides for real; App renders nothing until then
   lang: 'en',
   hydrated: false,
+  name: '',
   adequacy: 64,
   motive: 1,
   decline: 0,
@@ -77,6 +80,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   setLang: (lang) => {
     set({ lang });
     void storage.set(KEYS.lang, lang);
+  },
+  setName: (name) => {
+    set({ name });
+    void storage.set(KEYS.name, name);
   },
   setAdequacy: (adequacy) => set({ adequacy }),
   setMotive: (motive) => set({ motive }),
@@ -115,10 +122,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
   hydrate: async () => {
     try {
-      const [enrolled, storedLang, storedNotif, streakS, standingS, lastComply, enrolledAt, missedS, forfeitedS] =
+      const [enrolled, storedLang, storedName, storedNotif, streakS, standingS, lastComply, enrolledAt, missedS, forfeitedS] =
         await Promise.all([
           storage.get(KEYS.enrolled),
           storage.get(KEYS.lang),
+          storage.get(KEYS.name),
           storage.get(KEYS.notif),
           storage.get(KEYS.streak),
           storage.get(KEYS.standing),
@@ -148,6 +156,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({
         step: enrolled === '1' ? 'facility' : 'intake',
         lang: storedLang === 'ko' || (storedLang === null && deviceKo) ? 'ko' : 'en',
+        name: storedName ?? '',
         notif: storedNotif !== '0',
         streak,
         standing,

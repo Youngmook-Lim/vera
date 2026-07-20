@@ -46,3 +46,7 @@ export const shellStrings: Strings<ShellStrings> = { en, ko };
 // en zero-pads (mock shows DAY 01); ko reads naturally unpadded (1일차).
 export const dayLabel = (tenure: number, lang: Lang): string =>
   tmpl(shellStrings[lang].dayN, { n: lang === 'en' ? String(tenure).padStart(2, '0') : String(tenure) });
+
+// The subject's chosen designation, falling back to the mock's sample name
+// when they left the baseline field blank.
+export const displayName = (name: string): string => name.trim() || 'Dana';

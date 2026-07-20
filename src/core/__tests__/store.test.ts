@@ -9,6 +9,7 @@ const { getLocales } = jest.requireMock('expo-localization');
 beforeEach(async () => {
   await storage.remove(KEYS.enrolled);
   await storage.remove(KEYS.lang);
+  await storage.remove(KEYS.name);
   await storage.remove(KEYS.notif);
   await storage.remove(KEYS.streak);
   await storage.remove(KEYS.standing);
@@ -156,4 +157,15 @@ test('petition amnesties the miss: cold-restart hydrate does not re-forfeit', as
   expect(s.standing).toBe('probation'); // must NOT regress to 'review'
   expect(s.missedPending).toBe(false);  // must NOT re-arm
   expect(s.forfeited).toBe(12);         // must NOT be overwritten
+});
+
+test('setName persists, and hydrate restores the chosen designation', async () => {
+  useFacilityStore.getState().setName('Youngmook');
+  expect(useFacilityStore.getState().name).toBe('Youngmook');
+  expect(await storage.get(KEYS.name)).toBe('Youngmook');
+
+  await storage.set(KEYS.enrolled, '1');
+  useFacilityStore.setState({ name: '' });
+  await useFacilityStore.getState().hydrate();
+  expect(useFacilityStore.getState().name).toBe('Youngmook');
 });

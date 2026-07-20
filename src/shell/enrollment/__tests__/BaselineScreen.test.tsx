@@ -8,14 +8,20 @@ jest.mock('expo-localization', () => ({
 }));
 
 beforeEach(() => {
-  useFacilityStore.setState({ step: 'baseline', lang: 'en', adequacy: 64, motive: 1 });
+  useFacilityStore.setState({ step: 'baseline', lang: 'en', name: '', adequacy: 64, motive: 1 });
 });
 
 test('renders the form with the detected device language in the hint', async () => {
-  const { getByText } = await render(<BaselineScreen />);
+  const { getByText, getByPlaceholderText } = await render(<BaselineScreen />);
   expect(getByText('Establishing your baseline.')).toBeTruthy();
-  expect(getByText('Dana')).toBeTruthy();
+  expect(getByPlaceholderText('Dana')).toBeTruthy(); // sample name is now an editable placeholder
   expect(getByText(/Detected from device: English\./)).toBeTruthy();
+});
+
+test('typing a designation updates the store', async () => {
+  const { getByLabelText } = await render(<BaselineScreen />);
+  await fireEvent.changeText(getByLabelText('designation'), 'Youngmook');
+  expect(useFacilityStore.getState().name).toBe('Youngmook');
 });
 
 test('selecting a motive updates the store', async () => {

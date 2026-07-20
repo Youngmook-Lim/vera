@@ -7,10 +7,20 @@ beforeEach(() => {
   useFacilityStore.setState({
     step: 'facility',
     lang: 'en',
+    name: '',
     standing: 'good',
     enrolledAt: null,
     missedPending: false,
   });
+});
+
+test('shows the chosen designation, falling back to the sample name when blank', async () => {
+  const blank = await render(<FacilityScreen />);
+  expect(blank.getByText('Dana')).toBeTruthy();
+
+  useFacilityStore.setState({ name: 'Youngmook' });
+  const named = await render(<FacilityScreen />);
+  expect(named.getByText('Youngmook')).toBeTruthy();
 });
 
 test('renders identity, transmission, tiles, and locked vitrines', async () => {

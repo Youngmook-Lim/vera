@@ -9,7 +9,7 @@ import { isLocked, registry } from '../modules/registry';
 import type { LockedSlot, ModuleDef, TileData } from '../modules/types';
 import { getTransmission } from '../vera';
 import { VeraPanel } from './components/VeraPanel';
-import { dayLabel, shellStrings } from './strings';
+import { dayLabel, displayName, shellStrings } from './strings';
 
 function TagPill({ tile, lang }: { tile: TileData; lang: Lang }) {
   const c = tagSchemes[tile.tagScheme];
@@ -144,6 +144,7 @@ function LockedVitrine({ slot, label, lang }: { slot: LockedSlot; label: string;
 
 export function FacilityScreen() {
   const lang = useFacilityStore((s) => s.lang);
+  const name = useFacilityStore((s) => s.name);
   const setStep = useFacilityStore((s) => s.setStep);
   const standing = useFacilityStore((s) => s.standing);
   const enrolledAt = useFacilityStore((s) => s.enrolledAt);
@@ -218,8 +219,7 @@ export function FacilityScreen() {
             <View style={{ position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: palette.accent.amber }} />
           </View>
           <View style={{ flex: 1 }}>
-            {/* "Dana" is the mock's sample designation — phase 2 wires the baseline form's value */}
-            <Text style={{ fontFamily: font('display', 700, lang), fontSize: ms(16), color: palette.light.ink }}>Dana</Text>
+            <Text style={{ fontFamily: font('display', 700, lang), fontSize: ms(16), color: palette.light.ink }}>{displayName(name)}</Text>
             <Text
               style={{
                 marginTop: 4,

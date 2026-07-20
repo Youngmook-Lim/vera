@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import { getLocales } from 'expo-localization';
 import React from 'react';
-import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tmpl, type Lang } from '../../core/i18n';
 import { useFacilityStore } from '../../core/store';
@@ -66,9 +66,10 @@ function OptionCard({
 
 export function BaselineScreen() {
   const lang = useFacilityStore((s) => s.lang);
+  const name = useFacilityStore((s) => s.name);
   const adequacy = useFacilityStore((s) => s.adequacy);
   const motive = useFacilityStore((s) => s.motive);
-  const { setStep, setLang, setAdequacy, setMotive } = useFacilityStore.getState();
+  const { setStep, setLang, setName, setAdequacy, setMotive } = useFacilityStore.getState();
   const insets = useSafeAreaInsets();
   const t = enrollStrings[lang];
   const device = getLocales()[0]?.languageCode === 'ko' ? '한국어' : 'English';
@@ -108,8 +109,14 @@ export function BaselineScreen() {
               alignItems: 'center',
             }}
           >
-            {/* mock's sample designation — not editable in the prototype */}
-            <Text style={{ fontFamily: font('display', 500, lang), fontSize: ms(14), color: palette.light.ink }}>Dana</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Dana"
+              placeholderTextColor={palette.light.textFaint}
+              accessibilityLabel="designation"
+              style={{ flex: 1, padding: 0, fontFamily: font('display', 500, lang), fontSize: ms(14), color: palette.light.ink }}
+            />
             <Text style={{ fontFamily: font('mono', 500, lang), fontSize: ms(9), color: palette.light.textFaint }}>{t.mispron}</Text>
           </View>
         </View>

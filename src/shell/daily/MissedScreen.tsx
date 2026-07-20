@@ -14,7 +14,7 @@ import { useFacilityStore } from '../../core/store';
 import { font, ms, palette } from '../../core/theme';
 import { getTransmission } from '../../vera';
 import { VeraPanel } from '../components/VeraPanel';
-import { dayLabel, shellStrings } from '../strings';
+import { dayLabel, displayName, shellStrings } from '../strings';
 import { dailyStrings } from './strings';
 
 type MPhase = 'missed' | 'amending' | 'restored';
@@ -26,6 +26,7 @@ const PILL = {
 
 export function MissedScreen() {
   const lang = useFacilityStore((s) => s.lang);
+  const name = useFacilityStore((s) => s.name);
   const forfeited = useFacilityStore((s) => s.forfeited);
   const enrolledAt = useFacilityStore((s) => s.enrolledAt);
   const setStep = useFacilityStore((s) => s.setStep);
@@ -87,7 +88,7 @@ export function MissedScreen() {
           <View style={{ position: 'absolute', width: 5, height: 5, borderRadius: 2.5, backgroundColor: palette.accent.red }} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: font('display', 700, lang), fontSize: ms(15), color: palette.light.ink }}>Dana</Text>
+          <Text style={{ fontFamily: font('display', 700, lang), fontSize: ms(15), color: palette.light.ink }}>{displayName(name)}</Text>
           <Text style={{ marginTop: 4, fontFamily: font('mono', 500, lang), fontSize: ms(9), letterSpacing: ms(9) * 0.04, color: palette.light.textDim }}>
             SUBJECT #50640 · {dayLabel(tenureDays(enrolledAt, new Date()), lang)}
           </Text>

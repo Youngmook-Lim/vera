@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const KEYS = {
   enrolled: 'facility.enrolled.v1',
   lang: 'facility.lang.v1',
+  name: 'facility.name.v1',
   notif: 'facility.notif.v1',
   streak: 'facility.streak.v1',
   standing: 'facility.standing.v1',
