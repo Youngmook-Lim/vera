@@ -12,7 +12,7 @@ Phases per the build order in `docs/architecture.md`. Update this list when a ph
 
 - [x] **Phase 1 — Scaffold + theme + shell skeleton** (merged to main 2026-07-15; plan: `docs/superpowers/plans/2026-07-15-phase-1-shell-skeleton.md`)
 - [x] **Phase 2 — Enrollment flow** (intake → baseline → consent → assigned → permission) + first-run gate (AsyncStorage behind `core/storage.ts`; mmkv deferred by choice — merged 2026-07-18)
-- [x] **Phase 3 — Daily loop** + streak/standing + missed-day + local notifications (notifications no-op under Expo Go — dev build still postponed; merged 2026-07-18)
+- [x] **Phase 3 — Daily loop** + streak/standing + missed-day + local notifications (notifications no-op under Expo Go — dev build still postponed; merged 2026-07-20, with enrollment polish: editable designation, blinking cursor, on-screen decline dodge, back-steps through enrollment)
 - [ ] **Phase 4 — Modules, one at a time:** results → incinerator → organism → field → hazard (replace placeholder Screens; Skia centerpieces, sensors)
 - [ ] **Phase 5 — Polish:** transmission log, settings, Korean native-speaker copy pass, EAS build for friends
 
