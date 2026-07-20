@@ -30,8 +30,9 @@ export function VeraPanel({ line, lang, rec = 'REC 00:00:09', cursor = false, ac
   }, [pulse, blink]);
   const dotStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
   // Toggle color, not opacity: opacity on an inline nested <Text> isn't honored
-  // natively, so the cursor rendered static; animating color does blink.
-  const cursorStyle = useAnimatedStyle(() => ({ color: blink.value > 0.5 ? palette.accent.amber : 'transparent' }));
+  // natively. Blink to the card background (not 'transparent', which falls back
+  // to the inherited text color on some devices) so the cursor fully vanishes.
+  const cursorStyle = useAnimatedStyle(() => ({ color: blink.value > 0.5 ? palette.accent.amber : palette.dark.bgAlt }));
   const t = shellStrings[lang];
 
   return (
