@@ -14,7 +14,7 @@ const strings = {
 function Icon() {
   return (
     <View style={{ width: 13, height: 13, borderRadius: 7, borderWidth: 1.5, borderColor: palette.accent.amber }}>
-      <View style={{ position: 'absolute', left: '50%', top: -4, width: 2, height: 6, backgroundColor: palette.accent.amber, transform: [{ translateX: -1 }] }} />
+      <View style={{ position: 'absolute', left: 4, top: -5, width: 2, height: 6, backgroundColor: palette.accent.amber }} />
     </View>
   );
 }
