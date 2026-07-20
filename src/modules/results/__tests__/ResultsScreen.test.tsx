@@ -39,7 +39,7 @@ test('the 9th tick jumps the position up and V.E.R.A. switches to the worsened l
 test('shows the real since-yesterday delta from the last visit', async () => {
   jest.useFakeTimers();
   const start = queueForDay('2026-07-01', dayKey(new Date()));
-  await storage.set(KEYS.lastSeenQueue, String(start - 5000)); // improved by 5,000
+  await storage.set(KEYS.lastSeenQueue, String(start - 5000)); // worsened by 5,000 (delta +5,000, ▲)
   const { getByText } = await render(<Screen />);
   await act(async () => {}); // flush the storage read microtask
   expect(getByText(/5,000.*SINCE YESTERDAY/)).toBeTruthy();
