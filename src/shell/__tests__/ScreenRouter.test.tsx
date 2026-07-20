@@ -92,13 +92,21 @@ test('enrollment steps render their screens', async () => {
   expect(consent.getByText('Enrichment Agreement')).toBeTruthy();
 });
 
-test('hardware back is consumed during enrollment (no navigation)', async () => {
+test('hardware back steps backward through enrollment, exiting only from intake', async () => {
   const spy = jest.spyOn(BackHandler, 'addEventListener');
   useFacilityStore.setState({ step: 'consent' });
   await render(<ScreenRouter />);
   const handler = spy.mock.calls[0][1] as () => boolean;
-  expect(handler()).toBe(true); // consumed
-  expect(useFacilityStore.getState().step).toBe('consent'); // did not move
+
+  // mid-enrollment: back goes to the previous step and is consumed
+  expect(handler()).toBe(true);
+  expect(useFacilityStore.getState().step).toBe('baseline');
+  expect(handler()).toBe(true);
+  expect(useFacilityStore.getState().step).toBe('intake');
+
+  // from the first step: not consumed (OS closes the app), step unchanged
+  expect(handler()).toBe(false);
+  expect(useFacilityStore.getState().step).toBe('intake');
 });
 
 test('first run walks intake through to the facility and persists the gate', async () => {

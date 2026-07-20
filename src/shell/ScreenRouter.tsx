@@ -33,14 +33,19 @@ const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
 export function ScreenRouter() {
   const step = useFacilityStore((s) => s.step);
 
-  // Android system back: enrollment is non-optional (consume, stay put);
-  // facility falls through to the default (leave the app); everything else
-  // mirrors the ◂ arrow back to facility.
+  // Android system back: within enrollment, step to the previous screen (and
+  // let the OS close the app from the first step); facility falls through to
+  // the default (leave the app); everything else mirrors the ◂ arrow to facility.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       const state = useFacilityStore.getState();
       if (state.step === 'facility') return false;
-      if (ENROLLMENT_STEPS.includes(state.step)) return true;
+      const enrollIndex = ENROLLMENT_STEPS.indexOf(state.step);
+      if (enrollIndex !== -1) {
+        if (enrollIndex === 0) return false; // from intake, let the OS exit
+        state.setStep(ENROLLMENT_STEPS[enrollIndex - 1]);
+        return true;
+      }
       state.setStep('facility');
       return true;
     });
