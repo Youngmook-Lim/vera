@@ -7,9 +7,11 @@ import { useFacilityStore } from '../../core/store';
 import { font, ms, palette } from '../../core/theme';
 import { AmberButton } from '../components/AmberButton';
 import { EnrollHeader } from '../components/EnrollHeader';
+import { clampDodge } from './dodge';
 import { enrollStrings } from './strings';
 
-// Dodge positions from the prototype's declinePos()
+// Dodge offsets from the prototype's declinePos(); clampDodge keeps the whole
+// button on-screen (rests flush-right, only dodges left/up).
 const SPOTS = [
   [0, 0],
   [74, -4],
@@ -27,10 +29,10 @@ function DeclineButton() {
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
   useEffect(() => {
-    const [x, y] = SPOTS[Math.min(decline, SPOTS.length - 1)];
+    const target = clampDodge(SPOTS[Math.min(decline, SPOTS.length - 1)]);
     const cfg = { duration: 280, easing: Easing.bezier(0.3, 0.8, 0.3, 1.2) };
-    tx.value = withTiming(x, cfg);
-    ty.value = withTiming(y, cfg);
+    tx.value = withTiming(target.tx, cfg);
+    ty.value = withTiming(target.ty, cfg);
   }, [decline, tx, ty]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { translateY: ty.value }] }));
 
