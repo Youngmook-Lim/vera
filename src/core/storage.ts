@@ -12,6 +12,7 @@ export const KEYS = {
   missedPending: 'facility.missedPending.v1',
   forfeited: 'facility.forfeited.v1',
   lastSeenQueue: 'facility.lastSeenQueue.v1',
+  burnedCount: 'facility.burnedCount.v1',
 } as const;
 
 // Seam over the storage engine (AsyncStorage today; mmkv could replace it
