@@ -16,7 +16,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.youngmookk.thefacility"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -24,6 +25,12 @@
     "plugins": [
       "expo-font",
       "expo-localization"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "30411f4b-39ec-4b2b-b73d-0d7d9851898b"
+      }
+    },
+    "owner": "youngmookk"
   }
 }
