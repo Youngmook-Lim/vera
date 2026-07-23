@@ -70,9 +70,9 @@ test('facility step renders the launcher home', async () => {
 });
 
 test('module steps render their (placeholder) screens', async () => {
-  useFacilityStore.setState({ step: 'field' });
+  useFacilityStore.setState({ step: 'hazard' });
   const { getByText } = await render(<ScreenRouter />);
-  expect(getByText('FIELD TRIAL')).toBeTruthy();
+  expect(getByText('HAZARD ASSESSMENT')).toBeTruthy();
   expect(getByText('UNDER CONSTRUCTION')).toBeTruthy();
 });
 
