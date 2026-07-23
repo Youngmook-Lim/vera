@@ -9,7 +9,6 @@ import { isLocked, registry } from '../modules/registry';
 import type { LockedSlot, ModuleDef, TileData } from '../modules/types';
 import { getTransmission } from '../vera';
 import { VeraPanel } from './components/VeraPanel';
-import { SkiaProbe } from './components/SkiaProbe';
 import { dayLabel, displayName, shellStrings } from './strings';
 
 function TagPill({ tile, lang }: { tile: TileData; lang: Lang }) {
@@ -361,9 +360,6 @@ export function FacilityScreen() {
             <LockedVitrine key={slot.id} slot={slot} label={t.budgetPending} lang={lang} />
           ))}
         </View>
-
-        {/* TEMP: Skia on-device probe — remove after verified (sub-project B) */}
-        <SkiaProbe />
       </ScrollView>
     </View>
   );
