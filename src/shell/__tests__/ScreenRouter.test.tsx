@@ -69,11 +69,11 @@ test('facility step renders the launcher home', async () => {
   expect(getByText(/SUBJECT #50640/)).toBeTruthy();
 });
 
-test('module steps render their (placeholder) screens', async () => {
+test('module steps render their real screens', async () => {
   useFacilityStore.setState({ step: 'hazard' });
   const { getByText } = await render(<ScreenRouter />);
   expect(getByText('HAZARD ASSESSMENT')).toBeTruthy();
-  expect(getByText('UNDER CONSTRUCTION')).toBeTruthy();
+  expect(getByText('4 UNAUTHORIZED')).toBeTruthy();
 });
 
 test('not-yet-built shell steps fall back to a placeholder', async () => {
