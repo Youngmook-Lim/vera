@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Lang } from './i18n';
 import { KEYS, storage } from './storage';
 import { assessCompliance, dayKey, prevDayKey } from './compliance';
+import { syncScheduledTransmissions } from './notifications';
 
 // The prototype routes every screen on this single value; conditional
 // rendering on `step` IS the router (docs/architecture.md).
@@ -53,6 +54,8 @@ interface FacilityState {
   poke: () => void;
   denyPermission: () => void;
   setNotif: (notif: boolean) => void;
+  reprocess: () => Promise<void>;
+  updateNotif: (enabled: boolean) => Promise<void>;
   completeComply: (now?: Date) => Promise<void>;
   petitionReinstatement: () => Promise<void>;
   finishEnroll: () => Promise<void>;
@@ -91,6 +94,33 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   poke: () => set({ poked: true }),
   denyPermission: () => set({ permDenied: true, notif: false }),
   setNotif: (notif) => set({ notif }),
+  reprocess: async () => {
+    await storage.clearAll();
+    // Full wipe → fresh enrollment. lang is intentionally preserved in memory
+    // so the intake screen renders in the language the subject is reading; the
+    // persisted lang key was cleared, so a cold launch re-detects the locale.
+    set({
+      step: 'intake',
+      name: '',
+      adequacy: 64,
+      motive: 1,
+      decline: 0,
+      poked: false,
+      permDenied: false,
+      notif: true,
+      streak: 0,
+      standing: 'good',
+      lastComply: null,
+      enrolledAt: null,
+      missedPending: false,
+      forfeited: 0,
+    });
+  },
+  updateNotif: async (enabled) => {
+    set({ notif: enabled });
+    await storage.set(KEYS.notif, enabled ? '1' : '0');
+    await syncScheduledTransmissions(enabled, get().lang);
+  },
   completeComply: async (now = new Date()) => {
     const { streak, lastComply } = get();
     const nextStreak = lastComply === prevDayKey(now) ? streak + 1 : 1;

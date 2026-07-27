@@ -7,3 +7,11 @@ test('round-trips values and exposes the prototype key names', async () => {
   await storage.remove(KEYS.enrolled);
   expect(await storage.get(KEYS.enrolled)).toBeNull();
 });
+
+test('clearAll removes every known key', async () => {
+  await storage.set(KEYS.enrolled, '1');
+  await storage.set(KEYS.streak, '5');
+  await storage.clearAll();
+  expect(await storage.get(KEYS.enrolled)).toBeNull();
+  expect(await storage.get(KEYS.streak)).toBeNull();
+});
