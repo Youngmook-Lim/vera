@@ -6,6 +6,11 @@ jest.mock('expo-localization', () => ({
 }));
 const { getLocales } = jest.requireMock('expo-localization');
 
+jest.mock('../notifications', () => ({
+  syncScheduledTransmissions: jest.fn(async () => {}),
+}));
+const { syncScheduledTransmissions } = jest.requireMock('../notifications');
+
 beforeEach(async () => {
   await storage.remove(KEYS.enrolled);
   await storage.remove(KEYS.lang);
@@ -30,6 +35,34 @@ test('setStep reaches every known step', () => {
     useFacilityStore.getState().setStep(step);
     expect(useFacilityStore.getState().step).toBe(step);
   }
+});
+
+test('reprocess wipes storage, resets state to intake, keeps lang', async () => {
+  await storage.set(KEYS.enrolled, '1');
+  await storage.set(KEYS.streak, '7');
+  useFacilityStore.setState({ step: 'settings', lang: 'ko', streak: 7, name: 'X', standing: 'probation' });
+
+  await useFacilityStore.getState().reprocess();
+
+  expect(await storage.get(KEYS.enrolled)).toBeNull();
+  expect(await storage.get(KEYS.streak)).toBeNull();
+  const s = useFacilityStore.getState();
+  expect(s.step).toBe('intake');
+  expect(s.streak).toBe(0);
+  expect(s.name).toBe('');
+  expect(s.standing).toBe('good');
+  expect(s.lang).toBe('ko'); // language preserved for the intake replay
+});
+
+test('updateNotif sets state, persists, and syncs the scheduler', async () => {
+  await useFacilityStore.getState().updateNotif(false);
+  expect(useFacilityStore.getState().notif).toBe(false);
+  expect(await storage.get(KEYS.notif)).toBe('0');
+  expect(syncScheduledTransmissions).toHaveBeenCalledWith(false, 'en');
+
+  await useFacilityStore.getState().updateNotif(true);
+  expect(useFacilityStore.getState().notif).toBe(true);
+  expect(await storage.get(KEYS.notif)).toBe('1');
 });
 
 test('hydrate boots fresh installs to intake, enrolled installs to facility', async () => {

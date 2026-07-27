@@ -12,10 +12,12 @@ import { ConsentScreen } from './enrollment/ConsentScreen';
 import { IntakeScreen } from './enrollment/IntakeScreen';
 import { PermissionScreen } from './enrollment/PermissionScreen';
 import { FacilityScreen } from './FacilityScreen';
+import { NotifLogScreen } from './notiflog/NotifLogScreen';
 import { PlaceholderScreen } from './PlaceholderScreen';
+import { SettingsScreen } from './settings/SettingsScreen';
 
 const ENROLLMENT_STEPS: readonly Step[] = ['intake', 'baseline', 'consent', 'assigned', 'permission'];
-const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent', 'daily', 'missed'];
+const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent', 'daily', 'missed', 'settings'];
 
 const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
   intake: IntakeScreen,
@@ -24,8 +26,10 @@ const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
   assigned: AssignedScreen,
   permission: PermissionScreen,
   facility: FacilityScreen,
+  settings: SettingsScreen,
   daily: DailyScreen,
   missed: MissedScreen,
+  notiflog: NotifLogScreen,
 };
 
 // Conditional rendering IS the router (docs/architecture.md): instant swaps
@@ -46,7 +50,7 @@ export function ScreenRouter() {
         state.setStep(ENROLLMENT_STEPS[enrollIndex - 1]);
         return true;
       }
-      state.setStep('facility');
+      state.setStep(state.step === 'notiflog' ? 'settings' : 'facility');
       return true;
     });
     return () => sub.remove();
@@ -69,7 +73,6 @@ export function ScreenRouter() {
   return (
     <>
       {bar}
-      {/* settings and notiflog arrive in phase 5 */}
       {mod ? <mod.Screen /> : <PlaceholderScreen title={step.toUpperCase()} />}
     </>
   );

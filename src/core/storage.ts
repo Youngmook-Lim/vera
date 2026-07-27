@@ -24,4 +24,5 @@ export const storage = {
   get: (key: string): Promise<string | null> => AsyncStorage.getItem(key),
   set: (key: string, value: string): Promise<void> => AsyncStorage.setItem(key, value),
   remove: (key: string): Promise<void> => AsyncStorage.removeItem(key),
+  clearAll: (): Promise<void> => AsyncStorage.multiRemove(Object.values(KEYS)),
 };

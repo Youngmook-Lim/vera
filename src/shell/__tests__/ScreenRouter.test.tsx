@@ -76,10 +76,16 @@ test('module steps render their real screens', async () => {
   expect(getByText('4 UNAUTHORIZED')).toBeTruthy();
 });
 
-test('not-yet-built shell steps fall back to a placeholder', async () => {
+test('settings step renders the real settings screen', async () => {
   useFacilityStore.setState({ step: 'settings' });
   const { getByText } = await render(<ScreenRouter />);
-  expect(getByText('SETTINGS')).toBeTruthy();
+  expect(getByText('SUBJECT PREFERENCES')).toBeTruthy();
+});
+
+test('notiflog step renders the real transmission log', async () => {
+  useFacilityStore.setState({ step: 'notiflog' });
+  const { getByText } = await render(<ScreenRouter />);
+  expect(getByText('TRANSMISSION LOG')).toBeTruthy();
 });
 
 test('enrollment steps render their screens', async () => {
