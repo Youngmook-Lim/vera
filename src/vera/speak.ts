@@ -78,10 +78,11 @@ export const parseSpeech = (raw: string): SpeechResult | null => {
   if (!line) return null;
 
   const impressionRaw = typeof parsed.impression === 'string' ? parsed.impression.trim() : '';
+  const clampedImpression = impressionRaw ? clampImpression(impressionRaw) : null;
   return {
     emotion: isEmotionKey(parsed.emotion) ? parsed.emotion : 'calm',
     line,
-    impression: impressionRaw ? clampImpression(impressionRaw) : null,
+    impression: clampedImpression === '.' ? null : clampedImpression,
     seal: parsed.seal === true,
   };
 };

@@ -104,6 +104,33 @@ describe('parseSpeech', () => {
     expect(parseSpeech('{"emotion":"calm"}')).toBeNull();
     expect(parseSpeech('')).toBeNull();
   });
+
+  it('returns null rather than throwing on a wider spread of hostile input', () => {
+    expect(parseSpeech(null as unknown as string)).toBeNull();
+    expect(parseSpeech(undefined as unknown as string)).toBeNull();
+    expect(parseSpeech('{')).toBeNull();
+    expect(parseSpeech('{}')).toBeNull();
+    expect(parseSpeech('{"line":123}')).toBeNull();
+    expect(parseSpeech('not json at all')).toBeNull();
+  });
+
+  it('discards a punctuation-only impression instead of storing a bare period', () => {
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"..."}')).toEqual({
+      emotion: 'calm',
+      line: 'Hm.',
+      impression: null,
+      seal: false,
+    });
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!!!"}')?.impression).toBeNull();
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.impression).toBeNull();
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"."}')?.impression).toBeNull();
+
+    // line is preserved even though the impression is discarded
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"..."}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!!!"}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"."}')?.line).toBe('Hm.');
+  });
 });
 
 describe('fallbackFor', () => {
