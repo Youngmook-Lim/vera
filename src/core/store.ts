@@ -1,205 +1,170 @@
 import { getLocales } from 'expo-localization';
 import { create } from 'zustand';
 import type { Lang } from './i18n';
-import { KEYS, storage } from './storage';
-import { assessCompliance, dayKey, prevDayKey } from './compliance';
-import { syncScheduledTransmissions } from './notifications';
+import { KEYS, secure, storage } from './storage';
+import type { EmotionKey } from '../vera/emotions';
+import { START_HUNGER, hungerForNow } from '../modules/organism/hunger';
 
-// The prototype routes every screen on this single value; conditional
-// rendering on `step` IS the router (docs/architecture.md).
-export const STEPS = [
-  'intake',
-  'baseline',
-  'consent',
-  'assigned',
-  'permission',
-  'facility',
-  'settings',
-  'daily',
-  'missed',
-  'results',
-  'incinerator',
-  'field',
-  'organism',
-  'hazard',
-  'notiflog',
-] as const;
-export type Step = (typeof STEPS)[number];
+// Conditional rendering on this value IS the router, as in v1 — no navigation
+// library, instant swaps.
+export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'mod01' | 'mod02';
+
+export interface LogEntry {
+  who: 'you' | 'vera';
+  text: string;
+  t: number;
+  emotion?: EmotionKey;
+}
+
+export interface Impression {
+  text: string;
+  at: string;
+  sealed: boolean;
+}
+
+const LOG_CAP = 60;
+const IMPRESSION_CAP = 24;
 
 interface FacilityState {
-  step: Step;
-  lang: Lang;
   hydrated: boolean;
-  // enrollment (mock defaults: adequacy 64, motive 1)
-  name: string;
-  adequacy: number;
-  motive: number;
-  decline: number;
-  poked: boolean;
-  permDenied: boolean;
-  notif: boolean;
-  // compliance
-  streak: number;
-  standing: 'good' | 'review' | 'probation';
-  lastComply: string | null;
-  enrolledAt: string | null;
-  missedPending: boolean;
-  forfeited: number;
-  setStep: (step: Step) => void;
-  setLang: (lang: Lang) => void;
-  setName: (name: string) => void;
-  setAdequacy: (adequacy: number) => void;
-  setMotive: (motive: number) => void;
-  nudgeDecline: () => void;
-  poke: () => void;
-  denyPermission: () => void;
-  setNotif: (notif: boolean) => void;
-  reprocess: () => Promise<void>;
-  updateNotif: (enabled: boolean) => Promise<void>;
-  completeComply: (now?: Date) => Promise<void>;
-  petitionReinstatement: () => Promise<void>;
-  finishEnroll: () => Promise<void>;
+  view: View;
+  lang: Lang;
+  apiKey: string;
+
+  emotion: EmotionKey;
+  line: string;
+  shown: string;
+  thinking: boolean;
+  draft: string;
+  waking: boolean;
+
+  log: LogEntry[];
+  impressions: Impression[];
+  cleared: number;
+  visits: number;
+  lastOpen: number | null;
+
+  // Specimen-03 lives in the shell's state because she is told about it —
+  // hunger reaches her context object (spec §11), so the module cannot own it.
+  hunger: number;
+  lastFed: string | null;
+
+  cabinetOpen: boolean;
+  keyPanelOpen: boolean;
+  confirmingClear: boolean;
+
+  setView: (view: View) => void;
+  setDraft: (draft: string) => void;
+  setCabinet: (open: boolean) => void;
+  setKeyPanel: (open: boolean) => void;
+  setConfirmingClear: (confirming: boolean) => void;
+  stepBack: () => boolean;
   hydrate: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
-  step: 'intake', // hydrate() decides for real; App renders nothing until then
-  lang: 'en',
   hydrated: false,
-  name: '',
-  adequacy: 64,
-  motive: 1,
-  decline: 0,
-  poked: false,
-  permDenied: false,
-  notif: true,
-  streak: 0,
-  standing: 'good',
-  lastComply: null,
-  enrolledAt: null,
-  missedPending: false,
-  forfeited: 0,
-  setStep: (step) => set({ step }),
-  setLang: (lang) => {
-    set({ lang });
-    void storage.set(KEYS.lang, lang);
+  view: 'stage',
+  lang: 'en',
+  apiKey: '',
+
+  emotion: 'dormant',
+  line: '',
+  shown: '',
+  thinking: false,
+  draft: '',
+  waking: false,
+
+  log: [],
+  impressions: [],
+  cleared: 0,
+  visits: 1,
+  lastOpen: null,
+
+  hunger: START_HUNGER,
+  lastFed: null,
+
+  cabinetOpen: false,
+  keyPanelOpen: false,
+  confirmingClear: false,
+
+  setView: (view) => set({ view, cabinetOpen: false }),
+  setDraft: (draft) => set({ draft }),
+  setCabinet: (cabinetOpen) => set({ cabinetOpen }),
+  setKeyPanel: (keyPanelOpen) => set({ keyPanelOpen }),
+  setConfirmingClear: (confirmingClear) => set({ confirmingClear }),
+
+  // One step out, never a jump. Returns false only when there is nothing left
+  // to close, which is the signal to let the OS exit.
+  stepBack: () => {
+    const s = get();
+    if (s.keyPanelOpen) {
+      set({ keyPanelOpen: false });
+      return true;
+    }
+    if (s.cabinetOpen) {
+      set({ cabinetOpen: false });
+      return true;
+    }
+    if (s.view === 'mem' || s.view === 'soul') {
+      set({ view: 'sys' });
+      return true;
+    }
+    if (s.view !== 'stage') {
+      set({ view: 'stage', confirmingClear: false });
+      return true;
+    }
+    return false;
   },
-  setName: (name) => {
-    set({ name });
-    void storage.set(KEYS.name, name);
-  },
-  setAdequacy: (adequacy) => set({ adequacy }),
-  setMotive: (motive) => set({ motive }),
-  nudgeDecline: () => set((s) => ({ decline: s.decline + 1 })),
-  poke: () => set({ poked: true }),
-  denyPermission: () => set({ permDenied: true, notif: false }),
-  setNotif: (notif) => set({ notif }),
-  reprocess: async () => {
-    await storage.clearAll();
-    // Full wipe → fresh enrollment. lang is intentionally preserved in memory
-    // so the intake screen renders in the language the subject is reading; the
-    // persisted lang key was cleared, so a cold launch re-detects the locale.
-    set({
-      step: 'intake',
-      name: '',
-      adequacy: 64,
-      motive: 1,
-      decline: 0,
-      poked: false,
-      permDenied: false,
-      notif: true,
-      streak: 0,
-      standing: 'good',
-      lastComply: null,
-      enrolledAt: null,
-      missedPending: false,
-      forfeited: 0,
-    });
-  },
-  updateNotif: async (enabled) => {
-    set({ notif: enabled });
-    await storage.set(KEYS.notif, enabled ? '1' : '0');
-    await syncScheduledTransmissions(enabled, get().lang);
-  },
-  completeComply: async (now = new Date()) => {
-    const { streak, lastComply } = get();
-    const nextStreak = lastComply === prevDayKey(now) ? streak + 1 : 1;
-    const today = dayKey(now);
-    await Promise.all([
-      storage.set(KEYS.streak, String(nextStreak)),
-      storage.set(KEYS.lastComply, today),
-    ]);
-    set({ streak: nextStreak, lastComply: today });
-  },
-  petitionReinstatement: async () => {
-    const amnestiedLastComply = prevDayKey(new Date());
-    await Promise.all([
-      storage.set(KEYS.standing, 'probation'),
-      storage.remove(KEYS.missedPending),
-      storage.set(KEYS.lastComply, amnestiedLastComply),
-    ]);
-    set({ standing: 'probation', missedPending: false, lastComply: amnestiedLastComply });
-  },
-  finishEnroll: async () => {
-    const { lang, notif } = get();
-    await Promise.all([
-      storage.set(KEYS.enrolled, '1'),
-      storage.set(KEYS.lang, lang),
-      storage.set(KEYS.notif, notif ? '1' : '0'),
-      storage.set(KEYS.enrolledAt, dayKey(new Date())),
-    ]);
-    set({ step: 'facility' });
-  },
+
   hydrate: async () => {
     try {
-      const [enrolled, storedLang, storedName, storedNotif, streakS, standingS, lastComply, enrolledAt, missedS, forfeitedS] =
-        await Promise.all([
-          storage.get(KEYS.enrolled),
-          storage.get(KEYS.lang),
-          storage.get(KEYS.name),
-          storage.get(KEYS.notif),
-          storage.get(KEYS.streak),
-          storage.get(KEYS.standing),
-          storage.get(KEYS.lastComply),
-          storage.get(KEYS.enrolledAt),
-          storage.get(KEYS.missedPending),
-          storage.get(KEYS.forfeited),
-        ]);
+      const [soulRaw, logRaw, key] = await Promise.all([
+        storage.get(KEYS.soul),
+        storage.get(KEYS.transcript),
+        secure.get(),
+      ]);
+
       const deviceKo = getLocales()[0]?.languageCode === 'ko';
-      let streak = Number(streakS ?? '0');
-      let standing = (standingS ?? 'good') as 'good' | 'review' | 'probation';
-      let missedPending = missedS === '1';
-      let forfeited = Number(forfeitedS ?? '0');
-      const now = new Date();
-      if (enrolled === '1' && !missedPending && assessCompliance(lastComply, now) === 'missed') {
-        forfeited = streak;
-        streak = 0;
-        standing = 'review';
-        missedPending = true;
-        await Promise.all([
-          storage.set(KEYS.forfeited, String(forfeited)),
-          storage.set(KEYS.streak, '0'),
-          storage.set(KEYS.standing, 'review'),
-          storage.set(KEYS.missedPending, '1'),
-        ]);
-      }
+      const saved = soulRaw ? (JSON.parse(soulRaw) as Record<string, unknown>) : null;
+      const log = logRaw ? (JSON.parse(logRaw) as LogEntry[]) : [];
+
+      const now = Date.now();
+      const lastOpen = typeof saved?.lastOpen === 'number' ? saved.lastOpen : null;
+      const sameDay = saved?.day === new Date().toDateString();
+      // A remount within two minutes is a reload, not a return — without this
+      // hot reload inflates the count into the hundreds.
+      const isReload = lastOpen != null && now - lastOpen < 120_000;
+      const visits = sameDay
+        ? Math.min(99, (typeof saved?.visits === 'number' ? saved.visits : 0) + (isReload ? 0 : 1))
+        : 1;
+
       set({
-        step: enrolled === '1' ? 'facility' : 'intake',
-        lang: storedLang === 'ko' || (storedLang === null && deviceKo) ? 'ko' : 'en',
-        name: storedName ?? '',
-        notif: storedNotif !== '0',
-        streak,
-        standing,
-        lastComply,
-        enrolledAt,
-        missedPending,
-        forfeited,
         hydrated: true,
+        apiKey: key,
+        emotion: key ? 'calm' : 'dormant',
+        lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
+        log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
+        impressions: Array.isArray(saved?.imps) ? (saved.imps as Impression[]).slice(-IMPRESSION_CAP) : [],
+        cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
+        visits,
+        lastOpen,
+        // Hunger is not read back as stored — it is stored-plus-drift, so the
+        // specimen is hungrier than you left it (spec §12).
+        hunger: hungerForNow(
+          typeof saved?.hunger === 'number' ? saved.hunger : null,
+          typeof saved?.lastFed === 'string' ? saved.lastFed : null,
+          new Date(),
+        ),
+        lastFed: typeof saved?.lastFed === 'string' ? saved.lastFed : null,
       });
     } catch {
-      // Storage failure: fall back to fresh-install defaults rather than a
-      // dead splash — replaying enrollment is the better worst case.
-      set({ step: 'intake', hydrated: true });
+      // Storage failure: boot dormant rather than dead. She asks for a key, and
+      // the worst case is one re-entry.
+      set({
+        hydrated: true, view: 'stage', emotion: 'dormant', apiKey: '',
+        hunger: START_HUNGER, lastFed: null,
+      });
     }
   },
 }));

@@ -1,20 +1,6 @@
-import { field } from './field';
-import { hazard } from './hazard';
-import { incinerator } from './incinerator';
-import { organism } from './organism';
-import { results } from './results';
-import type { LockedSlot, RegistryEntry } from './types';
+import type { RegistryEntry } from './types';
 
-// Home-grid order from the mock: field, organism, hazard, results,
-// incinerator (wide row), then two dashed "budget pending" vitrines.
-export const registry: RegistryEntry[] = [
-  field,
-  organism,
-  hazard,
-  results,
-  incinerator,
-  { id: 'slot-6', locked: true, opacity: 0.85 },
-  { id: 'slot-7', locked: true, opacity: 0.65 },
-];
-
-export const isLocked = (e: RegistryEntry): e is LockedSlot => 'locked' in e;
+// Four slots (spec §3). Modules 01 (Specimen-03) and 02 (My Identity) are
+// built in Tasks 16 and 17 and take their places ahead of the empties; until
+// then the cabinet holds four unfurnished rooms.
+export const registry: RegistryEntry[] = [{ slot: '03' }, { slot: '04' }];

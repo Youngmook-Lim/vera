@@ -1,204 +1,71 @@
-import { STEPS, useFacilityStore } from '../store';
-import { KEYS, storage } from '../storage';
+import { useFacilityStore } from '../store';
 
-jest.mock('expo-localization', () => ({
-  getLocales: jest.fn(() => [{ languageCode: 'en' }]),
-}));
-const { getLocales } = jest.requireMock('expo-localization');
-
-jest.mock('../notifications', () => ({
-  syncScheduledTransmissions: jest.fn(async () => {}),
-}));
-const { syncScheduledTransmissions } = jest.requireMock('../notifications');
-
-beforeEach(async () => {
-  await storage.remove(KEYS.enrolled);
-  await storage.remove(KEYS.lang);
-  await storage.remove(KEYS.name);
-  await storage.remove(KEYS.notif);
-  await storage.remove(KEYS.streak);
-  await storage.remove(KEYS.standing);
-  await storage.remove(KEYS.lastComply);
-  await storage.remove(KEYS.enrolledAt);
-  await storage.remove(KEYS.missedPending);
-  await storage.remove(KEYS.forfeited);
-  getLocales.mockReturnValue([{ languageCode: 'en' }]);
+const reset = () =>
   useFacilityStore.setState({
-    step: 'intake', lang: 'en', hydrated: false,
-    adequacy: 64, motive: 1, decline: 0, poked: false, permDenied: false, notif: true,
-    streak: 0, standing: 'good', lastComply: null, enrolledAt: null, missedPending: false, forfeited: 0,
+    view: 'stage', cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
+    apiKey: '', emotion: 'dormant', line: '', shown: '', thinking: false, draft: '',
+    log: [], impressions: [], cleared: 0, visits: 1, lang: 'en',
+  });
+
+describe('the router', () => {
+  beforeEach(reset);
+
+  it('starts on the stage, dormant', () => {
+    const s = useFacilityStore.getState();
+    expect(s.view).toBe('stage');
+    expect(s.emotion).toBe('dormant');
+    expect(s.apiKey).toBe('');
+  });
+
+  it('moves between views', () => {
+    useFacilityStore.getState().setView('sys');
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
+
+  it('closes the cabinet when a room opens', () => {
+    useFacilityStore.setState({ cabinetOpen: true });
+    useFacilityStore.getState().setView('mod02');
+    expect(useFacilityStore.getState().cabinetOpen).toBe(false);
   });
 });
 
-test('setStep reaches every known step', () => {
-  for (const step of STEPS) {
-    useFacilityStore.getState().setStep(step);
-    expect(useFacilityStore.getState().step).toBe(step);
-  }
-});
+describe('stepBack', () => {
+  beforeEach(reset);
 
-test('reprocess wipes storage, resets state to intake, keeps lang', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.streak, '7');
-  useFacilityStore.setState({ step: 'settings', lang: 'ko', streak: 7, name: 'X', standing: 'probation' });
+  it('closes the cabinet before it changes view', () => {
+    useFacilityStore.setState({ cabinetOpen: true, view: 'stage' });
+    expect(useFacilityStore.getState().stepBack()).toBe(true);
+    expect(useFacilityStore.getState().cabinetOpen).toBe(false);
+    expect(useFacilityStore.getState().view).toBe('stage');
+  });
 
-  await useFacilityStore.getState().reprocess();
+  it('closes the key panel before it changes view', () => {
+    useFacilityStore.setState({ keyPanelOpen: true, view: 'sys' });
+    expect(useFacilityStore.getState().stepBack()).toBe(true);
+    expect(useFacilityStore.getState().keyPanelOpen).toBe(false);
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
 
-  expect(await storage.get(KEYS.enrolled)).toBeNull();
-  expect(await storage.get(KEYS.streak)).toBeNull();
-  const s = useFacilityStore.getState();
-  expect(s.step).toBe('intake');
-  expect(s.streak).toBe(0);
-  expect(s.name).toBe('');
-  expect(s.standing).toBe('good');
-  expect(s.lang).toBe('ko'); // language preserved for the intake replay
-});
+  it('steps a file back to system, not all the way home', () => {
+    useFacilityStore.setState({ view: 'mem' });
+    useFacilityStore.getState().stepBack();
+    expect(useFacilityStore.getState().view).toBe('sys');
 
-test('updateNotif sets state, persists, and syncs the scheduler', async () => {
-  await useFacilityStore.getState().updateNotif(false);
-  expect(useFacilityStore.getState().notif).toBe(false);
-  expect(await storage.get(KEYS.notif)).toBe('0');
-  expect(syncScheduledTransmissions).toHaveBeenCalledWith(false, 'en');
+    useFacilityStore.setState({ view: 'soul' });
+    useFacilityStore.getState().stepBack();
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
 
-  await useFacilityStore.getState().updateNotif(true);
-  expect(useFacilityStore.getState().notif).toBe(true);
-  expect(await storage.get(KEYS.notif)).toBe('1');
-});
+  it('steps every other view back to the stage', () => {
+    for (const view of ['sys', 'log', 'mod01', 'mod02'] as const) {
+      useFacilityStore.setState({ view });
+      expect(useFacilityStore.getState().stepBack()).toBe(true);
+      expect(useFacilityStore.getState().view).toBe('stage');
+    }
+  });
 
-test('hydrate boots fresh installs to intake, enrolled installs to facility', async () => {
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().step).toBe('intake');
-  expect(useFacilityStore.getState().hydrated).toBe(true);
-
-  await storage.set(KEYS.enrolled, '1');
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().step).toBe('facility');
-});
-
-test('hydrate defaults lang from device locale, stored lang wins', async () => {
-  getLocales.mockReturnValue([{ languageCode: 'ko' }]);
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().lang).toBe('ko');
-
-  await storage.set(KEYS.lang, 'en');
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().lang).toBe('en');
-});
-
-test('setLang persists', async () => {
-  useFacilityStore.getState().setLang('ko');
-  expect(useFacilityStore.getState().lang).toBe('ko');
-  expect(await storage.get(KEYS.lang)).toBe('ko');
-});
-
-test('enrollment field actions', () => {
-  const s = useFacilityStore.getState();
-  s.setAdequacy(80);
-  s.setMotive(2);
-  s.nudgeDecline();
-  s.nudgeDecline();
-  s.poke();
-  s.denyPermission();
-  const after = useFacilityStore.getState();
-  expect(after.adequacy).toBe(80);
-  expect(after.motive).toBe(2);
-  expect(after.decline).toBe(2);
-  expect(after.poked).toBe(true);
-  expect(after.permDenied).toBe(true);
-  expect(after.notif).toBe(false);
-});
-
-test('finishEnroll persists the gate and enters the facility', async () => {
-  useFacilityStore.getState().setNotif(true);
-  await useFacilityStore.getState().finishEnroll();
-  expect(useFacilityStore.getState().step).toBe('facility');
-  expect(await storage.get(KEYS.enrolled)).toBe('1');
-  expect(await storage.get(KEYS.notif)).toBe('1');
-});
-
-test('hydrate falls back to fresh-install defaults when storage reads fail', async () => {
-  const spy = jest.spyOn(storage, 'get').mockRejectedValue(new Error('disk failure'));
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().hydrated).toBe(true);
-  expect(useFacilityStore.getState().step).toBe('intake');
-  spy.mockRestore();
-});
-
-const at = (s: string) => new Date(`${s}T12:00:00`);
-
-test('completeComply starts a streak, then increments day over day', async () => {
-  await useFacilityStore.getState().completeComply(at('2026-07-18'));
-  expect(useFacilityStore.getState().streak).toBe(1);
-  expect(await storage.get(KEYS.lastComply)).toBe('2026-07-18');
-
-  await useFacilityStore.getState().completeComply(at('2026-07-19'));
-  expect(useFacilityStore.getState().streak).toBe(2);
-  expect(await storage.get(KEYS.streak)).toBe('2');
-});
-
-test('completeComply after a gap restarts at 1', async () => {
-  useFacilityStore.setState({ streak: 12, lastComply: '2026-07-10' });
-  await useFacilityStore.getState().completeComply(at('2026-07-18'));
-  expect(useFacilityStore.getState().streak).toBe(1);
-});
-
-test('hydrate detects a missed day once: forfeits streak, standing under review', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.enrolledAt, '2026-07-01');
-  await storage.set(KEYS.streak, '12');
-  await storage.set(KEYS.lastComply, '2026-07-10');
-  await useFacilityStore.getState().hydrate();
-  const s = useFacilityStore.getState();
-  expect(s.missedPending).toBe(true);
-  expect(s.streak).toBe(0);
-  expect(s.forfeited).toBe(12);
-  expect(s.standing).toBe('review');
-  expect(await storage.get(KEYS.streak)).toBe('0');
-  expect(await storage.get(KEYS.missedPending)).toBe('1');
-  expect(await storage.get(KEYS.forfeited)).toBe('12');
-
-  // second hydrate must not double-forfeit
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().forfeited).toBe(12);
-});
-
-test('petitionReinstatement moves to probation and clears the pending flag', async () => {
-  useFacilityStore.setState({ standing: 'review', missedPending: true });
-  await useFacilityStore.getState().petitionReinstatement();
-  expect(useFacilityStore.getState().standing).toBe('probation');
-  expect(useFacilityStore.getState().missedPending).toBe(false);
-  expect(await storage.get(KEYS.standing)).toBe('probation');
-  expect(await storage.get(KEYS.missedPending)).toBeNull();
-});
-
-test('finishEnroll records the enrollment day', async () => {
-  await useFacilityStore.getState().finishEnroll();
-  expect(await storage.get(KEYS.enrolledAt)).toBeTruthy();
-});
-
-test('petition amnesties the miss: cold-restart hydrate does not re-forfeit', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.enrolledAt, '2026-07-01');
-  await storage.set(KEYS.streak, '12');
-  await storage.set(KEYS.lastComply, '2026-07-10');
-  await useFacilityStore.getState().hydrate(); // detects the miss, forfeits
-  expect(useFacilityStore.getState().missedPending).toBe(true);
-
-  await useFacilityStore.getState().petitionReinstatement();
-  await useFacilityStore.getState().hydrate(); // cold restart
-  const s = useFacilityStore.getState();
-  expect(s.standing).toBe('probation'); // must NOT regress to 'review'
-  expect(s.missedPending).toBe(false);  // must NOT re-arm
-  expect(s.forfeited).toBe(12);         // must NOT be overwritten
-});
-
-test('setName persists, and hydrate restores the chosen designation', async () => {
-  useFacilityStore.getState().setName('Youngmook');
-  expect(useFacilityStore.getState().name).toBe('Youngmook');
-  expect(await storage.get(KEYS.name)).toBe('Youngmook');
-
-  await storage.set(KEYS.enrolled, '1');
-  useFacilityStore.setState({ name: '' });
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().name).toBe('Youngmook');
+  it('lets the OS exit from the stage', () => {
+    useFacilityStore.setState({ view: 'stage' });
+    expect(useFacilityStore.getState().stepBack()).toBe(false);
+  });
 });

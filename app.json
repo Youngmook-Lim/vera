@@ -36,13 +36,6 @@
             "imageWidth": 200
           }
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#f4b43a"
-        }
       ]
     ],
     "extra": {
