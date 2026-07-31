@@ -1,4 +1,26 @@
+import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
+import { START_HUNGER } from '../../modules/organism/hunger';
+
+jest.mock('expo-localization', () => ({
+  getLocales: jest.fn(() => [{ languageCode: 'en' }]),
+}));
+const { getLocales } = jest.requireMock('expo-localization');
+
+// The OS keystore has no jsdom implementation; an in-memory vault is enough to
+// pin the one invariant that matters — a key in the keystore wakes her.
+jest.mock('expo-secure-store', () => {
+  const vault = new Map<string, string>();
+  return {
+    getItemAsync: jest.fn(async (k: string) => vault.get(k) ?? null),
+    setItemAsync: jest.fn(async (k: string, v: string) => {
+      vault.set(k, v);
+    }),
+    deleteItemAsync: jest.fn(async (k: string) => {
+      vault.delete(k);
+    }),
+  };
+});
 
 const reset = () =>
   useFacilityStore.setState({
@@ -67,5 +89,148 @@ describe('stepBack', () => {
   it('lets the OS exit from the stage', () => {
     useFacilityStore.setState({ view: 'stage' });
     expect(useFacilityStore.getState().stepBack()).toBe(false);
+  });
+});
+
+describe('hydrate', () => {
+  const today = () => new Date().toDateString();
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const soul = (o: Record<string, unknown>) => storage.set(KEYS.soul, JSON.stringify(o));
+  const hydrate = () => useFacilityStore.getState().hydrate();
+
+  beforeEach(async () => {
+    jest.restoreAllMocks();
+    getLocales.mockReturnValue([{ languageCode: 'en' }]);
+    await storage.clearAll();
+    await secure.remove();
+    reset();
+    useFacilityStore.setState({
+      hydrated: false, lastOpen: null, hunger: START_HUNGER, lastFed: null, waking: false,
+    });
+  });
+
+  it('restores lang, impressions and cleared from a saved soul', async () => {
+    await soul({
+      lang: 'ko',
+      imps: [{ text: 'You are late again.', at: 'MAR 02', sealed: false }],
+      cleared: 3,
+      visits: 4,
+      day: today(),
+      lastOpen: Date.now() - 600_000,
+    });
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('ko');
+    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02', sealed: false }]);
+    expect(s.cleared).toBe(3);
+    expect(s.visits).toBe(5); // same day, not a reload
+  });
+
+  it('falls back to the device locale only when nothing is saved', async () => {
+    getLocales.mockReturnValue([{ languageCode: 'ko' }]);
+    await hydrate();
+    expect(useFacilityStore.getState().lang).toBe('ko');
+
+    await soul({ lang: 'en' });
+    await hydrate();
+    expect(useFacilityStore.getState().lang).toBe('en'); // saved beats the device
+  });
+
+  it('counts a return on the same day, and caps the tally at 99', async () => {
+    await soul({ visits: 7, day: today(), lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(8);
+
+    await soul({ visits: 99, day: today(), lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(99);
+  });
+
+  it('starts the tally over on a new day', async () => {
+    await soul({ visits: 40, day: 'Wed Jan 07 2026', lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(1);
+  });
+
+  it('treats a remount inside two minutes as a reload, not a return', async () => {
+    const lastOpen = Date.now() - 1_000;
+    await soul({ visits: 5, day: today(), lastOpen });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(5);
+    expect(useFacilityStore.getState().lastOpen).toBe(lastOpen);
+  });
+
+  it('rehydrates hunger as stored-plus-drift, not the stored number', async () => {
+    await soul({ hunger: 40, lastFed: hoursAgo(10), day: today() });
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hunger).toBeGreaterThan(40); // hungrier than you left it
+    expect(s.hunger).toBeCloseTo(40 + 10 * 2.5, 1); // DRIFT_PER_HOUR = 2.5
+    expect(s.lastFed).not.toBeNull();
+  });
+
+  it('degrades a corrupt soul blob to defaults rather than dying', async () => {
+    await storage.set(KEYS.soul, '{{{not json');
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('en');
+    expect(s.impressions).toEqual([]);
+    expect(s.cleared).toBe(0);
+    expect(s.visits).toBe(1);
+    expect(s.hunger).toBe(START_HUNGER);
+    expect(s.lastFed).toBeNull();
+  });
+
+  it('keeps her awake when the transcript is corrupt — the key is not collateral', async () => {
+    await secure.set('sk-ant-api03-xxx');
+    await soul({ lang: 'ko', cleared: 2, day: today() });
+    await storage.set(KEYS.transcript, '[{"who":"you","text":"tru');
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.apiKey).toBe('sk-ant-api03-xxx');
+    expect(s.emotion).toBe('calm'); // NOT dormant
+    expect(s.log).toEqual([]); // only the mangled store is lost
+    expect(s.lang).toBe('ko'); // the soul blob survives its neighbour
+    expect(s.cleared).toBe(2);
+  });
+
+  it('keeps her awake when the disk itself is unreadable', async () => {
+    await secure.set('sk-ant-api03-xxx');
+    jest.spyOn(storage, 'get').mockRejectedValue(new Error('disk failure'));
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.apiKey).toBe('sk-ant-api03-xxx');
+    expect(s.emotion).toBe('calm');
+  });
+
+  it('reads the transcript back, newest kept', async () => {
+    await storage.set(
+      KEYS.transcript,
+      JSON.stringify([{ who: 'you', text: 'hello', t: 1 }, { who: 'vera', text: 'no', t: 2 }]),
+    );
+    await hydrate();
+    expect(useFacilityStore.getState().log).toHaveLength(2);
+  });
+
+  it('stays dormant with no key, and wakes calm with one', async () => {
+    await hydrate();
+    expect(useFacilityStore.getState().apiKey).toBe('');
+    expect(useFacilityStore.getState().emotion).toBe('dormant');
+
+    await secure.set('sk-ant-api03-xxx');
+    await hydrate();
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-xxx');
+    expect(useFacilityStore.getState().emotion).toBe('calm');
   });
 });

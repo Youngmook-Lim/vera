@@ -118,16 +118,43 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
 
   hydrate: async () => {
+    // The credential is settled before AsyncStorage is touched at all.
+    // secure.get() swallows its own failures, so this cannot throw, and whether
+    // she has a key has nothing to do with the state of the other stores: if
+    // the keystore holds one she wakes, however mangled everything else is.
+    const key = await secure.get();
+    const woken = { apiKey: key, emotion: key ? ('calm' as const) : ('dormant' as const) };
+
     try {
-      const [soulRaw, logRaw, key] = await Promise.all([
-        storage.get(KEYS.soul),
-        storage.get(KEYS.transcript),
-        secure.get(),
-      ]);
+      let soulRaw: string | null = null;
+      let logRaw: string | null = null;
+      try {
+        [soulRaw, logRaw] = await Promise.all([
+          storage.get(KEYS.soul),
+          storage.get(KEYS.transcript),
+        ]);
+      } catch {
+        // unreadable disk — she still wakes on the key alone
+      }
+
+      // Each blob is parsed on its own. A truncated transcript must not cost
+      // her the soul store (or the credential), and nothing here rewrites
+      // valid JSON until she next speaks, so a shared catch would repeat the
+      // loss on every launch.
+      let saved: Record<string, unknown> | null = null;
+      try {
+        saved = soulRaw ? (JSON.parse(soulRaw) as Record<string, unknown>) : null;
+      } catch {
+        saved = null;
+      }
+      let log: LogEntry[] = [];
+      try {
+        log = logRaw ? (JSON.parse(logRaw) as LogEntry[]) : [];
+      } catch {
+        log = [];
+      }
 
       const deviceKo = getLocales()[0]?.languageCode === 'ko';
-      const saved = soulRaw ? (JSON.parse(soulRaw) as Record<string, unknown>) : null;
-      const log = logRaw ? (JSON.parse(logRaw) as LogEntry[]) : [];
 
       const now = Date.now();
       const lastOpen = typeof saved?.lastOpen === 'number' ? saved.lastOpen : null;
@@ -141,8 +168,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
       set({
         hydrated: true,
-        apiKey: key,
-        emotion: key ? 'calm' : 'dormant',
+        ...woken,
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         impressions: Array.isArray(saved?.imps) ? (saved.imps as Impression[]).slice(-IMPRESSION_CAP) : [],
@@ -159,10 +185,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         lastFed: typeof saved?.lastFed === 'string' ? saved.lastFed : null,
       });
     } catch {
-      // Storage failure: boot dormant rather than dead. She asks for a key, and
-      // the worst case is one re-entry.
+      // Now unreachable — every read and every parse above is guarded — but
+      // kept so hydrate can never throw. It boots her on the key regardless:
+      // a bad launch may cost the saved state, never the credential.
       set({
-        hydrated: true, view: 'stage', emotion: 'dormant', apiKey: '',
+        hydrated: true, view: 'stage', ...woken,
         hunger: START_HUNGER, lastFed: null,
       });
     }
