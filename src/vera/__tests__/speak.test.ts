@@ -131,6 +131,31 @@ describe('parseSpeech', () => {
     expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.line).toBe('Hm.');
     expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"."}')?.line).toBe('Hm.');
   });
+
+  it('discards multi-token punctuation-only impressions, not just a single dot', () => {
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". . ."}')?.impression).toBeNull();
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!! ??"}')?.impression).toBeNull();
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". !"}')?.impression).toBeNull();
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"   ,   "}')?.impression).toBeNull();
+
+    // line is preserved even though the impression is discarded
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". . ."}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!! ??"}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". !"}')?.line).toBe('Hm.');
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"   ,   "}')?.line).toBe('Hm.');
+  });
+
+  it('keeps a Korean impression, since punctuation-detection must not be Latin-only', () => {
+    const raw = '{"emotion":"calm","line":"Hm.","impression":"수면에 대해 거짓말합니다"}';
+    expect(parseSpeech(raw)?.impression).not.toBeNull();
+    expect(parseSpeech(raw)?.impression).toMatch(/[가-힣]/);
+  });
+
+  it('keeps a mixed-punctuation impression that carries real words', () => {
+    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"Deflects. Always."}')?.impression).toBe(
+      'Deflects. Always.',
+    );
+  });
 });
 
 describe('fallbackFor', () => {

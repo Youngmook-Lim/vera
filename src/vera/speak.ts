@@ -63,6 +63,10 @@ export const buildUserPrompt = (
 export const clampImpression = (raw: string): string =>
   `${String(raw).trim().split(/\s+/).slice(0, 9).join(' ').replace(/[.,;:!?]+$/, '')}.`;
 
+// A clamped impression is only worth keeping if it actually says something.
+// Unicode-aware so a Korean impression isn't nulled alongside punctuation noise.
+const HAS_CONTENT = /[\p{L}\p{N}]/u;
+
 export const parseSpeech = (raw: string): SpeechResult | null => {
   const match = String(raw ?? '').match(/\{[\s\S]*\}/);
   if (!match) return null;
@@ -82,7 +86,7 @@ export const parseSpeech = (raw: string): SpeechResult | null => {
   return {
     emotion: isEmotionKey(parsed.emotion) ? parsed.emotion : 'calm',
     line,
-    impression: clampedImpression === '.' ? null : clampedImpression,
+    impression: clampedImpression && HAS_CONTENT.test(clampedImpression) ? clampedImpression : null,
     seal: parsed.seal === true,
   };
 };
