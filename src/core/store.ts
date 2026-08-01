@@ -87,6 +87,7 @@ interface FacilityState {
   activate: (raw: string) => Promise<boolean>;
   removeKey: () => Promise<void>;
   speak: (trigger: Trigger, said?: string) => Promise<void>;
+  clearTranscript: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -329,5 +330,28 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ thinking: false });
       speaking = false;
     }
+  },
+
+  // The wording is the only thing you can burn. Her impressions live in
+  // MEMORY.md, untouched here (spec §8) — erasing the transcript changes her
+  // diction, never her verdict.
+  clearTranscript: async (): Promise<void> => {
+    const cleared = get().cleared + 1;
+    // The confirmation dies with the transcript — it must never be found still
+    // open on a later visit to the log.
+    set({ log: [], mem: [], cleared, confirmingClear: false });
+    await storage.remove(KEYS.transcript);
+    await storage.set(KEYS.soul, JSON.stringify({
+      mem: [],
+      visits: get().visits,
+      day: new Date().toDateString(),
+      lastOpen: Date.now(),
+      hunger: get().hunger,
+      lastFed: get().lastFed,
+      lang: get().lang,
+      imps: get().impressions,
+      cleared,
+    }));
+    await get().speak('subject_erased_the_transcript');
   },
 }));
