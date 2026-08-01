@@ -1,5 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
+import { buildContext } from '../../vera/context';
 import { START_HUNGER } from '../../modules/organism/hunger';
 
 jest.mock('expo-localization', () => ({
@@ -241,6 +242,41 @@ describe('hydrate', () => {
     expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-xxx');
     expect(useFacilityStore.getState().emotion).toBe('calm');
   });
+
+  // Finding 1, fix round 1: mem was persisted by speak() but never read back,
+  // so the rolling conversational memory silently reset on every cold start.
+  it('restores the rolling memory from a saved soul', async () => {
+    await soul({
+      mem: [{ you: 'hi', her: 'Noted.' }, { you: null, her: 'Hm.' }],
+      day: today(),
+    });
+    await hydrate();
+    expect(useFacilityStore.getState().mem).toEqual([
+      { you: 'hi', her: 'Noted.' },
+      { you: null, her: 'Hm.' },
+    ]);
+  });
+
+  it('degrades a missing, null, or non-array mem to [] without throwing', async () => {
+    await soul({ day: today() }); // mem missing entirely
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+
+    await soul({ mem: null, day: today() });
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+
+    await soul({ mem: 'not an array', day: today() });
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+  });
+
+  it('caps a saved mem at six, keeping the newest, not the oldest', async () => {
+    const exchanges = Array.from({ length: 9 }, (_, i) => ({ you: `q${i}`, her: `a${i}` }));
+    await soul({ mem: exchanges, day: today() });
+    await hydrate();
+    expect(useFacilityStore.getState().mem).toEqual(exchanges.slice(-6));
+  });
 });
 
 describe('activate', () => {
@@ -372,5 +408,51 @@ describe('speak', () => {
     const s = useFacilityStore.getState();
     expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
     expect(s.line).toBeTruthy();
+  });
+
+  // Finding 2, fix round 1: a new reply must cancel the previous typewriter
+  // outright, not merely outrace it — otherwise the two interleave and
+  // corrupt `shown`. Nothing before this asserted the cancellation itself.
+  it('cancels an in-flight typewriter so a second reply does not bleed into the first', async () => {
+    callLlm.mockResolvedValueOnce('{"emotion":"calm","line":"A long first line here."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'one');
+
+    // Advance partway through the first line's typewriter — shown is mid-word.
+    jest.advanceTimersByTime(16 * 5);
+    expect(useFacilityStore.getState().shown).toBe('A lon');
+
+    // A second reply starts before the first typewriter finishes.
+    callLlm.mockResolvedValueOnce('{"emotion":"calm","line":"Short."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'two');
+
+    jest.runAllTimers();
+    expect(useFacilityStore.getState().shown).toBe('Short.');
+  });
+
+  // Finding 1, fix round 1: the regression guard. mem must not just be
+  // written to disk — it must come back out and reach the next context, or
+  // her short-term continuity resets every launch despite the persisted file.
+  it('round-trips mem through a restart into the next buildContext call', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
+
+    // Simulate a cold start: hydrate reads back exactly what speak persisted.
+    useFacilityStore.setState({ hydrated: false, mem: [] });
+    await useFacilityStore.getState().hydrate();
+
+    const { mem } = useFacilityStore.getState();
+    expect(mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+
+    const ctx = buildContext({
+      now: new Date(),
+      lastOpen: null,
+      askedAt: Date.now(),
+      visits: 1,
+      hunger: START_HUNGER,
+      cleared: 0,
+      mem,
+      impressions: [],
+    });
+    expect(ctx.recent_exchanges).toEqual([{ you: 'where were you', her: 'Noted.' }]);
   });
 });

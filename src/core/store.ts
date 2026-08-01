@@ -202,6 +202,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         impressions: Array.isArray(saved?.imps) ? (saved.imps as Impression[]).slice(-IMPRESSION_CAP) : [],
+        // The rolling short-term memory, same guard-then-cap treatment as
+        // impressions above — a corrupt or oversized blob degrades to [] or
+        // to its newest six, never a throw.
+        mem: Array.isArray(saved?.mem) ? (saved.mem as Exchange[]).slice(-MEM_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         visits,
         lastOpen,
