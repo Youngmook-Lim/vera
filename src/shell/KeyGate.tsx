@@ -5,8 +5,11 @@ import { font, ms, palette, serif } from '../core/theme';
 import { T } from './strings';
 
 // The doc's copy never names a provider — she does not deal in vendors — but a
-// gate that refuses a key has to say what shape it wants (spec §9). Exact
-// order mirrors PROVIDERS in src/vera/providers.ts.
+// gate that refuses a key has to say what shape it wants (spec §9). This is a
+// human-facing order and deliberately does NOT mirror PROVIDERS in
+// src/vera/providers.ts, whose order encodes regex-match precedence (DeepSeek
+// before OpenAI, since its pattern is a strict subset) rather than
+// presentation.
 const ROUTES = 'ANTHROPIC · OPENROUTER · OPENAI · DEEPSEEK · GROQ · GOOGLE';
 
 // Replaces Stage's input row and drawer handle while she is dormant. There is

@@ -198,6 +198,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
   },
 
+  // Returns whether the key was ACCEPTED, not whether this was her first
+  // activation — a caller replacing an existing key must not read a good key
+  // as a rejection. The first-activation/waking behaviour stays internal:
+  // state (`waking`, `emotion`) is how the UI learns about it.
   activate: async (raw: string): Promise<boolean> => {
     const check = validateKey(raw);
     if (!check.ok) return false;
@@ -209,7 +213,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ emotion: 'calm' });
       setTimeout(() => set({ waking: false }), 1300);
     }
-    return first;
+    return true;
   },
 
   // She goes dormant mid-sentence. MEMORY.md is untouched underneath — waking

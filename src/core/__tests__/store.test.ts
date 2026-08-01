@@ -234,3 +234,37 @@ describe('hydrate', () => {
     expect(useFacilityStore.getState().emotion).toBe('calm');
   });
 });
+
+describe('activate', () => {
+  beforeEach(async () => {
+    reset();
+    await secure.remove();
+    useFacilityStore.setState({ waking: false });
+  });
+
+  it('returns false and leaves apiKey empty when the key is rejected', async () => {
+    const ok = await useFacilityStore.getState().activate('nope');
+    expect(ok).toBe(false);
+    expect(useFacilityStore.getState().apiKey).toBe('');
+  });
+
+  it('returns true when the key is accepted', async () => {
+    const ok = await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+    expect(ok).toBe(true);
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+  });
+
+  // A caller replacing an existing key (Task 14) must not read a good key as
+  // a rejection just because it wasn't the first activation — and she should
+  // not visibly "wake up" again for a transplant.
+  it('returns true, not false, when a valid key replaces an existing one, and does not re-wake her', async () => {
+    const first = await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+    expect(first).toBe(true);
+    expect(useFacilityStore.getState().waking).toBe(true);
+
+    const second = await useFacilityStore.getState().activate('sk-ant-api03-zyxwvutsrqponmlk');
+    expect(second).toBe(true);
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-zyxwvutsrqponmlk');
+    expect(useFacilityStore.getState().waking).toBe(false); // she does not notice a transplant
+  });
+});
