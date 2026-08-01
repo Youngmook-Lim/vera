@@ -98,11 +98,9 @@ export function Optic({ emotion, size, gaze, onPress, waking }: OpticProps) {
     const startBlink = setTimeout(() => {
       topLid.value = withRepeat(
         withSequence(
-          withTiming(size, { duration: geometry.blinkCloseMs / 2 }),
-          withTiming(geometry.lidHeight, { duration: geometry.blinkCloseMs / 2 }),
-          withTiming(geometry.lidHeight, {
-            duration: Math.max(0, geometry.blinkMs - geometry.blinkCloseMs),
-          }),
+          withTiming(size, { duration: geometry.blinkHalfMs }),
+          withTiming(geometry.lidHeight, { duration: geometry.blinkHalfMs }),
+          withTiming(geometry.lidHeight, { duration: geometry.blinkHoldMs }),
         ),
         -1,
       );
@@ -150,14 +148,15 @@ export function Optic({ emotion, size, gaze, onPress, waking }: OpticProps) {
   const wakeTransform = useDerivedValue(() => [{ scale: wakeScale.value }]);
   const lowerLidY = useDerivedValue(() => size - lowerLid.value);
 
-  // Gaze is a plain prop-driven clamp (opticGeometry.gazeLimit), not itself
-  // an emotion the canvas animates through — an explicit deps array (as
-  // Blob.tsx does for its plain `hunger` prop) rebuilds it on change.
+  // Gaze is a plain prop-driven clamp (opticGeometry.gazeLimitPx, already in
+  // pixels), not itself an emotion the canvas animates through — an
+  // explicit deps array (as Blob.tsx does for its plain `hunger` prop)
+  // rebuilds it on change.
   const gazeTransform = useDerivedValue(() => {
-    const limit = geometry.gazeLimit * size;
+    const limit = geometry.gazeLimitPx;
     return [{ translateX: gazeValue.value.x * limit }, { translateY: gazeValue.value.y * limit }];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geometry.gazeLimit, size]);
+  }, [geometry.gazeLimitPx]);
 
   // 100 spokes at 3.6° pitch, each a short radial line slanted 0.6° so the
   // fibre reads as striation rather than a static sunburst. Reads irisRadius

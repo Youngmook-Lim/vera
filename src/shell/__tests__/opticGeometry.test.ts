@@ -33,9 +33,11 @@ describe('opticGeometry', () => {
   });
 
   // Suspicious and bored never blink — they stare (design doc, turn 3a).
+  // Dormant shares that 9000ms staring boundary too.
   it('stops the slowest states blinking at all', () => {
     expect(opticGeometry('suspicious', 158).blinks).toBe(false);
     expect(opticGeometry('bored', 158).blinks).toBe(false);
+    expect(opticGeometry('dormant', 158).blinks).toBe(false);
     expect(opticGeometry('calm', 158).blinks).toBe(true);
   });
 
@@ -44,11 +46,40 @@ describe('opticGeometry', () => {
     expect(opticGeometry('calm', 158).blinkCloseMs).toBe(90);
   });
 
+  // blinkHalfMs/blinkHoldMs are the timings the blink sequence actually
+  // schedules — Skia-invisible arithmetic that must live (and be tested)
+  // here, not inside Optic.tsx.
+  it('splits the blink closure into down/up legs and an open hold', () => {
+    const calm = opticGeometry('calm', 158);
+    expect(calm.blinkHalfMs).toBe(45); // half of 90
+    expect(calm.blinkHoldMs).toBe(5710); // 5800 - 90
+
+    const affectionate = opticGeometry('affectionate', 158);
+    expect(affectionate.blinkHalfMs).toBe(210); // half of the held 420
+    expect(affectionate.blinkHoldMs).toBe(6580); // 7000 - 420
+  });
+
+  it('never lets the blink hold go negative', () => {
+    for (const key of Object.keys(EMOTIONS)) {
+      expect(opticGeometry(key as never, 158).blinkHoldMs).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('lets disappointed refuse to follow, and bored follow a quarter way', () => {
     expect(opticGeometry('disappointed', 158).tracks).toBe(false);
     expect(opticGeometry('disappointed', 158).gazeLimit).toBe(0);
     expect(opticGeometry('bored', 158).gazeLimit).toBeCloseTo(0.035, 5);
     expect(opticGeometry('calm', 158).gazeLimit).toBeCloseTo(0.14, 5);
+  });
+
+  // gazeLimitPx is the pixel clamp Optic.tsx actually applies — every other
+  // size-scaled field already bakes `size` in, and this one shouldn't be
+  // the exception left for the component to multiply out.
+  it('bakes size into the gaze clamp so the component multiplies nothing', () => {
+    expect(opticGeometry('calm', 158).gazeLimitPx).toBeCloseTo(22.12, 5);
+    expect(opticGeometry('bored', 158).gazeLimitPx).toBeCloseTo(5.53, 5);
+    expect(opticGeometry('disappointed', 158).gazeLimitPx).toBe(0);
+    expect(opticGeometry('dormant', 158).gazeLimitPx).toBe(0);
   });
 
   // Dormant is the one state with her colour vocabulary switched off.

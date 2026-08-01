@@ -16,9 +16,12 @@ export interface OpticGeometry {
   seamAlpha: number;
   blinkMs: number;
   blinkCloseMs: number;
+  blinkHalfMs: number;
+  blinkHoldMs: number;
   blinks: boolean;
   tracks: boolean;
   gazeLimit: number;
+  gazeLimitPx: number;
   showCatchlight: boolean;
 }
 
@@ -33,6 +36,8 @@ export const opticGeometry = (emotion: EmotionKey, size: number): OpticGeometry 
   const e = EMOTIONS[emotion];
   const bezelRadius = size / 2;
   const irisRadius = (size * e.aperture) / 2;
+  const blinkCloseMs = e.slowBlink ? SLOW_BLINK_CLOSE_MS : BLINK_CLOSE_MS;
+  const gazeLimit = GAZE_RANGE * e.track;
   return {
     bezelRadius,
     socketRadius: bezelRadius - BEZEL_INSET,
@@ -45,10 +50,17 @@ export const opticGeometry = (emotion: EmotionKey, size: number): OpticGeometry 
     glowAlpha: e.glow,
     seamAlpha: e.seam,
     blinkMs: e.blinkMs,
-    blinkCloseMs: e.slowBlink ? SLOW_BLINK_CLOSE_MS : BLINK_CLOSE_MS,
+    blinkCloseMs,
+    // Half the closure drives the down/up legs of the blink sequence; the
+    // hold is the open interval between blinks. Both are Skia-timing
+    // arithmetic derived from emotion fields, so they belong here — not in
+    // Optic.tsx, where they'd be untestable under the Skia mock.
+    blinkHalfMs: blinkCloseMs / 2,
+    blinkHoldMs: Math.max(0, e.blinkMs - blinkCloseMs),
     blinks: e.blinkMs < STARE_MS,
     tracks: e.track > 0,
-    gazeLimit: GAZE_RANGE * e.track,
+    gazeLimit,
+    gazeLimitPx: gazeLimit * size,
     showCatchlight: !e.dead,
   };
 };
