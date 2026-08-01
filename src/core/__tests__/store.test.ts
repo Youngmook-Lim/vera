@@ -7,6 +7,14 @@ jest.mock('expo-localization', () => ({
 }));
 const { getLocales } = jest.requireMock('expo-localization');
 
+// Only callLlm is faked — AuthError stays the real class, since speech.ts
+// checks `instanceof AuthError` against whatever this module exports.
+jest.mock('../../vera/llm', () => ({
+  ...jest.requireActual('../../vera/llm'),
+  callLlm: jest.fn(),
+}));
+const { callLlm, AuthError } = jest.requireMock('../../vera/llm');
+
 // The OS keystore has no jsdom implementation; an in-memory vault is enough to
 // pin the one invariant that matters — a key in the keystore wakes her.
 jest.mock('expo-secure-store', () => {
@@ -266,5 +274,103 @@ describe('activate', () => {
     expect(second).toBe(true);
     expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-zyxwvutsrqponmlk');
     expect(useFacilityStore.getState().waking).toBe(false); // she does not notice a transplant
+  });
+});
+
+describe('speak', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mem: [], askedAt: Date.now(), lastOpen: null, hunger: START_HUNGER, lastFed: null,
+      visits: 1, cleared: 0,
+    });
+  });
+
+  afterEach(() => {
+    // The typewriter reschedules itself one character at a time; run it to
+    // completion so nothing dangles into the next test.
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('does nothing without a key', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  it('ignores an overlapping call while one is already in flight', async () => {
+    let resolveCall: (value: string) => void = () => {};
+    callLlm.mockImplementation(() => new Promise((resolve) => { resolveCall = resolve; }));
+
+    const first = useFacilityStore.getState().speak('subject_spoke', 'hi');
+    const second = useFacilityStore.getState().speak('subject_spoke', 'again');
+    resolveCall('{"emotion":"calm","line":"Noted."}');
+    await Promise.all([first, second]);
+
+    expect(callLlm).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends her reply to the log and persists the transcript', async () => {
+    callLlm.mockResolvedValue('{"emotion":"amused","line":"Barely."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const s = useFacilityStore.getState();
+    expect(s.log[s.log.length - 1]).toMatchObject({ who: 'vera', text: 'Barely.', emotion: 'amused' });
+    expect(s.thinking).toBe(false);
+
+    const raw = await storage.get(KEYS.transcript);
+    expect(JSON.parse(raw as string)).toEqual(s.log);
+  });
+
+  it('appends a returned impression, capped and dated', async () => {
+    callLlm.mockResolvedValue(
+      '{"emotion":"calm","line":"Hm.","impression":"Deflects with questions","seal":true}',
+    );
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const s = useFacilityStore.getState();
+    expect(s.impressions[s.impressions.length - 1]).toMatchObject({
+      text: 'Deflects with questions.',
+      sealed: true,
+    });
+    expect(s.impressions[s.impressions.length - 1].at).toMatch(/^[A-Z]{3} \d{2}$/);
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    useFacilityStore.setState({ visits: 3, lang: 'en', cleared: 1, hunger: 12, lastFed: null });
+
+    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'imps', 'lang', 'lastFed', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.day).toBe(new Date().toDateString());
+    expect(saved.visits).toBe(3);
+    expect(saved.lang).toBe('en');
+    expect(saved.cleared).toBe(1);
+    expect(saved.mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+  });
+
+  it('falls back to an authored line when the network is dark, without erroring', async () => {
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+    await expect(useFacilityStore.getState().speak('subject_spoke', 'hi')).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().line).toBeTruthy();
+  });
+
+  it('leaves the key in place after an auth failure, and still shows a line', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+    expect(s.line).toBeTruthy();
   });
 });
