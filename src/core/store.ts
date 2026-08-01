@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Lang } from './i18n';
 import { KEYS, secure, storage } from './storage';
 import type { EmotionKey } from '../vera/emotions';
+import { validateKey } from '../vera/providers';
 import { START_HUNGER, hungerForNow } from '../modules/organism/hunger';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
@@ -60,6 +61,8 @@ interface FacilityState {
   setConfirmingClear: (confirming: boolean) => void;
   stepBack: () => boolean;
   hydrate: () => Promise<void>;
+  activate: (raw: string) => Promise<boolean>;
+  removeKey: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -193,5 +196,29 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         hunger: START_HUNGER, lastFed: null,
       });
     }
+  },
+
+  activate: async (raw: string): Promise<boolean> => {
+    const check = validateKey(raw);
+    if (!check.ok) return false;
+    const key = raw.trim();
+    const first = !get().apiKey;
+    await secure.set(key);
+    set({ apiKey: key, keyPanelOpen: false, waking: first });
+    if (first) {
+      set({ emotion: 'calm' });
+      setTimeout(() => set({ waking: false }), 1300);
+    }
+    return first;
+  },
+
+  // She goes dormant mid-sentence. MEMORY.md is untouched underneath — waking
+  // her again is a new first greeting over an old file (spec §10).
+  removeKey: async (): Promise<void> => {
+    await secure.remove();
+    set({
+      apiKey: '', keyPanelOpen: false, view: 'stage',
+      emotion: 'dormant', line: '', shown: '', thinking: false,
+    });
   },
 }));

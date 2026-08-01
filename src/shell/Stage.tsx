@@ -12,6 +12,7 @@ import { fluid } from '../core/fluid';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif } from '../core/theme';
 import { EMOTIONS, emotionLabel } from '../vera/emotions';
+import { KeyGate } from './KeyGate';
 import { Optic } from './Optic';
 import { T } from './strings';
 
@@ -180,8 +181,7 @@ export function Stage() {
           </View>
         </>
       ) : (
-        // Task 11: <KeyGate /> replaces the input row and drawer handle here.
-        null
+        <KeyGate />
       )}
     </View>
   );
