@@ -1,9 +1,32 @@
 // src/shell/__tests__/Stage.test.tsx
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { ms } from '../../core/theme';
 import { Stage } from '../Stage';
+
+// The send tests reach the store's speak(), which would otherwise reach the
+// network. Nothing in this file is allowed to leave the process.
+jest.mock('../../vera/llm', () => ({
+  ...jest.requireActual('../../vera/llm'),
+  callLlm: jest.fn(async () => '{"emotion":"calm","line":"Noted."}'),
+}));
+
+// The OS keystore has no jsdom implementation — an in-memory vault is enough.
+jest.mock('expo-secure-store', () => {
+  const vault = new Map<string, string>();
+  return {
+    getItemAsync: jest.fn(async (k: string) => vault.get(k) ?? null),
+    setItemAsync: jest.fn(async (k: string, v: string) => {
+      vault.set(k, v);
+    }),
+    deleteItemAsync: jest.fn(async (k: string) => {
+      vault.delete(k);
+    }),
+  };
+});
+
+const realSpeak = useFacilityStore.getState().speak;
 
 const awake = (over = {}) =>
   useFacilityStore.setState({
@@ -52,5 +75,46 @@ describe('Stage', () => {
     const view = await render(<Stage />);
     expect(view.queryByPlaceholderText('say something to her')).toBeNull();
     expect(view.queryByText('CABINET')).toBeNull();
+  });
+
+  // The stage is the home view, so its input is the app's primary one: SEND has
+  // to reach her, and has to refuse the two cases it would silently drop.
+  describe('send', () => {
+    let spoken: jest.Mock;
+
+    beforeEach(() => {
+      spoken = jest.fn(async () => {});
+      useFacilityStore.setState({ speak: spoken });
+    });
+
+    // Restored after the block, not after each test: the previous render is
+    // still mounted until RTL's own cleanup runs, and writing to the store
+    // under it would be a state update outside act().
+    afterAll(() => {
+      useFacilityStore.setState({ speak: realSpeak, draft: '' });
+    });
+
+    it('says what you typed, trimmed, and empties the box', async () => {
+      awake({ draft: '  did you miss me  ' });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByText('SEND'));
+      expect(spoken).toHaveBeenCalledWith('subject_spoke', 'did you miss me');
+      expect(useFacilityStore.getState().draft).toBe('');
+    });
+
+    it('refuses an empty box', async () => {
+      awake({ draft: '   ' });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByText('SEND'));
+      expect(spoken).not.toHaveBeenCalled();
+    });
+
+    it('refuses to interrupt a reply already in flight', async () => {
+      awake({ draft: 'again', thinking: true });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByText('SEND'));
+      expect(spoken).not.toHaveBeenCalled();
+      expect(useFacilityStore.getState().draft).toBe('again');
+    });
   });
 });

@@ -64,6 +64,7 @@ export function Stage() {
   const setDraft = useFacilityStore((s) => s.setDraft);
   const setCabinet = useFacilityStore((s) => s.setCabinet);
   const setView = useFacilityStore((s) => s.setView);
+  const speak = useFacilityStore((s) => s.speak);
 
   const awake = Boolean(apiKey);
   const t = T[lang];
@@ -106,9 +107,9 @@ export function Stage() {
 
   const send = () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || thinking) return;
     setDraft('');
-    // Task 12 wires this to the store's speak() action once it exists.
+    void speak('subject_spoke', text);
   };
 
   return (
