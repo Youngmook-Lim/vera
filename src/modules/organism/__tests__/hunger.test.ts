@@ -25,7 +25,11 @@ describe('hunger', () => {
   });
 
   it('never drops below zero', () => {
-    expect(hungerForNow(0, new Date().toISOString(), new Date())).toBeGreaterThanOrEqual(0);
+    // hours is itself Math.max(0, ...) and drift is only ever added, so a
+    // non-negative storedHunger can never reach the floor pre-clamp — the
+    // only input that actually drives the pre-clamp value below zero is a
+    // negative storedHunger (reachable via a corrupt or hand-edited blob).
+    expect(hungerForNow(-20, new Date().toISOString(), new Date())).toBe(0);
   });
 
   it('takes 41 off a feed and stops at the floor', () => {
