@@ -458,6 +458,10 @@ describe('speak', () => {
     // completion so nothing dangles into the next test.
     jest.runAllTimers();
     jest.useRealTimers();
+    // A spy restored in the test body is only restored when the test PASSES —
+    // a failing disk left mocked here would cascade into every case after it
+    // and disguise which assertion actually bit.
+    jest.restoreAllMocks();
   });
 
   it('does nothing without a key', async () => {
@@ -643,8 +647,6 @@ describe('speak', () => {
     expect(s.log.map((e) => e.text)).toEqual(['did you miss me', 'Noted.']);
     expect(s.line).toBe('Noted.');
     expect(s.thinking).toBe(false);
-
-    jest.restoreAllMocks();
   });
 
   // Finding 3, final review: RN's fetch never times out on its own, so a hung
@@ -868,7 +870,11 @@ describe('the hunger invariant', () => {
     callLlm.mockReset();
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
     await storage.clearAll();
-    await secure.remove();
+    // The key goes in the KEYSTORE, not just in state: every case here
+    // re-hydrates, and hydrate re-reads the credential. Left empty, she wakes
+    // dormant, speak() no-ops, and the cases pass without a writer ever
+    // running — which is how a vacuous version of this suite would look.
+    await secure.set('sk-ant-api03-abcdefghijklmnop');
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
       mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
