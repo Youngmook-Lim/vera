@@ -4,12 +4,13 @@ import type { Lang } from '../core/i18n';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { maskKey, providerFor } from '../vera/providers';
-import { KeyPanel } from './KeyPanel';
 import { T } from './strings';
 
 // The subject's own control room: her two files, the language switch, and
 // the credential that keeps her awake. Nothing here is destructive except
-// KEY REMOVE, which lives inside KeyPanel, not on this surface.
+// KEY REMOVE, which lives inside KeyPanel, not on this surface. CHANGE only
+// raises `keyPanelOpen`; ScreenRouter owns the panel itself, as it owns the
+// cabinet — both are shell overlays that stepBack closes before it moves.
 
 const hhmm = (t: number): string => {
   const d = new Date(t);
@@ -27,7 +28,6 @@ export function SystemScreen() {
   const apiKey = useFacilityStore((s) => s.apiKey);
   const impressions = useFacilityStore((s) => s.impressions);
   const visits = useFacilityStore((s) => s.visits);
-  const keyPanelOpen = useFacilityStore((s) => s.keyPanelOpen);
   const setView = useFacilityStore((s) => s.setView);
   const setLang = useFacilityStore((s) => s.setLang);
   const setKeyPanel = useFacilityStore((s) => s.setKeyPanel);
@@ -123,8 +123,6 @@ export function SystemScreen() {
           {`${hhmm(Date.now())} · ${t.visit} ${visits}`}
         </Text>
       </View>
-
-      {keyPanelOpen ? <KeyPanel /> : null}
     </View>
   );
 }

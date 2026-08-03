@@ -18,3 +18,4 @@ export interface EmptySlot {
 
 export type RegistryEntry = ModuleDef | EmptySlot;
 export const isEmpty = (e: RegistryEntry): e is EmptySlot => !('id' in e);
+export const isModule = (e: RegistryEntry): e is ModuleDef => 'id' in e;
