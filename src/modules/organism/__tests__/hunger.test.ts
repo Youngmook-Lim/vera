@@ -24,6 +24,10 @@ describe('hunger', () => {
     expect(hungerForNow(82, fed.toISOString(), new Date('2026-07-30T00:00:00'))).toBe(100);
   });
 
+  it('never drops below zero', () => {
+    expect(hungerForNow(0, new Date().toISOString(), new Date())).toBeGreaterThanOrEqual(0);
+  });
+
   it('takes 41 off a feed and stops at the floor', () => {
     expect(feed(82)).toBe(41);
     expect(feed(20)).toBe(HUNGER_FLOOR);

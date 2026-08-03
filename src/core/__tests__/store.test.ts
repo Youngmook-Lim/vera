@@ -525,3 +525,86 @@ describe('setLang', () => {
     expect(useFacilityStore.getState().lang).toBe('ko');
   });
 });
+
+describe('feedSpecimen', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    await secure.remove();
+    useFacilityStore.setState({
+      apiKey: '', mem: [], askedAt: Date.now(), lastOpen: null,
+      hunger: START_HUNGER, lastFed: null, visits: 1, cleared: 0, lang: 'en',
+    });
+  });
+
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    useFacilityStore.setState({
+      hunger: 82, visits: 5, cleared: 2,
+      impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
+    });
+
+    await useFacilityStore.getState().feedSpecimen();
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'imps', 'lang', 'lastFed', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.hunger).toBe(41);
+    expect(typeof saved.lastFed).toBe('string');
+    expect(saved.visits).toBe(5);
+    expect(saved.cleared).toBe(2);
+    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30', sealed: false }]);
+  });
+
+  // The regression this guards: a dropped `lastFed` field would still write
+  // *some* blob, so a test that only checks "something was written" cannot
+  // catch it. On the next cold start hydrate() would read lastFed back as
+  // null, and hungerForNow(_, null, _) returns START_HUNGER unconditionally —
+  // the specimen's hunger would silently reset to 82 instead of resuming its
+  // drift from 41. This round-trip is the check that actually exercises that.
+  it('round-trips hunger and lastFed through a restart', async () => {
+    await useFacilityStore.getState().feedSpecimen();
+    const fedHunger = useFacilityStore.getState().hunger;
+    const fedLastFed = useFacilityStore.getState().lastFed;
+    expect(fedHunger).toBe(41);
+    expect(fedLastFed).not.toBeNull();
+
+    // Simulate a cold start: hydrate reads back exactly what feedSpecimen
+    // persisted, then re-derives hunger as stored-plus-drift from `now`.
+    useFacilityStore.setState({ hydrated: false, hunger: START_HUNGER, lastFed: null });
+    await useFacilityStore.getState().hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.lastFed).toBe(fedLastFed);
+    // Negligible real time elapses between the feed and the hydrate call
+    // above, so the rehydrated value should still read as 41, not the 82 a
+    // dropped lastFed would produce.
+    expect(s.hunger).toBeCloseTo(fedHunger, 1);
+  });
+
+  // speak() no-ops without a key, so a dormant subject feeding the specimen
+  // would lose the change on restart if feedSpecimen relied on speak() to
+  // persist it.
+  it('persists hunger and lastFed even when she is dormant and speak() no-ops', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().feedSpecimen();
+
+    expect(callLlm).not.toHaveBeenCalled();
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(saved.hunger).toBe(41);
+    expect(typeof saved.lastFed).toBe('string');
+
+    useFacilityStore.setState({ hydrated: false, hunger: START_HUNGER, lastFed: null });
+    await useFacilityStore.getState().hydrate();
+    expect(useFacilityStore.getState().hunger).toBeCloseTo(41, 1);
+  });
+});
