@@ -51,6 +51,56 @@ let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
 // remount inside two minutes as a reload rather than a return.
 let greeted = false;
 
+// The one shape written to KEYS.soul, and the one place that writes it — four
+// callers persisting nine fields by hand is how the writers drifted apart in
+// the first place.
+interface SoulBlob {
+  mem: Exchange[];
+  visits: number;
+  day: string;
+  lastOpen: number;
+  hunger: number;
+  hungerAt: string | null;
+  lang: Lang;
+  imps: Impression[];
+  cleared: number;
+}
+
+// THE HUNGER INVARIANT: `hunger` and `hungerAt` are always a consistent pair —
+// the number is the specimen's hunger AT that instant, never a value that has
+// drifted since. hydrate re-derives hunger for `now` as stored-plus-drift, so
+// persisting the live (already drifted) hunger beside an OLDER timestamp makes
+// hydrate apply the same drift a second time; within a few sessions the
+// specimen pins at 100 and is permanently suffering in her context.
+//
+// Only feedSpecimen (a real feed) and hydrate (which measures hunger for now)
+// may set either field, and both always set both. Everything else — including
+// every writer below — copies the live pair verbatim and never invents a
+// timestamp for it. That is why this function takes the whole state and reads
+// both fields itself: there is no seam left to get it wrong at.
+//
+// A failed write is the same bargain hydrate strikes on the way in: this turn
+// does not survive a restart, and nothing else is lost. It must never reach
+// the `void speak(...)` call sites as an unhandled rejection.
+const saveSoul = async (s: FacilityState): Promise<void> => {
+  const blob: SoulBlob = {
+    mem: s.mem,
+    visits: s.visits,
+    day: new Date().toDateString(),
+    lastOpen: Date.now(),
+    hunger: s.hunger,
+    hungerAt: s.hungerAt,
+    lang: s.lang,
+    imps: s.impressions,
+    cleared: s.cleared,
+  };
+  try {
+    await storage.set(KEYS.soul, JSON.stringify(blob));
+  } catch {
+    // an unwritable disk — she keeps this turn in memory and loses it on exit
+  }
+};
+
 interface FacilityState {
   hydrated: boolean;
   view: View;
@@ -78,8 +128,15 @@ interface FacilityState {
 
   // Specimen-03 lives in the shell's state because she is told about it —
   // hunger reaches her context object (spec §11), so the module cannot own it.
+  // hungerAt is when `hunger` was measured, not merely when it was last fed:
+  // see THE HUNGER INVARIANT above.
   hunger: number;
-  lastFed: string | null;
+  hungerAt: string | null;
+
+  // Consecutive refusals of the credential. Not persisted: a fresh launch
+  // gives the key the benefit of the doubt, and she never goes dormant for it
+  // (spec §10 — a bad key is caught when she fails to answer, not at the gate).
+  authFails: number;
 
   cabinetOpen: boolean;
   keyPanelOpen: boolean;
@@ -124,7 +181,8 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   askedAt: Date.now(),
 
   hunger: START_HUNGER,
-  lastFed: null,
+  hungerAt: null,
+  authFails: 0,
 
   cabinetOpen: false,
   keyPanelOpen: false,
@@ -208,6 +266,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         ? Math.min(99, (typeof saved?.visits === 'number' ? saved.visits : 0) + (isReload ? 0 : 1))
         : 1;
 
+      // The stored pair, read as a pair (THE HUNGER INVARIANT above).
+      const storedHungerAt = typeof saved?.hungerAt === 'string' ? saved.hungerAt : null;
+
       set({
         hydrated: true,
         ...woken,
@@ -225,10 +286,18 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // specimen is hungrier than you left it (spec §12).
         hunger: hungerForNow(
           typeof saved?.hunger === 'number' ? saved.hunger : null,
-          typeof saved?.lastFed === 'string' ? saved.lastFed : null,
+          storedHungerAt,
           new Date(),
         ),
-        lastFed: typeof saved?.lastFed === 'string' ? saved.lastFed : null,
+        // …and the drifted value is hunger as of NOW, so now is the instant it
+        // was measured at. Carrying the older stamp forward here is exactly
+        // the double-drift the invariant forbids. An unanchored specimen (never
+        // fed, nothing stored) stays unanchored and reads START_HUNGER.
+        hungerAt: storedHungerAt == null ? null : new Date().toISOString(),
+        // A cold start is not a question she asked four minutes ago: without
+        // this, a subject who takes their time typing the first line of the
+        // session gets `they_took_their_time` about nothing.
+        askedAt: now,
       });
     } catch {
       // Now unreachable — every read and every parse above is guarded — but
@@ -236,7 +305,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // a bad launch may cost the saved state, never the credential.
       set({
         hydrated: true, view: 'stage', ...woken,
-        hunger: START_HUNGER, lastFed: null,
+        hunger: START_HUNGER, hungerAt: null, askedAt: Date.now(),
       });
     }
   },
@@ -263,7 +332,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const key = raw.trim();
     const first = !get().apiKey;
     await secure.set(key);
-    set({ apiKey: key, keyPanelOpen: false, waking: first });
+    // A new credential starts on a clean tally — the old key's refusals are
+    // not this one's.
+    set({ apiKey: key, keyPanelOpen: false, waking: first, authFails: 0 });
     if (first) {
       set({ emotion: 'calm' });
       setTimeout(() => set({ waking: false }), 1300);
@@ -301,6 +372,14 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     speaking = true;
     set({ thinking: true });
 
+    // The subject's own words go into the transcript the moment they are
+    // spoken — before her reply, stamped when they were sent, and on screen
+    // while she thinks. A thread of her answers with no record of the
+    // questions is not a transcript.
+    if (said) {
+      set({ log: [...get().log, { who: 'you' as const, text: said, t: Date.now() }].slice(-LOG_CAP) });
+    }
+
     try {
       const s = get();
       const context = buildContext({
@@ -323,7 +402,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         call: (system, user) => callLlm(get().apiKey, system, user),
       });
 
-      const { emotion, line, impression, seal } = outcome;
+      const { emotion, line, impression, seal, authFailed } = outcome;
 
       const log = [...get().log, { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
       const impressions = impression
@@ -331,8 +410,19 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         : get().impressions;
       const mem = [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
 
-      set({ emotion, line, log, impressions, mem, askedAt: Date.now() });
-      await storage.set(KEYS.transcript, JSON.stringify(log));
+      // A refusal shows a line like any other failure and leaves the key
+      // exactly where it is — the tally is only so ACCESS can mark the
+      // credential as the thing to look at after it happens twice running.
+      set({
+        emotion, line, log, impressions, mem, askedAt: Date.now(),
+        authFails: authFailed ? get().authFails + 1 : 0,
+      });
+      try {
+        await storage.set(KEYS.transcript, JSON.stringify(log));
+      } catch {
+        // an unwritable disk — her reply stands on screen, it just does not
+        // survive a restart
+      }
 
       // A new typewriter always cancels whatever was still ticking — the
       // guard above only blocks a second network call, not a leftover timer
@@ -347,17 +437,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         typewriterHandle = setTimeout(() => tick(1), 16);
       }
 
-      await storage.set(KEYS.soul, JSON.stringify({
-        mem,
-        visits: get().visits,
-        day: new Date().toDateString(),
-        lastOpen: Date.now(),
-        hunger: get().hunger,
-        lastFed: get().lastFed,
-        lang: get().lang,
-        imps: impressions,
-        cleared: get().cleared,
-      }));
+      await saveSoul(get());
     } finally {
       set({ thinking: false });
       speaking = false;
@@ -372,18 +452,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     // The confirmation dies with the transcript — it must never be found still
     // open on a later visit to the log.
     set({ log: [], mem: [], cleared, confirmingClear: false });
-    await storage.remove(KEYS.transcript);
-    await storage.set(KEYS.soul, JSON.stringify({
-      mem: [],
-      visits: get().visits,
-      day: new Date().toDateString(),
-      lastOpen: Date.now(),
-      hunger: get().hunger,
-      lastFed: get().lastFed,
-      lang: get().lang,
-      imps: get().impressions,
-      cleared,
-    }));
+    try {
+      await storage.remove(KEYS.transcript);
+    } catch {
+      // the wording is gone from state either way; a stale file loses to the
+      // next write, and a rejection must not reach the void-call site
+    }
+    await saveSoul(get());
     await get().speak('subject_erased_the_transcript');
   },
 
@@ -392,17 +467,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // soul-write would otherwise be the only copy of the new lang on disk.
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
-    await storage.set(KEYS.soul, JSON.stringify({
-      mem: get().mem,
-      visits: get().visits,
-      day: new Date().toDateString(),
-      lastOpen: Date.now(),
-      hunger: get().hunger,
-      lastFed: get().lastFed,
-      lang,
-      imps: get().impressions,
-      cleared: get().cleared,
-    }));
+    await saveSoul(get());
     await get().speak('language_switched');
   },
 
@@ -410,20 +475,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // setLang above — speak() no-ops without a key, and its own soul-write
   // would otherwise be the only copy of the new hunger on disk.
   feedSpecimen: async (): Promise<void> => {
-    const hunger = feedHunger(get().hunger);
-    const lastFed = new Date().toISOString();
-    set({ hunger, lastFed });
-    await storage.set(KEYS.soul, JSON.stringify({
-      mem: get().mem,
-      visits: get().visits,
-      day: new Date().toDateString(),
-      lastOpen: Date.now(),
-      hunger,
-      lastFed,
-      lang: get().lang,
-      imps: get().impressions,
-      cleared: get().cleared,
-    }));
+    // The one place a real feed happens, and one of only two allowed to touch
+    // the pair (THE HUNGER INVARIANT above) — the new value is measured now.
+    set({ hunger: feedHunger(get().hunger), hungerAt: new Date().toISOString() });
+    await saveSoul(get());
     await get().speak('subject_fed_the_specimen');
   },
 }));

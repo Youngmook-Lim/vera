@@ -41,11 +41,26 @@ describe('LogScreen', () => {
     useFacilityStore.setState({ apiKey: '' });
   });
 
-  it('shows both sides of the conversation', async () => {
-    seed();
+  // Finding 1, final review: the test this replaces seeded both sides straight
+  // into state, so it passed while nothing in src ever built a `who: 'you'`
+  // entry and the subject's half of the thread was dead code in production.
+  // This one goes through SEND, the way the words actually arrive.
+  it('shows both sides of the conversation, the subject first', async () => {
+    seed({ log: [], apiKey: 'sk-ant-api03-abcdefghijklmnop' });
     const view = await render(<LogScreen />);
+
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    expect(useFacilityStore.getState().log.map((e) => [e.who, e.text])).toEqual([
+      ['you', 'did you miss me'],
+      ['vera', 'Noted.'],
+    ]);
     expect(view.getByText('did you miss me')).toBeTruthy();
-    expect(view.getByText('Barely.')).toBeTruthy();
+    expect(view.getByText('Noted.')).toBeTruthy();
+
+    // Her reply typewrites on a chain of real timers; let it finish rather than
+    // leaving one ticking into the next test.
+    await new Promise((resolve) => setTimeout(resolve, 250));
   });
 
   it('tags her lines with the emotion she was in', async () => {

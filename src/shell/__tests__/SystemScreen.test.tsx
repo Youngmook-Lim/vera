@@ -1,6 +1,8 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
+import { palette } from '../../core/theme';
 import { SystemScreen } from '../SystemScreen';
 
 // setLang calls speak(), which would otherwise reach the network. Nothing in
@@ -28,7 +30,7 @@ const RAW_KEY = 'sk-ant-api03-abcd1234';
 
 beforeEach(() =>
   useFacilityStore.setState({
-    view: 'sys', lang: 'en', apiKey: RAW_KEY,
+    view: 'sys', lang: 'en', apiKey: RAW_KEY, authFails: 0,
     impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
     keyPanelOpen: false,
   }));
@@ -67,6 +69,25 @@ describe('SystemScreen', () => {
   // Text node, not in a prop, not in a testID or accessibility label. Checking
   // the whole serialized tree (not just queryByText) catches a leak through
   // any of those other channels.
+  // Finding 6, final review: runSpeech has always computed authFailed and
+  // nothing consumed it. Repeated refusals are the subject's cue to change the
+  // credential, and this row is where that happens — she is never sent dormant
+  // for it and the key is never cleared (spec §10).
+  it('leaves the credential alone on a single refusal', async () => {
+    useFacilityStore.setState({ authFails: 1 });
+    const view = await render(<SystemScreen />);
+    const style = StyleSheet.flatten(view.getByTestId('key-mask').props.style);
+    expect(style.color).toBe(palette.amber);
+  });
+
+  it('marks the credential once refusals repeat', async () => {
+    useFacilityStore.setState({ authFails: 2 });
+    const view = await render(<SystemScreen />);
+    const style = StyleSheet.flatten(view.getByTestId('key-mask').props.style);
+    expect(style.color).toBe(palette.danger);
+    expect(useFacilityStore.getState().apiKey).toBe(RAW_KEY); // still hers to change
+  });
+
   it('never renders the raw key anywhere in the tree', async () => {
     const view = await render(<SystemScreen />);
     const serialized = JSON.stringify(view.toJSON());

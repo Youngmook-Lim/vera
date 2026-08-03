@@ -12,6 +12,12 @@ import { T } from './strings';
 // raises `keyPanelOpen`; ScreenRouter owns the panel itself, as it owns the
 // cabinet — both are shell overlays that stepBack closes before it moves.
 
+// Two refusals running is no longer bad luck: the credential is the thing to
+// look at, and this row is where it gets changed. She is never sent dormant
+// for it and the key is never cleared — spec §10 is explicit that a bad key is
+// caught when she fails to answer, not at the gate.
+const AUTH_FAILS_BEFORE_HINT = 2;
+
 const hhmm = (t: number): string => {
   const d = new Date(t);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -27,6 +33,7 @@ export function SystemScreen() {
   const lang = useFacilityStore((s) => s.lang);
   const apiKey = useFacilityStore((s) => s.apiKey);
   const impressions = useFacilityStore((s) => s.impressions);
+  const authFails = useFacilityStore((s) => s.authFails);
   const visits = useFacilityStore((s) => s.visits);
   const setView = useFacilityStore((s) => s.setView);
   const setLang = useFacilityStore((s) => s.setLang);
@@ -34,6 +41,7 @@ export function SystemScreen() {
 
   const t = T[lang];
   const provider = providerFor(apiKey);
+  const refused = authFails >= AUTH_FAILS_BEFORE_HINT;
 
   return (
     <View style={styles.screen}>
@@ -105,7 +113,14 @@ export function SystemScreen() {
                 {provider ? provider.label : t.provUnknown}
               </Text>
             </View>
-            <Text style={[styles.rowValue, { fontFamily: font('mono', 600, lang) }]}>
+            <Text
+              testID="key-mask"
+              style={[
+                styles.rowValue,
+                { fontFamily: font('mono', 600, lang) },
+                refused && { color: palette.danger },
+              ]}
+            >
               {maskKey(apiKey)}
             </Text>
           </View>
