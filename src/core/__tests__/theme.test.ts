@@ -20,7 +20,11 @@ test('serif is her voice only, and switches script with the language', () => {
   expect(serif()).toBe('InstrumentSerif_400Regular');
   expect(serif('en')).toBe('InstrumentSerif_400Regular');
   expect(serif('ko')).toBe('NanumMyeongjo_400Regular');
-  expect(serifItalic).toBe('InstrumentSerif_400Regular_Italic');
+  expect(serifItalic()).toBe('InstrumentSerif_400Regular_Italic');
+  expect(serifItalic('en')).toBe('InstrumentSerif_400Regular_Italic');
+  // Instrument Serif Italic has no hangul; Nanum Myeongjo has no true italic,
+  // and its upright form is the right Korean answer rather than a fallback.
+  expect(serifItalic('ko')).toBe('NanumMyeongjo_400Regular');
 });
 
 test('token spot checks match the design doc 4a markup', () => {

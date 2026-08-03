@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette, serif, serifItalic } from '../../core/theme';
@@ -12,7 +13,7 @@ const GRID_TILE_PX = 86; // matches Cabinet's current hardcoded mod02 tile
 
 // The doorway rule (spec §4): the one exit, top-left, fixed at 44px, drawn in
 // this room's own ink — never her amber, never a module's own accent colour.
-function ExitAndLabel() {
+function ExitAndLabel({ lang }: { lang: Lang }) {
   const setView = useFacilityStore((s) => s.setView);
   return (
     <View style={styles.headerLeft}>
@@ -24,7 +25,7 @@ function ExitAndLabel() {
       >
         <Text style={styles.exitGlyph}>‹</Text>
       </Pressable>
-      <Text style={styles.veraLabel}>V.E.R.A.</Text>
+      <Text style={[styles.veraLabel, { fontFamily: serif(lang) }]}>V.E.R.A.</Text>
     </View>
   );
 }
@@ -87,14 +88,14 @@ export function IdentityScreen() {
   return (
     <View style={styles.screen} testID="view-mod02">
       <View style={styles.header}>
-        <ExitAndLabel />
-        <Text style={styles.headerLabel}>{t.label}</Text>
+        <ExitAndLabel lang={lang} />
+        <Text style={[styles.headerLabel, { fontFamily: serif(lang) }]}>{t.label}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.titleRow}>
           <TextInput
-            style={[styles.title, { fontFamily: serifItalic }]}
+            style={[styles.title, { fontFamily: serifItalic(lang) }]}
             value={titleDraft ?? identity.title}
             onChangeText={setTitleDraft}
             onBlur={onTitleBlur}
@@ -106,7 +107,7 @@ export function IdentityScreen() {
         </View>
 
         {identity.lines.length === 0 ? (
-          <Text style={styles.empty}>{t.empty}</Text>
+          <Text style={[styles.empty, { fontFamily: serif(lang) }]}>{t.empty}</Text>
         ) : (
           identity.lines.map((line, i) => (
             <View key={i} style={[styles.lineRow, i > 0 && styles.lineRule]}>
@@ -126,7 +127,7 @@ export function IdentityScreen() {
         )}
 
         <View style={styles.footer}>
-          <Text style={[styles.stamp, { fontFamily: serifItalic }]}>{stamp(identity)}</Text>
+          <Text style={[styles.stamp, { fontFamily: serifItalic(lang) }]}>{stamp(identity)}</Text>
           <Text style={styles.slot}>02</Text>
         </View>
       </ScrollView>

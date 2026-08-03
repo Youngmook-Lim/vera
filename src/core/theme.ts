@@ -84,4 +84,9 @@ export const font = (role: 'display' | 'mono', weight: FontWeight, lang: Lang = 
 export const serif = (lang: Lang = 'en'): string =>
   lang === 'ko' ? 'NanumMyeongjo_400Regular' : 'InstrumentSerif_400Regular';
 
-export const serifItalic = 'InstrumentSerif_400Regular_Italic';
+// Module 02's title ink. Instrument Serif Italic carries no hangul, so a
+// Korean title set in it falls back to whatever the system offers — on the one
+// page whose whole premise is a single deliberate ink. Nanum Myeongjo has no
+// true italic; its upright form is the correct Korean answer, not a compromise.
+export const serifItalic = (lang: Lang = 'en'): string =>
+  lang === 'ko' ? 'NanumMyeongjo_400Regular' : 'InstrumentSerif_400Regular_Italic';

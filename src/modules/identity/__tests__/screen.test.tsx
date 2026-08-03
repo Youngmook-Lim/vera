@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { KEYS, storage } from '../../../core/storage';
 import { useFacilityStore } from '../../../core/store';
@@ -46,6 +47,24 @@ describe('Module 02', () => {
     const view = await render(<Screen />);
     await fireEvent.press(view.getByTestId('module-exit'));
     expect(useFacilityStore.getState().view).toBe('stage');
+  });
+
+  // Finding 5, final review: the title and stamp were set in Instrument Serif
+  // Italic, which carries no hangul, and three labels set no family at all —
+  // so the one page in the app whose whole premise is a single deliberate ink
+  // fell back to the system face the moment the subject wrote in Korean.
+  it('sets every word on the page in a face that has hangul', async () => {
+    useFacilityStore.setState({ lang: 'ko' });
+    const view = await render(<Screen />);
+
+    const families = [
+      view.getByDisplayValue(SEED.title), // the editable title
+      view.getByText(/^written in \w+ · /), // the stamp
+      view.getByText('V.E.R.A.'),
+      view.getByTestId('line-0'),
+    ].map((node) => StyleSheet.flatten(node.props.style).fontFamily);
+
+    for (const family of families) expect(family).toBe('NanumMyeongjo_400Regular');
   });
 
   // The hard-won lesson: a round trip through the REAL save path (a user
