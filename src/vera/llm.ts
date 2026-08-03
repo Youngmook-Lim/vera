@@ -14,7 +14,16 @@ type FetchLike = (url: string, init: {
   method: string;
   headers: Record<string, string>;
   body: string;
+  signal?: AbortSignal;
 }) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
+
+// React Native's fetch never times out on its own, and a hung socket is the
+// likeliest real failure on a phone. Left alone it is worse than an error:
+// speak()'s busy flag and `thinking` stay set for the life of the process, and
+// every later SEND and tap on her optic is silently swallowed. 25s is past the
+// slowest honest answer to a 300-token request on a poor connection, and well
+// short of the minute a subject would spend deciding she is broken.
+export const REQUEST_TIMEOUT_MS = 25_000;
 
 interface AnthropicShape { content?: { text?: string }[] }
 interface GeminiShape { candidates?: { content?: { parts?: { text?: string }[] } }[] }
@@ -35,7 +44,35 @@ export const callLlm = async (
   fetchImpl: FetchLike = fetch as unknown as FetchLike,
 ): Promise<string> => {
   const { url, headers, body } = buildRequest(key, system, user, maxTokens);
-  const res = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body) });
+
+  // The abort frees the socket; the race is what guarantees this call settles
+  // even if the transport ignores the signal. A timeout rejects as an ordinary
+  // network failure, never AuthError — a hang is not the key's fault, and the
+  // caller falls back to an authored line rather than blaming the credential.
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const expiry = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('timeout'));
+    }, REQUEST_TIMEOUT_MS);
+  });
+
+  let res;
+  try {
+    res = await Promise.race([
+      fetchImpl(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }),
+      expiry,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) throw new AuthError();
     throw new Error(`http ${res.status}`);

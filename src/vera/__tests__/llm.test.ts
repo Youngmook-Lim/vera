@@ -1,4 +1,4 @@
-import { AuthError, callLlm } from '../llm';
+import { AuthError, REQUEST_TIMEOUT_MS, callLlm } from '../llm';
 
 const ANTHROPIC = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
 const GROQ = 'gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -55,5 +55,60 @@ describe('callLlm', () => {
 
   it('returns an empty string when the response carries no text', async () => {
     await expect(callLlm(ANTHROPIC, 'S', 'u', 300, respond({}))).resolves.toBe('');
+  });
+
+  // Finding 3, final review: RN's fetch has no timeout of its own, and a socket
+  // that never answers used to strand the caller's busy flag for the life of
+  // the process — she would go quiet and stay quiet until a force-quit.
+  describe('a request that never answers', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    type Init = {
+      method: string;
+      headers: Record<string, string>;
+      body: string;
+      signal?: AbortSignal;
+    };
+    const hang = () => jest.fn((_url: string, _init: Init) => new Promise<never>(() => {}));
+    const answer = (payload: unknown) =>
+      jest.fn(async (_url: string, _init: Init) => ({
+        ok: true, status: 200, json: async () => payload,
+      }));
+
+    it('gives up rather than hanging forever', async () => {
+      const call = callLlm(ANTHROPIC, 'S', 'u', 300, hang());
+      const settled = expect(call).rejects.toThrow('timeout');
+      await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      await settled;
+    });
+
+    // A hang is the facility's fault, not the key's: AuthError would send the
+    // caller down the "your credential is bad" path over a flaky connection.
+    it('rejects as an ordinary network failure, never as an auth refusal', async () => {
+      const call = callLlm(ANTHROPIC, 'S', 'u', 300, hang());
+      const settled = expect(call).rejects.not.toBeInstanceOf(AuthError);
+      await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      await settled;
+    });
+
+    it('aborts the request it abandoned', async () => {
+      const fetchImpl = hang();
+      const call = callLlm(ANTHROPIC, 'S', 'u', 300, fetchImpl);
+      const settled = expect(call).rejects.toThrow('timeout');
+      const signal = fetchImpl.mock.calls[0][1].signal as AbortSignal;
+      expect(signal.aborted).toBe(false);
+
+      await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      await settled;
+      expect(signal.aborted).toBe(true);
+    });
+
+    it('does not abort a request that answered in time', async () => {
+      const fetchImpl = answer({ content: [{ text: 'ok' }] });
+      await expect(callLlm(ANTHROPIC, 'S', 'u', 300, fetchImpl)).resolves.toBe('ok');
+      jest.advanceTimersByTime(REQUEST_TIMEOUT_MS * 2);
+      expect((fetchImpl.mock.calls[0][1].signal as AbortSignal).aborted).toBe(false);
+    });
   });
 });
