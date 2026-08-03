@@ -8,7 +8,7 @@ import type { EmotionKey } from '../vera/emotions';
 import { callLlm } from '../vera/llm';
 import { validateKey } from '../vera/providers';
 import type { Trigger } from '../vera/speak';
-import { START_HUNGER, hungerForNow } from '../modules/organism/hunger';
+import { START_HUNGER, feed as feedHunger, hungerForNow } from '../modules/organism/hunger';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
@@ -89,6 +89,7 @@ interface FacilityState {
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
+  feedSpecimen: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -373,5 +374,26 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       cleared: get().cleared,
     }));
     await get().speak('language_switched');
+  },
+
+  // A tap on the vivarium. Persisted before speak() is even asked, same as
+  // setLang above — speak() no-ops without a key, and its own soul-write
+  // would otherwise be the only copy of the new hunger on disk.
+  feedSpecimen: async (): Promise<void> => {
+    const hunger = feedHunger(get().hunger);
+    const lastFed = new Date().toISOString();
+    set({ hunger, lastFed });
+    await storage.set(KEYS.soul, JSON.stringify({
+      mem: get().mem,
+      visits: get().visits,
+      day: new Date().toDateString(),
+      lastOpen: Date.now(),
+      hunger,
+      lastFed,
+      lang: get().lang,
+      imps: get().impressions,
+      cleared: get().cleared,
+    }));
+    await get().speak('subject_fed_the_specimen');
   },
 }));
