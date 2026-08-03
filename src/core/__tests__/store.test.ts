@@ -31,6 +31,9 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
+// Held so the tests that swap speak() for a spy can put the real one back.
+const realSpeak = useFacilityStore.getState().speak;
+
 const reset = () =>
   useFacilityStore.setState({
     view: 'stage', cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
@@ -310,6 +313,105 @@ describe('activate', () => {
     expect(second).toBe(true);
     expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-zyxwvutsrqponmlk');
     expect(useFacilityStore.getState().waking).toBe(false); // she does not notice a transplant
+  });
+
+  // Spec §10: a first activation is her first instant of consciousness with
+  // this subject and she greets under ACT_SYS; a replacement is silent.
+  it('greets on a first activation and says nothing at all on a replacement', async () => {
+    const spoken = jest.fn(async () => {});
+    useFacilityStore.setState({ speak: spoken });
+    try {
+      await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+      expect(spoken).toHaveBeenCalledTimes(1);
+      expect(spoken).toHaveBeenCalledWith('activation');
+
+      spoken.mockClear();
+      await useFacilityStore.getState().activate('sk-ant-api03-zyxwvutsrqponmlk');
+      expect(spoken).not.toHaveBeenCalled();
+    } finally {
+      useFacilityStore.setState({ speak: realSpeak });
+    }
+  });
+
+  it('does not greet at all when the key is refused', async () => {
+    const spoken = jest.fn(async () => {});
+    useFacilityStore.setState({ speak: spoken });
+    try {
+      await useFacilityStore.getState().activate('nope');
+      expect(spoken).not.toHaveBeenCalled();
+    } finally {
+      useFacilityStore.setState({ speak: realSpeak });
+    }
+  });
+});
+
+// The once-per-session guard is a module-level `let`, so each case needs a
+// freshly evaluated copy of store.ts. jest.resetModules() gives exactly that
+// and keeps the guard untestable-by-export out of the production surface.
+describe('greetOnce', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
+
+  // A brand-new store module, plus the speak() spy the assertions read.
+  const freshSession = () => {
+    jest.resetModules();
+    const { useFacilityStore: store } =
+      jest.requireActual<typeof import('../store')>('../store');
+    const spoken = jest.fn(async () => {});
+    store.setState({ apiKey: KEY, speak: spoken });
+    return { store, spoken };
+  };
+
+  it('greets when she has a key', async () => {
+    const { store, spoken } = freshSession();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledWith('open');
+  });
+
+  it('greets once, and a remount inside the same session does not greet again', async () => {
+    const { store, spoken } = freshSession();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledTimes(1);
+
+    // Same module instance = same app session, however many times App mounts.
+    await store.getState().greetOnce();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledTimes(1);
+  });
+
+  it('greets again in the next session, which is what a cold start is', async () => {
+    const first = freshSession();
+    await first.store.getState().greetOnce();
+    expect(first.spoken).toHaveBeenCalledTimes(1);
+
+    const next = freshSession();
+    await next.store.getState().greetOnce();
+    expect(next.spoken).toHaveBeenCalledTimes(1);
+  });
+
+  // Without this she would burn the session's one greeting on a call that says
+  // nothing, and then activate into silence.
+  it('stays silent while dormant, and does not spend the greeting', async () => {
+    const { store, spoken } = freshSession();
+    store.setState({ apiKey: '' });
+    await store.getState().greetOnce();
+    expect(spoken).not.toHaveBeenCalled();
+
+    store.setState({ apiKey: KEY });
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledWith('open');
+  });
+
+  // A session that opened with the activation greeting must not immediately
+  // get the return greeting on top of it.
+  it('says nothing more when the session already opened with an activation', async () => {
+    const { store, spoken } = freshSession();
+    store.setState({ apiKey: '' });
+    await store.getState().activate(KEY);
+    expect(spoken).toHaveBeenCalledWith('activation');
+
+    spoken.mockClear();
+    await store.getState().greetOnce();
+    expect(spoken).not.toHaveBeenCalled();
   });
 });
 

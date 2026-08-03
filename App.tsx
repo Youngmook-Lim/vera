@@ -36,8 +36,15 @@ export default function App() {
   });
 
   const hydrated = useFacilityStore((s) => s.hydrated);
+  // Hydration decides whether she has a key at all, so the greeting can only
+  // be asked for once it has settled. greetOnce holds the once-per-session
+  // guard itself (store.ts) — this effect may run again on a remount and must
+  // not be the thing that decides.
   useEffect(() => {
-    void useFacilityStore.getState().hydrate();
+    void (async () => {
+      await useFacilityStore.getState().hydrate();
+      await useFacilityStore.getState().greetOnce();
+    })();
   }, []);
 
   if (!fontsLoaded || !hydrated) return <View style={{ flex: 1, backgroundColor: palette.bg }} />;

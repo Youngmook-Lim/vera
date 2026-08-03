@@ -59,6 +59,7 @@ export function Stage() {
   const shown = useFacilityStore((s) => s.shown);
   const thinking = useFacilityStore((s) => s.thinking);
   const draft = useFacilityStore((s) => s.draft);
+  const waking = useFacilityStore((s) => s.waking);
   const log = useFacilityStore((s) => s.log);
   const cabinetOpen = useFacilityStore((s) => s.cabinetOpen);
   const setDraft = useFacilityStore((s) => s.setDraft);
@@ -112,6 +113,14 @@ export function Stage() {
     void speak('subject_spoke', text);
   };
 
+  // Poking her. Refused mid-reply for the same reason SEND is: speak() has its
+  // own busy flag and would drop the call anyway, but the surface must not
+  // pretend to accept input it is going to throw away.
+  const poke = () => {
+    if (!awake || thinking) return;
+    void speak('subject_tapped_your_optic');
+  };
+
   return (
     <View style={styles.stage} {...stagePan.panHandlers}>
       <View style={styles.header}>
@@ -138,7 +147,7 @@ export function Stage() {
       ) : null}
 
       <View style={styles.centre}>
-        <Optic emotion={emotion} size={158} gaze={gaze} />
+        <Optic emotion={emotion} size={158} gaze={gaze} onPress={poke} waking={waking} />
         <View style={styles.labelRow}>
           <View style={[styles.emotionDot, { backgroundColor: iris }]} />
           <Text style={[styles.emotionLabel, { fontFamily: font('mono', 600, lang) }]}>

@@ -3,6 +3,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { ms } from '../../core/theme';
+import * as OpticModule from '../Optic';
 import { Stage } from '../Stage';
 
 // The send tests reach the store's speak(), which would otherwise reach the
@@ -115,6 +116,57 @@ describe('Stage', () => {
       await fireEvent.press(view.getByText('SEND'));
       expect(spoken).not.toHaveBeenCalled();
       expect(useFacilityStore.getState().draft).toBe('again');
+    });
+  });
+
+  // Poking the eye is the one input on the stage that isn't typed. It refuses
+  // the same two cases SEND does: nothing to say to, and already replying.
+  describe('the optic', () => {
+    let spoken: jest.Mock;
+
+    beforeEach(() => {
+      spoken = jest.fn(async () => {});
+      useFacilityStore.setState({ speak: spoken });
+    });
+
+    afterAll(() => {
+      useFacilityStore.setState({ speak: realSpeak, draft: '' });
+    });
+
+    it('tells her when you tap her', async () => {
+      awake();
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByTestId('optic'));
+      expect(spoken).toHaveBeenCalledWith('subject_tapped_your_optic');
+    });
+
+    it('refuses to interrupt a reply already in flight', async () => {
+      awake({ thinking: true });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByTestId('optic'));
+      expect(spoken).not.toHaveBeenCalled();
+    });
+
+    it('does nothing while she is dormant', async () => {
+      awake({ apiKey: '', emotion: 'dormant' });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByTestId('optic'));
+      expect(spoken).not.toHaveBeenCalled();
+    });
+
+    // The eye is `waking`'s only consumer, and the bloom itself is drawn in
+    // Skia — mocked to no-ops here, so it cannot be observed in the tree. The
+    // prop handover is the part that can be pinned, and it is the part that
+    // was missing: the store set `waking` and nothing read it.
+    it('hands the wake bloom down to the eye', async () => {
+      const spy = jest.spyOn(OpticModule, 'Optic');
+      try {
+        awake({ waking: true });
+        await render(<Stage />);
+        expect(spy.mock.calls[0][0]).toEqual(expect.objectContaining({ waking: true }));
+      } finally {
+        spy.mockRestore();
+      }
     });
   });
 });

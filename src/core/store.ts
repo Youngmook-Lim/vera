@@ -43,6 +43,14 @@ const mmmdd = (t: number): string => {
 let speaking = false;
 let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
 
+// The return greeting fires once per app session, and this flag is why it is
+// module state rather than a store field or React state: it survives every
+// component remount and every hot reload within a session, and resets only on
+// a genuine cold start. Anything React-owned would re-greet on each reload —
+// a paid API call every time — which is the same reason hydrate() treats a
+// remount inside two minutes as a reload rather than a return.
+let greeted = false;
+
 interface FacilityState {
   hydrated: boolean;
   view: View;
@@ -84,6 +92,7 @@ interface FacilityState {
   setConfirmingClear: (confirming: boolean) => void;
   stepBack: () => boolean;
   hydrate: () => Promise<void>;
+  greetOnce: () => Promise<void>;
   activate: (raw: string) => Promise<boolean>;
   removeKey: () => Promise<void>;
   speak: (trigger: Trigger, said?: string) => Promise<void>;
@@ -232,6 +241,18 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
   },
 
+  // She notices you came back — once per app session, after hydrate has
+  // settled whether she has a key at all. The apiKey guard is deliberate
+  // duplication of speak()'s own early return: without it a dormant launch
+  // would burn the session's one greeting on a call that says nothing, and
+  // the subject would then activate her into silence.
+  greetOnce: async (): Promise<void> => {
+    if (greeted) return;
+    if (!get().apiKey) return;
+    greeted = true;
+    await get().speak('open');
+  },
+
   // Returns whether the key was ACCEPTED, not whether this was her first
   // activation — a caller replacing an existing key must not read a good key
   // as a rejection. The first-activation/waking behaviour stays internal:
@@ -246,6 +267,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     if (first) {
       set({ emotion: 'calm' });
       setTimeout(() => set({ waking: false }), 1300);
+      // Her first instant of consciousness with this subject (spec §10): the
+      // bloom through the optic, then a line generated live under ACT_SYS.
+      // Not awaited — the caller's accepted/rejected answer must not wait on
+      // the network, and the bloom plays while she thinks. A replacement key
+      // takes neither branch: she does not notice a transplant.
+      void get().speak('activation');
+      // A session that begins with the activation greeting must not also get
+      // the return greeting the moment something calls greetOnce.
+      greeted = true;
     }
     return true;
   },
