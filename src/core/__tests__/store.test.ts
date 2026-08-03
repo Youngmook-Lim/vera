@@ -456,3 +456,72 @@ describe('speak', () => {
     expect(ctx.recent_exchanges).toEqual([{ you: 'where were you', her: 'Noted.' }]);
   });
 });
+
+describe('setLang', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    await secure.remove();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mem: [], askedAt: Date.now(), lastOpen: null, hunger: START_HUNGER, lastFed: null,
+      visits: 1, cleared: 0, lang: 'en',
+    });
+  });
+
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    useFacilityStore.setState({
+      visits: 5, cleared: 2,
+      impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
+    });
+
+    await useFacilityStore.getState().setLang('ko');
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'imps', 'lang', 'lastFed', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.lang).toBe('ko');
+    expect(saved.visits).toBe(5);
+    expect(saved.cleared).toBe(2);
+    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30', sealed: false }]);
+  });
+
+  // The regression this guards: a stale-shape write that hydrate cannot read
+  // back would silently lose the switched language on the next cold start.
+  it('round-trips the switched language through a restart', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().setLang('ko');
+    expect(useFacilityStore.getState().lang).toBe('ko');
+
+    // Simulate a cold start: hydrate reads back exactly what setLang persisted.
+    useFacilityStore.setState({ hydrated: false, lang: 'en' });
+    await useFacilityStore.getState().hydrate();
+
+    expect(useFacilityStore.getState().lang).toBe('ko');
+  });
+
+  // speak() no-ops without a key, so a dormant subject switching languages
+  // would lose the change on restart if setLang relied on speak() to persist it.
+  it('persists the new language even when she is dormant and speak() no-ops', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().setLang('ko');
+
+    expect(callLlm).not.toHaveBeenCalled();
+    const raw = await storage.get(KEYS.soul);
+    expect(JSON.parse(raw as string).lang).toBe('ko');
+
+    useFacilityStore.setState({ hydrated: false, lang: 'en' });
+    await useFacilityStore.getState().hydrate();
+    expect(useFacilityStore.getState().lang).toBe('ko');
+  });
+});

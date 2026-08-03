@@ -88,6 +88,7 @@ interface FacilityState {
   removeKey: () => Promise<void>;
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
+  setLang: (lang: Lang) => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -353,5 +354,24 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       cleared,
     }));
     await get().speak('subject_erased_the_transcript');
+  },
+
+  // Persisted before speak() is even asked, because speak() no-ops without a
+  // key (spec: dormant subjects can still switch languages) and its own
+  // soul-write would otherwise be the only copy of the new lang on disk.
+  setLang: async (lang: Lang): Promise<void> => {
+    set({ lang });
+    await storage.set(KEYS.soul, JSON.stringify({
+      mem: get().mem,
+      visits: get().visits,
+      day: new Date().toDateString(),
+      lastOpen: Date.now(),
+      hunger: get().hunger,
+      lastFed: get().lastFed,
+      lang,
+      imps: get().impressions,
+      cleared: get().cleared,
+    }));
+    await get().speak('language_switched');
   },
 }));
