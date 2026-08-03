@@ -4,19 +4,11 @@ import { KEYS, storage } from '../../core/storage';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette, serif, serifItalic } from '../../core/theme';
 import type { ModuleDef } from '../types';
-import { SEED, addLine, editLine, removeLine, stamp } from './identity';
+import { SEED, addLine, editLine, editTitle, removeLine, stamp } from './identity';
 import type { Identity } from './identity';
 import { T } from './strings';
 
 const GRID_TILE_PX = 86; // matches Cabinet's current hardcoded mod02 tile
-
-// Title editing follows the same revision rule as a line (bump on real
-// change, no-op on the same text) but a title is never deleted by emptying it.
-const commitTitle = (identity: Identity, text: string): Identity => {
-  const next = text.trim();
-  if (!next || next === identity.title) return identity;
-  return { ...identity, title: next, revs: identity.revs + 1 };
-};
 
 // The doorway rule (spec §4): the one exit, top-left, fixed at 44px, drawn in
 // this room's own ink — never her amber, never a module's own accent colour.
@@ -69,7 +61,7 @@ export function IdentityScreen() {
 
   const onTitleBlur = () => {
     if (titleDraft === null) return;
-    const next = commitTitle(identity, titleDraft);
+    const next = editTitle(identity, titleDraft);
     setTitleDraft(null);
     if (next !== identity) persist(next);
   };

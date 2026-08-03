@@ -1,4 +1,4 @@
-import { SEED, addLine, editLine, removeLine, stamp } from '../identity';
+import { SEED, addLine, editLine, editTitle, removeLine, stamp } from '../identity';
 
 describe('stamp', () => {
   it('names the month it was written and how often it has been revised', () => {
@@ -44,5 +44,36 @@ describe('editing', () => {
     const before = [...SEED.lines];
     removeLine(SEED, 0);
     expect(SEED.lines).toEqual(before);
+  });
+});
+
+describe('editTitle', () => {
+  it('rewrites the title and counts the revision', () => {
+    const next = editTitle(SEED, 'who I am becoming instead');
+    expect(next.title).toBe('who I am becoming instead');
+    expect(next.revs).toBe(SEED.revs + 1);
+  });
+
+  it('leaves the count alone — and returns the same object — when nothing actually changed', () => {
+    // Siblings (editLine, etc.) use this referential-equality contract to
+    // decide whether a caller needs to persist; editTitle must match it.
+    const next = editTitle(SEED, SEED.title);
+    expect(next).toBe(SEED);
+    expect(next.revs).toBe(SEED.revs);
+  });
+
+  // Deliberate decision (not an accident): a title has no "removed" state
+  // analogous to a line, so clearing it keeps the last title instead of
+  // deleting it — same no-op, no-bump treatment as a same-text edit.
+  it('keeps the last title instead of deleting it when cleared', () => {
+    const next = editTitle(SEED, '   ');
+    expect(next).toBe(SEED);
+    expect(next.title).toBe(SEED.title);
+  });
+
+  it('never mutates what it was given', () => {
+    const before = SEED.title;
+    editTitle(SEED, 'something else entirely');
+    expect(SEED.title).toBe(before);
   });
 });

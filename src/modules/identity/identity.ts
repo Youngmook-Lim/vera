@@ -52,3 +52,13 @@ export const removeLine = (identity: Identity, index: number): Identity => {
   lines.splice(index, 1);
   return bump(identity, lines);
 };
+
+// A title has no state analogous to a line being "removed" — clearing it is a
+// deliberate no-op, not a delete-and-bump. A page with no title at all is
+// worse than one that keeps its last, so an empty edit is treated the same as
+// a same-text edit: no change, no revision.
+export const editTitle = (identity: Identity, text: string): Identity => {
+  const next = text.trim();
+  if (!next || next === identity.title) return identity;
+  return { ...identity, title: next, revs: identity.revs + 1 };
+};
