@@ -1,193 +1,450 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KEYS, storage } from '../../core/storage';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../../core/store';
 import { font, ms, palette } from '../../core/theme';
-import { VeraPanel } from '../../shell/components/VeraPanel';
+import { T } from '../../shell/strings';
 import type { ModuleDef } from '../types';
 import { Blob, BLOB_SIZE } from './Blob';
-import { feed, hungerForNow, isHungry, START_HUNGER } from './hunger';
-import { organismStrings } from './strings';
+import { isHungry } from './hunger';
 
-const tileStrings = {
-  en: { title: 'SUPPORT ORGANISM', sub: 'specimen-03', tag: 'HUNGRY' },
-  ko: { title: '지원 유기체', sub: '표본-03', tag: '공복' },
-} as const;
+// The 168px vivarium is fixed; only the blob inside it tracks hunger (spec
+// §12: `74 + hunger × 0.24` px).
+const VIVARIUM_PX = 168;
+const blobSizeFor = (hunger: number) => 74 + hunger * 0.24;
 
-function Icon() {
-  return <Text style={{ fontSize: 15 }}>🐼</Text>;
-}
+const TILE_ICON_PX = 58; // matches Cabinet's current hardcoded mod01 row
 
-function Vital({
-  label,
-  value,
-  sub,
-  color,
-  lang,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  color: string;
-  lang: 'en' | 'ko';
-}) {
+// The doorway rule (spec §4): this is the one exit, top-left, fixed at 44px,
+// drawn in the terrarium's own ink — never the shell's amber.
+function ExitAndLabel({ lang }: { lang: 'en' | 'ko' }) {
+  const setView = useFacilityStore((s) => s.setView);
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: palette.dark.card,
-        borderWidth: 1,
-        borderColor: palette.dark.border,
-        borderRadius: 12,
-        paddingHorizontal: 11,
-        paddingVertical: 10,
-      }}
-    >
-      <Text style={{ fontFamily: font('mono', 600, lang), fontSize: ms(7.5), letterSpacing: ms(7.5) * 0.1, color: '#6c6656' }}>{label}</Text>
-      <Text style={{ marginTop: 5, fontFamily: font('display', 700, lang), fontSize: ms(15), color }}>{value}</Text>
-      <Text style={{ marginTop: 5, fontFamily: font('mono', 500, lang), fontSize: ms(8), color: '#6c6656' }}>{sub}</Text>
+    <View style={styles.headerLeft}>
+      <Pressable
+        testID="module-exit"
+        onPress={() => setView('stage')}
+        style={styles.exit}
+        hitSlop={4}
+      >
+        <Text style={styles.exitGlyph}>‹</Text>
+      </Pressable>
+      <Text style={[styles.veraLabel, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
     </View>
   );
 }
 
-function Screen() {
+export function OrganismScreen() {
   const lang = useFacilityStore((s) => s.lang);
-  const setStep = useFacilityStore((s) => s.setStep);
-  const insets = useSafeAreaInsets();
-  const t = organismStrings[lang];
-
-  const [hunger, setHunger] = useState(START_HUNGER);
+  const hunger = useFacilityStore((s) => s.hunger);
+  const feedSpecimen = useFacilityStore((s) => s.feedSpecimen);
   const [tapNonce, setTapNonce] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
-    void Promise.all([storage.get(KEYS.organismHunger), storage.get(KEYS.organismLastFed)])
-      .then(([h, fedAt]) => {
-        if (!alive) return;
-        const stored = h == null ? null : Number(h);
-        setHunger(hungerForNow(Number.isFinite(stored as number) ? stored : null, fedAt, new Date()));
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const t = T[lang];
+  const hungry = isHungry(hunger);
+  const pct = Math.round(hunger);
+  const blobSize = blobSizeFor(hunger);
 
   const onFeed = () => {
-    setHunger((h) => {
-      const next = feed(h);
-      void storage.set(KEYS.organismHunger, String(next));
-      void storage.set(KEYS.organismLastFed, new Date().toISOString());
-      return next;
-    });
     setTapNonce((n) => n + 1);
+    void feedSpecimen();
   };
 
-  const hungry = isHungry(hunger);
-  const hungerColor = hungry ? '#ff8a4a' : palette.accent.green;
-
   return (
-    <View style={{ flex: 1, backgroundColor: palette.dark.bg, paddingTop: insets.top }}>
-      {/* header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 12,
-          paddingBottom: 10,
-          borderBottomWidth: 1,
-          borderBottomColor: '#2a2820',
-        }}
-      >
-        <Pressable
-          hitSlop={16}
-          onPress={() => setStep('facility')}
-          accessibilityRole="button"
-          accessibilityLabel="back"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-        >
-          <Text style={{ fontFamily: font('display', 600), fontSize: ms(15), color: '#8a8168' }}>◂</Text>
-          <Text style={{ fontFamily: font('display', 600, lang), fontSize: ms(10), color: '#f4efe2' }}>{t.title}</Text>
-        </Pressable>
-        <Text style={{ fontFamily: font('mono', 500), fontSize: ms(9), color: '#6c6656' }}>SPECIMEN-03</Text>
+    <View style={styles.screen} testID="view-mod01">
+      <View style={styles.header}>
+        <ExitAndLabel lang={lang} />
+        <Text style={[styles.title, { fontFamily: font('mono', 600, lang) }]}>{t.orgTitle}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24, alignItems: 'center' }}>
-        {/* status pill + day */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 }}>
-          <Text style={{ fontFamily: font('mono', 600, lang), fontSize: ms(9), color: hungerColor, borderWidth: 1, borderColor: palette.dark.border, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
-            {hungry ? t.statusHungry : t.statusFed}
+      <ScrollView contentContainerStyle={styles.body}>
+        <View style={styles.pillRow}>
+          <Text
+            style={[
+              styles.statusPill,
+              { color: hungry ? palette.organism.hungry : palette.organism.green },
+              { fontFamily: font('mono', 600, lang) },
+            ]}
+          >
+            {hungry ? t.orgStatusHungry : t.orgStatusFed}
           </Text>
-          <Text style={{ fontFamily: font('mono', 600, lang), fontSize: ms(8.5), letterSpacing: ms(8.5) * 0.08, color: '#8a8168', borderWidth: 1, borderColor: palette.dark.border, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
-            {t.day}
-          </Text>
+          <Text style={[styles.dayPill, { fontFamily: font('mono', 600, lang) }]}>{t.orgDay}</Text>
         </View>
 
-        {/* tank + tappable blob */}
-        <Pressable
-          onPress={onFeed}
-          accessibilityRole="button"
-          accessibilityLabel="feed"
-          style={{
-            marginTop: 18,
-            width: BLOB_SIZE,
-            height: BLOB_SIZE,
-            borderRadius: BLOB_SIZE / 2,
-            borderWidth: 1,
-            borderColor: palette.dark.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#161d18',
-          }}
-        >
-          <Blob hunger={hunger} tapNonce={tapNonce} />
+        <Pressable testID="vivarium" onPress={onFeed} style={styles.vivarium}>
+          <View
+            style={[
+              styles.blobWell,
+              { width: blobSize, height: blobSize, borderRadius: blobSize / 2 },
+            ]}
+          >
+            <View
+              style={{
+                width: BLOB_SIZE,
+                height: BLOB_SIZE,
+                transform: [{ scale: blobSize / BLOB_SIZE }],
+              }}
+            >
+              <Blob hunger={hunger} tapNonce={tapNonce} />
+            </View>
+          </View>
         </Pressable>
 
-        <Text style={{ marginTop: 13, fontFamily: font('mono', 500, lang), fontSize: ms(9.5), letterSpacing: ms(9.5) * 0.18, color: '#6c6656' }}>
-          {hungry ? t.moodHungry : t.moodFed}
+        <Text style={[styles.mood, { fontFamily: font('mono', 500, lang) }]}>
+          {hungry ? t.orgMoodHungry : t.orgMoodFed}
         </Text>
-        <Text style={{ marginTop: 8, fontFamily: font('mono', 600, lang), fontSize: ms(9), letterSpacing: ms(9) * 0.14, color: hungry ? '#9a6a52' : '#4fd08a' }}>
-          {hungry ? t.tapHint : t.fedHint}
+        <Text style={[styles.hint, { fontFamily: font('mono', 500, lang) }]}>
+          {hungry ? t.orgTapHint : t.orgFedHint}
         </Text>
 
-        {/* vitals grid */}
-        <View style={{ marginTop: 15, width: '100%', flexDirection: 'row', gap: 8 }}>
-          <Vital label={t.hungerLabel} value={`${Math.round(hunger)}%`} sub="" color={hungerColor} lang={lang} />
-          <Vital label={t.tempLabel} value="36.1°" sub={t.tempSub} color="#f4efe2" lang={lang} />
-          <Vital label={t.nauseaLabel} value={t.nauseaVal} sub={t.nauseaSub} color={palette.accent.green} lang={lang} />
+        <View style={styles.statsRow}>
+          <View style={styles.statTile}>
+            <Text style={[styles.statLabel, { fontFamily: font('mono', 600, lang) }]}>
+              {t.orgHungerL}
+            </Text>
+            <Text style={[styles.statValue, { fontFamily: font('display', 700, lang) }]}>
+              {pct}%
+            </Text>
+            <View style={styles.statBarTrack}>
+              <View
+                style={[
+                  styles.statBarFill,
+                  {
+                    width: `${pct}%`,
+                    backgroundColor: hungry ? palette.organism.hungry : palette.organism.green,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={[styles.statLabel, { fontFamily: font('mono', 600, lang) }]}>
+              {t.orgTempL}
+            </Text>
+            <Text style={[styles.statValue, { fontFamily: font('display', 700, lang) }]}>
+              36.1°
+            </Text>
+            <Text style={[styles.statSub, { fontFamily: font('mono', 500, lang) }]}>
+              {t.orgTempSub}
+            </Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={[styles.statLabel, { fontFamily: font('mono', 600, lang) }]}>
+              {t.orgNauseaL}
+            </Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: palette.organism.green },
+                { fontFamily: font('display', 700, lang) },
+              ]}
+            >
+              {t.orgNauseaV}
+            </Text>
+            <Text style={[styles.statSub, { fontFamily: font('mono', 500, lang) }]}>
+              {t.orgNauseaSub}
+            </Text>
+          </View>
         </View>
 
-        {/* mutation log */}
-        <Text style={{ marginTop: 18, width: '100%', fontFamily: font('mono', 600, lang), fontSize: ms(9), letterSpacing: ms(9) * 0.16, color: '#6c6656' }}>{t.mutLog}</Text>
-        <View style={{ marginTop: 8, width: '100%', backgroundColor: palette.dark.card, borderWidth: 1, borderColor: palette.dark.border, borderRadius: 12, overflow: 'hidden' }}>
-          {[
-            { d: t.mutD1, m: t.mut1 },
-            { d: t.mutD2, m: t.mut2 },
-            { d: t.mutD3, m: t.mut3 },
-          ].map((row, i) => (
-            <View key={row.d} style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingVertical: 11, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#221f18' }}>
-              <Text style={{ fontFamily: font('mono', 500), fontSize: ms(9), color: '#57534a', minWidth: 44 }}>{row.d}</Text>
-              <Text style={{ flex: 1, fontFamily: font('display', 500, lang), fontSize: ms(11), lineHeight: ms(11) * 1.45, color: '#c9c2ae' }}>{row.m}</Text>
+        <Text style={[styles.mutLogTitle, { fontFamily: font('mono', 600, lang) }]}>
+          {t.orgMutLog}
+        </Text>
+        <View style={styles.mutLog}>
+          {t.muts.map(([date, text], i) => (
+            <View
+              key={date}
+              style={[styles.mutRow, i < t.muts.length - 1 && styles.mutRowBorder]}
+            >
+              <Text style={[styles.mutDate, { fontFamily: font('mono', 500, lang) }]}>{date}</Text>
+              <Text style={[styles.mutText, { fontFamily: font('display', 500, lang) }]}>
+                {text}
+              </Text>
             </View>
           ))}
-        </View>
-
-        {/* V.E.R.A. */}
-        <View style={{ marginTop: 14, width: '100%' }}>
-          <VeraPanel line={hungry ? t.veraHungry : t.veraFed} lang={lang} />
         </View>
       </ScrollView>
     </View>
   );
 }
 
+// Cabinet's preview of the specimen — same content Cabinet.tsx currently
+// hardcodes for its mod01 row, moved here so Task 18 can swap it in from the
+// registry (see registry.ts's comment for the shape it expects).
+function OrganismTile({ onPress }: { onPress: () => void }) {
+  const lang = useFacilityStore((s) => s.lang);
+  const hunger = useFacilityStore((s) => s.hunger);
+  const t = T[lang];
+  const hungry = isHungry(hunger);
+  const pct = Math.round(hunger);
+
+  return (
+    <Pressable testID="tile-mod01" style={tileStyles.row} onPress={onPress}>
+      <View style={tileStyles.blobWell}>
+        <View style={tileStyles.blobScaler}>
+          <Blob hunger={hunger} tapNonce={0} />
+        </View>
+      </View>
+      <View style={tileStyles.text}>
+        <Text style={[tileStyles.name, { fontFamily: font('mono', 600, lang) }]}>{t.spec}</Text>
+        <Text
+          style={[
+            tileStyles.status,
+            { color: hungry ? palette.organism.hungry : palette.organism.green },
+            { fontFamily: font('mono', 600, lang) },
+          ]}
+        >
+          {hungry ? t.hungry : t.fed}
+        </Text>
+        <Text style={[tileStyles.sub, { fontFamily: font('mono', 500, lang) }]}>
+          {`${t.inCare} ${pct}%`}
+        </Text>
+        <View style={tileStyles.hungerTrack}>
+          <View
+            style={[
+              tileStyles.hungerFill,
+              {
+                width: `${pct}%`,
+                backgroundColor: hungry ? palette.organism.hungry : palette.organism.green,
+              },
+            ]}
+          />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 export const organism: ModuleDef = {
-  id: 'organism',
-  layout: 'square',
-  Icon,
-  tile: (lang) => ({ ...tileStrings[lang], tagScheme: 'orange' }),
-  Screen,
+  id: 'mod01',
+  slot: '01',
+  Tile: OrganismTile,
+  Screen: OrganismScreen,
 };
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: palette.organism.bg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderColor: palette.organism.cardBorder,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  exit: {
+    width: 44,
+    height: 44,
+    marginLeft: -12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exitGlyph: {
+    fontSize: ms(15),
+    color: palette.organism.ink,
+  },
+  veraLabel: {
+    fontSize: ms(10),
+    color: palette.organism.ink,
+  },
+  title: {
+    fontSize: ms(9),
+    letterSpacing: ms(9) * 0.14,
+    color: palette.organism.label,
+  },
+  body: {
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 24,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusPill: {
+    fontSize: ms(8.5),
+    letterSpacing: ms(8.5) * 0.08,
+  },
+  dayPill: {
+    fontSize: ms(8.5),
+    letterSpacing: ms(8.5) * 0.08,
+    color: palette.organism.label,
+    borderWidth: 1,
+    borderColor: palette.organism.cardBorder,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  vivarium: {
+    marginTop: 18,
+    width: VIVARIUM_PX,
+    height: VIVARIUM_PX,
+    borderRadius: VIVARIUM_PX / 2,
+    backgroundColor: palette.organism.well,
+    borderWidth: 1,
+    borderColor: palette.organism.wellBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blobWell: {
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mood: {
+    marginTop: 13,
+    fontSize: ms(9.5),
+    letterSpacing: ms(9.5) * 0.18,
+    color: palette.organism.label,
+  },
+  hint: {
+    marginTop: 6,
+    fontSize: ms(8.5),
+    letterSpacing: ms(8.5) * 0.1,
+    color: palette.organism.textBright,
+  },
+  statsRow: {
+    marginTop: 15,
+    width: '100%',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statTile: {
+    flex: 1,
+    backgroundColor: palette.organism.card,
+    borderWidth: 1,
+    borderColor: palette.organism.cardBorder,
+    borderRadius: 12,
+    padding: 10,
+  },
+  statLabel: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.1,
+    color: palette.organism.label,
+  },
+  statValue: {
+    marginTop: 5,
+    fontSize: ms(15),
+    color: palette.organism.textBright,
+  },
+  statSub: {
+    marginTop: 5,
+    fontSize: ms(8),
+    color: palette.organism.label,
+  },
+  statBarTrack: {
+    marginTop: 6,
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: palette.organism.wellBorder,
+  },
+  statBarFill: {
+    height: 3,
+    borderRadius: 2,
+  },
+  mutLogTitle: {
+    marginTop: 18,
+    width: '100%',
+    fontSize: ms(9),
+    letterSpacing: ms(9) * 0.16,
+    color: palette.organism.label,
+  },
+  mutLog: {
+    marginTop: 8,
+    width: '100%',
+    backgroundColor: palette.organism.card,
+    borderWidth: 1,
+    borderColor: palette.organism.cardBorder,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  mutRow: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
+  },
+  mutRowBorder: {
+    borderBottomWidth: 1,
+    borderColor: palette.organism.cardBorder,
+  },
+  mutDate: {
+    fontSize: ms(9),
+    color: palette.organism.label,
+    flexShrink: 0,
+    minWidth: 44,
+  },
+  mutText: {
+    flex: 1,
+    fontSize: ms(11),
+    lineHeight: ms(11) * 1.45,
+    color: palette.organism.text,
+  },
+});
+
+const tileStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: palette.organism.card,
+    borderWidth: 1,
+    borderColor: palette.organism.cardBorder,
+  },
+  blobWell: {
+    width: TILE_ICON_PX,
+    height: TILE_ICON_PX,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: palette.organism.well,
+    borderWidth: 1,
+    borderColor: palette.organism.wellBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blobScaler: {
+    width: BLOB_SIZE,
+    height: BLOB_SIZE,
+    transform: [{ scale: TILE_ICON_PX / BLOB_SIZE }],
+  },
+  text: {
+    flex: 1,
+    gap: 4,
+  },
+  name: {
+    fontSize: ms(11),
+    color: palette.organism.textBright,
+  },
+  status: {
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.08,
+  },
+  sub: {
+    fontSize: ms(7.5),
+    color: palette.organism.label,
+  },
+  hungerTrack: {
+    marginTop: 4,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: palette.organism.well,
+  },
+  hungerFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+});

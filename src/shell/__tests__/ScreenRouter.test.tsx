@@ -1,152 +1,157 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
 import React from 'react';
 import { BackHandler } from 'react-native';
-import { KEYS, storage } from '../../core/storage';
 import { useFacilityStore } from '../../core/store';
 import { ScreenRouter } from '../ScreenRouter';
 
-jest.mock('expo-notifications', () => ({
-  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+// Rendering every room pulls in her whole surface area. Nothing here is
+// allowed to leave the process: `callLlm` is stubbed (requireActual is kept so
+// AuthError stays a real class for speech.ts's `instanceof`), and the OS
+// keystore, which has no jsdom implementation, becomes an in-memory vault.
+jest.mock('../../vera/llm', () => ({
+  ...jest.requireActual('../../vera/llm'),
+  callLlm: jest.fn(async () => '{"emotion":"calm","line":"Noted."}'),
 }));
-jest.mock('expo-localization', () => ({
-  getLocales: jest.fn(() => [{ languageCode: 'en' }]),
-}));
-jest.mock('@react-native-community/slider', () => 'Slider');
 
-// The ring's completion is animation glue; drive the screen through a stub.
-jest.mock('../daily/ComplyRing', () => {
-  const React = require('react');
-  const { Pressable, Text } = require('react-native');
+jest.mock('expo-secure-store', () => {
+  const vault = new Map<string, string>();
   return {
-    ComplyRing: ({ onComplete }: { onComplete: () => void }) =>
-      React.createElement(
-        Pressable,
-        { onPress: onComplete, accessibilityLabel: 'ring-stub' },
-        React.createElement(Text, null, 'RING'),
-      ),
+    getItemAsync: jest.fn(async (k: string) => vault.get(k) ?? null),
+    setItemAsync: jest.fn(async (k: string, v: string) => {
+      vault.set(k, v);
+    }),
+    deleteItemAsync: jest.fn(async (k: string) => {
+      vault.delete(k);
+    }),
   };
 });
 
-beforeEach(async () => {
-  useFacilityStore.setState({
-    step: 'facility',
-    lang: 'en',
-    streak: 0,
-    standing: 'good',
-    lastComply: null,
-    enrolledAt: null,
-    missedPending: false,
-    forfeited: 0,
-  });
-  await Promise.all([
-    storage.remove(KEYS.streak),
-    storage.remove(KEYS.standing),
-    storage.remove(KEYS.lastComply),
-    storage.remove(KEYS.enrolledAt),
-    storage.remove(KEYS.missedPending),
-    storage.remove(KEYS.forfeited),
-  ]);
+beforeEach(() => {
   jest.restoreAllMocks();
+  useFacilityStore.setState({
+    hydrated: true, view: 'stage', lang: 'en', emotion: 'dormant',
+    apiKey: 'sk-ant-api03-abcdefghijklmnop',
+    log: [], impressions: [], hunger: 82,
+    cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
+  });
 });
 
-test('hardware back returns to facility from a module, exits only from home', async () => {
+// BackHandler in react-native 0.86 has no `mockPressBack` helper in its jest
+// setup, so the handler the router registers is captured off a spy and called
+// directly. Each press is wrapped in act(): stepBack writes to the store,
+// which re-renders the router.
+const captureBack = () => {
   const spy = jest.spyOn(BackHandler, 'addEventListener');
-  useFacilityStore.setState({ step: 'field' });
+  return async () => {
+    const handler = spy.mock.calls[0][1] as () => boolean;
+    let consumed = false;
+    await act(async () => {
+      consumed = handler();
+    });
+    return consumed;
+  };
+};
+
+test('the stage is what she boots into', async () => {
+  const { getByText } = await render(<ScreenRouter />);
+  expect(getByText('DORMANT')).toBeTruthy();
+});
+
+test('every view renders its own room', async () => {
+  const views = ['stage', 'log', 'sys', 'mem', 'soul', 'mod01', 'mod02'] as const;
+  for (const view of views) {
+    useFacilityStore.setState({ view });
+    const rendered = await render(<ScreenRouter />);
+    expect(rendered.toJSON()).toBeTruthy();
+    await rendered.unmount();
+  }
+});
+
+test('sys is the SYSTEM screen now, not a placeholder', async () => {
+  useFacilityStore.setState({ view: 'sys' });
+  const { getByText, queryByText } = await render(<ScreenRouter />);
+  expect(getByText('MEMORY.md')).toBeTruthy();
+  expect(getByText('SOUL.md')).toBeTruthy();
+  expect(queryByText('DORMANT')).toBeNull();
+});
+
+test('both documents come out of one screen', async () => {
+  useFacilityStore.setState({ view: 'mem' });
+  const mem = await render(<ScreenRouter />);
+  expect(mem.getByText('MEMORY.md')).toBeTruthy();
+  await mem.unmount();
+
+  useFacilityStore.setState({ view: 'soul' });
+  const soul = await render(<ScreenRouter />);
+  expect(soul.getByText('SOUL.md')).toBeTruthy();
+});
+
+test('the rooms come from the registry', async () => {
+  useFacilityStore.setState({ view: 'mod01' });
+  const mod01 = await render(<ScreenRouter />);
+  expect(mod01.getByTestId('view-mod01')).toBeTruthy();
+  await mod01.unmount();
+
+  useFacilityStore.setState({ view: 'mod02' });
+  const mod02 = await render(<ScreenRouter />);
+  expect(mod02.getByTestId('view-mod02')).toBeTruthy();
+});
+
+test('the cabinet is an overlay, not a view', async () => {
+  useFacilityStore.setState({ view: 'stage', cabinetOpen: true });
+  const { getByText, getByTestId } = await render(<ScreenRouter />);
+  // The drawer's own header, not the stage's handle label — both say CABINET.
+  expect(getByText('02 / 04 · CLOSE')).toBeTruthy();
+  // The stage is still underneath it.
+  expect(getByTestId('her-line')).toBeTruthy();
+});
+
+test('the credential panel is an overlay over SYSTEM', async () => {
+  useFacilityStore.setState({ view: 'sys', keyPanelOpen: true });
+  const { getByText } = await render(<ScreenRouter />);
+  // The panel's own subtitle — 'ACCESS' alone is ambiguous, SYSTEM has a
+  // section under that name underneath.
+  expect(getByText('Replace her credential.')).toBeTruthy();
+  expect(getByText('MEMORY.md')).toBeTruthy();
+});
+
+test('a file steps back to SYSTEM, and SYSTEM to the stage', async () => {
+  const back = captureBack();
+  useFacilityStore.setState({ view: 'mem' });
   await render(<ScreenRouter />);
-  const handler = spy.mock.calls[0][1] as () => boolean;
 
-  // On a module screen: back is consumed and routes home.
-  expect(handler()).toBe(true);
-  expect(useFacilityStore.getState().step).toBe('facility');
-
-  // On the home screen: back is not consumed (default = leave the app).
-  expect(handler()).toBe(false);
-  expect(useFacilityStore.getState().step).toBe('facility');
+  expect(await back()).toBe(true);
+  expect(useFacilityStore.getState().view).toBe('sys');
+  expect(await back()).toBe(true);
+  expect(useFacilityStore.getState().view).toBe('stage');
+  expect(await back()).toBe(false);
 });
 
-test('facility step renders the launcher home', async () => {
-  const { getByText } = await render(<ScreenRouter />);
-  expect(getByText(/SUBJECT #50640/)).toBeTruthy();
-});
-
-test('module steps render their real screens', async () => {
-  useFacilityStore.setState({ step: 'hazard' });
-  const { getByText } = await render(<ScreenRouter />);
-  expect(getByText('HAZARD ASSESSMENT')).toBeTruthy();
-  expect(getByText('4 UNAUTHORIZED')).toBeTruthy();
-});
-
-test('settings step renders the real settings screen', async () => {
-  useFacilityStore.setState({ step: 'settings' });
-  const { getByText } = await render(<ScreenRouter />);
-  expect(getByText('SUBJECT PREFERENCES')).toBeTruthy();
-});
-
-test('notiflog step renders the real transmission log', async () => {
-  useFacilityStore.setState({ step: 'notiflog' });
-  const { getByText } = await render(<ScreenRouter />);
-  expect(getByText('TRANSMISSION LOG')).toBeTruthy();
-});
-
-test('enrollment steps render their screens', async () => {
-  useFacilityStore.setState({ step: 'intake' });
-  const intake = await render(<ScreenRouter />);
-  expect(intake.getByText('BEGIN INTAKE ▸')).toBeTruthy();
-
-  useFacilityStore.setState({ step: 'consent' });
-  const consent = await render(<ScreenRouter />);
-  expect(consent.getByText('Enrichment Agreement')).toBeTruthy();
-});
-
-test('hardware back steps backward through enrollment, exiting only from intake', async () => {
-  const spy = jest.spyOn(BackHandler, 'addEventListener');
-  useFacilityStore.setState({ step: 'consent' });
+test('a room steps back to the stage', async () => {
+  const back = captureBack();
+  useFacilityStore.setState({ view: 'mod01' });
   await render(<ScreenRouter />);
-  const handler = spy.mock.calls[0][1] as () => boolean;
 
-  // mid-enrollment: back goes to the previous step and is consumed
-  expect(handler()).toBe(true);
-  expect(useFacilityStore.getState().step).toBe('baseline');
-  expect(handler()).toBe(true);
-  expect(useFacilityStore.getState().step).toBe('intake');
-
-  // from the first step: not consumed (OS closes the app), step unchanged
-  expect(handler()).toBe(false);
-  expect(useFacilityStore.getState().step).toBe('intake');
+  expect(await back()).toBe(true);
+  expect(useFacilityStore.getState().view).toBe('stage');
 });
 
-test('first run walks intake through to the facility and persists the gate', async () => {
-  await storage.remove(KEYS.enrolled);
-  useFacilityStore.setState({ step: 'intake', lang: 'en', permDenied: false, decline: 0, poked: false });
-  const r = await render(<ScreenRouter />);
-  await fireEvent.press(r.getByText('BEGIN INTAKE ▸'));
-  await fireEvent.press(r.getByText('SUBMIT BASELINE ▸'));
-  await fireEvent.press(r.getByText('I ACCEPT'));
-  await fireEvent.press(r.getByText('ENTER THE FACILITY ▸'));
-  await fireEvent.press(r.getByText('Allow'));
-  await waitFor(() => expect(useFacilityStore.getState().step).toBe('facility'));
-  expect(r.getByText(/SUBJECT #50640/)).toBeTruthy();
-  expect(await storage.get(KEYS.enrolled)).toBe('1');
+test('an open cabinet closes before it leaves the stage', async () => {
+  const back = captureBack();
+  useFacilityStore.setState({ view: 'stage', cabinetOpen: true });
+  await render(<ScreenRouter />);
+
+  expect(await back()).toBe(true);
+  expect(useFacilityStore.getState().cabinetOpen).toBe(false);
+  expect(useFacilityStore.getState().view).toBe('stage');
 });
 
-test('daily and missed steps render the real screens', async () => {
-  useFacilityStore.setState({ step: 'daily', lastComply: null });
-  const daily = await render(<ScreenRouter />);
-  expect(daily.getByText('Confirm you have not been replaced.')).toBeTruthy();
+test('an open credential panel closes before the view moves', async () => {
+  const back = captureBack();
+  useFacilityStore.setState({ view: 'sys', keyPanelOpen: true });
+  await render(<ScreenRouter />);
 
-  useFacilityStore.setState({ step: 'missed', standing: 'review', forfeited: 5 });
-  const missed = await render(<ScreenRouter />);
-  expect(missed.getByText('COMPLIANCE MISSED')).toBeTruthy();
-});
-
-test('miss detected at hydrate routes comply card to the consequence', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.enrolledAt, '2026-01-01');
-  await storage.set(KEYS.streak, '7');
-  await storage.set(KEYS.lastComply, '2026-01-05');
-  await useFacilityStore.getState().hydrate();
-  const r = await render(<ScreenRouter />);
-  await fireEvent.press(r.getByText('PRESS TO REMAIN COMPLIANT'));
-  expect(useFacilityStore.getState().step).toBe('missed');
-  expect(r.getByText('7-DAY STREAK FORFEITED')).toBeTruthy();
+  expect(await back()).toBe(true);
+  expect(useFacilityStore.getState().keyPanelOpen).toBe(false);
+  expect(useFacilityStore.getState().view).toBe('sys');
 });

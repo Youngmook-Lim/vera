@@ -1,31 +1,21 @@
 import type { ComponentType } from 'react';
-import type { Lang } from '../core/i18n';
-import type { TagScheme } from '../core/theme';
 
-export type ModuleId = 'results' | 'incinerator' | 'field' | 'organism' | 'hazard';
+export type ModuleId = 'mod01' | 'mod02';
 
-export interface TileData {
-  title: string;
-  sub: string;
-  tag: string;
-  tagScheme: TagScheme;
-}
-
-// The contract from docs/architecture.md: a new toy = a new folder in
-// modules/ exporting one of these + one registry line. Nothing else changes.
+// The doorway rule (spec §4): the shell owns the tile, the full-bleed, one exit
+// at a fixed position in the module's own ink, and her dot. Everything inside
+// the threshold belongs to the module.
 export interface ModuleDef {
   id: ModuleId;
-  layout: 'square' | 'wide'; // wide spans both home-grid columns
-  Icon: ComponentType; // rendered inside the 32×32 dark icon box
-  tile: (lang: Lang) => TileData;
+  slot: '01' | '02';
+  Tile: ComponentType<{ onPress: () => void }>;
   Screen: ComponentType;
 }
 
-// "Budget pending" vitrines on the home grid are registry entries too.
-export interface LockedSlot {
-  id: string;
-  locked: true;
-  opacity: number;
+export interface EmptySlot {
+  slot: '03' | '04';
 }
 
-export type RegistryEntry = ModuleDef | LockedSlot;
+export type RegistryEntry = ModuleDef | EmptySlot;
+export const isEmpty = (e: RegistryEntry): e is EmptySlot => !('id' in e);
+export const isModule = (e: RegistryEntry): e is ModuleDef => 'id' in e;

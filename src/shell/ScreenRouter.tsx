@@ -1,79 +1,79 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
-import { BackHandler } from 'react-native';
-import { useFacilityStore, type Step } from '../core/store';
-import { isLocked, registry } from '../modules/registry';
-import type { ModuleDef } from '../modules/types';
-import { DailyScreen } from './daily/DailyScreen';
-import { MissedScreen } from './daily/MissedScreen';
-import { AssignedScreen } from './enrollment/AssignedScreen';
-import { BaselineScreen } from './enrollment/BaselineScreen';
-import { ConsentScreen } from './enrollment/ConsentScreen';
-import { IntakeScreen } from './enrollment/IntakeScreen';
-import { PermissionScreen } from './enrollment/PermissionScreen';
-import { FacilityScreen } from './FacilityScreen';
-import { NotifLogScreen } from './notiflog/NotifLogScreen';
-import { PlaceholderScreen } from './PlaceholderScreen';
-import { SettingsScreen } from './settings/SettingsScreen';
+import React, { useEffect, type ComponentType } from 'react';
+import { BackHandler, StyleSheet, View } from 'react-native';
+import type { View as ViewName } from '../core/store';
+import { useFacilityStore } from '../core/store';
+import { palette } from '../core/theme';
+import { registry } from '../modules/registry';
+import type { ModuleId } from '../modules/types';
+import { isModule } from '../modules/types';
+import { Cabinet } from './Cabinet';
+import { FileScreen } from './FileScreen';
+import { KeyPanel } from './KeyPanel';
+import { LogScreen } from './LogScreen';
+import { Stage } from './Stage';
+import { SystemScreen } from './SystemScreen';
 
-const ENROLLMENT_STEPS: readonly Step[] = ['intake', 'baseline', 'consent', 'assigned', 'permission'];
-const LIGHT_STEPS: readonly Step[] = ['facility', 'baseline', 'consent', 'daily', 'missed', 'settings'];
+// The rooms come from the registry, never from a list kept here — a third
+// module is one folder exporting a ModuleDef plus one line in registry.ts.
+const MODULE_SCREENS: Partial<Record<ModuleId, ComponentType>> = Object.fromEntries(
+  registry.filter(isModule).map((entry) => [entry.id, entry.Screen]),
+);
 
-const SHELL_SCREENS: Partial<Record<Step, React.ComponentType>> = {
-  intake: IntakeScreen,
-  baseline: BaselineScreen,
-  consent: ConsentScreen,
-  assigned: AssignedScreen,
-  permission: PermissionScreen,
-  facility: FacilityScreen,
-  settings: SettingsScreen,
-  daily: DailyScreen,
-  missed: MissedScreen,
-  notiflog: NotifLogScreen,
-};
+function CurrentView({ view }: { view: ViewName }) {
+  switch (view) {
+    case 'stage':
+      return <Stage />;
+    case 'log':
+      return <LogScreen />;
+    case 'sys':
+      return <SystemScreen />;
+    // One screen, two documents — FileScreen reads `view` itself to know
+    // which of her files it is showing.
+    case 'mem':
+    case 'soul':
+      return <FileScreen />;
+    default: {
+      const Screen = MODULE_SCREENS[view];
+      // A module id with no folder behind it: a dark surface, and back still
+      // works. Unreachable while every ModuleId is in the registry.
+      if (!Screen) return <View testID={`view-${view}`} style={styles.blank} />;
+      return <Screen />;
+    }
+  }
+}
 
-// Conditional rendering IS the router (docs/architecture.md): instant swaps
-// on a single step value, no navigation library.
+// Conditional rendering on `view` IS the router (spec §3): instant swaps, no
+// navigation library. Every v2 surface is dark, so the status bar never flips.
+// The cabinet and the credential panel are overlays, not views — they sit on
+// top of whatever room is showing, and stepBack closes them before it moves.
 export function ScreenRouter() {
-  const step = useFacilityStore((s) => s.step);
+  const view = useFacilityStore((s) => s.view);
+  const cabinetOpen = useFacilityStore((s) => s.cabinetOpen);
+  const keyPanelOpen = useFacilityStore((s) => s.keyPanelOpen);
 
-  // Android system back: within enrollment, step to the previous screen (and
-  // let the OS close the app from the first step); facility falls through to
-  // the default (leave the app); everything else mirrors the ◂ arrow to facility.
+  // Android system back is one step out of wherever she is, and returns false
+  // only on the stage — which is the signal to let the OS close the app.
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      const state = useFacilityStore.getState();
-      if (state.step === 'facility') return false;
-      const enrollIndex = ENROLLMENT_STEPS.indexOf(state.step);
-      if (enrollIndex !== -1) {
-        if (enrollIndex === 0) return false; // from intake, let the OS exit
-        state.setStep(ENROLLMENT_STEPS[enrollIndex - 1]);
-        return true;
-      }
-      state.setStep(state.step === 'notiflog' ? 'settings' : 'facility');
-      return true;
-    });
+    const sub = BackHandler.addEventListener('hardwareBackPress', () =>
+      useFacilityStore.getState().stepBack(),
+    );
     return () => sub.remove();
   }, []);
 
-  // Light-enamel screens get dark status icons; V.E.R.A.'s dark screens, light.
-  const bar = <StatusBar style={LIGHT_STEPS.includes(step) ? 'dark' : 'light'} />;
-
-  const Shell = SHELL_SCREENS[step];
-  if (Shell) {
-    return (
-      <>
-        {bar}
-        <Shell />
-      </>
-    );
-  }
-
-  const mod = registry.find((e): e is ModuleDef => !isLocked(e) && e.id === step);
   return (
     <>
-      {bar}
-      {mod ? <mod.Screen /> : <PlaceholderScreen title={step.toUpperCase()} />}
+      <StatusBar style="light" />
+      <CurrentView view={view} />
+      {cabinetOpen ? <Cabinet /> : null}
+      {keyPanelOpen ? <KeyPanel /> : null}
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  blank: {
+    flex: 1,
+    backgroundColor: palette.bg,
+  },
+});

@@ -2,10 +2,14 @@
 // tamagotchi: hunger drifts UP over time and DOWN when you tap to feed it.
 // See docs/superpowers/specs/2026-07-23-organism-module-design.md.
 
-export const START_HUNGER = 82; // prototype's starting value
-export const FEED_PER_TAP = 10; // each tap lowers hunger by this (~8 taps to full)
-export const DRIFT_PER_HOUR = 2.5; // hunger climbs this much per hour since last fed
-export const HUNGRY_THRESHOLD = 50; // >= this reads as HUNGRY
+// Specimen-03 is a tamagotchi: hunger drifts UP over time and DOWN when you
+// tap. The design doc's prototype only ever decreases — a demo shortcut that
+// leaves the specimen fed forever after two taps (spec §12).
+export const START_HUNGER = 82;
+export const FEED_PER_TAP = 41;
+export const HUNGER_FLOOR = 8;
+export const DRIFT_PER_HOUR = 2.5;
+export const HUNGRY_THRESHOLD = 55;
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
 
@@ -16,11 +20,12 @@ export const hungerForNow = (
   now: Date,
 ): number => {
   if (storedHunger == null || lastFedISO == null) return START_HUNGER;
-  const elapsedMs = now.getTime() - new Date(lastFedISO).getTime();
-  const hours = Math.max(0, elapsedMs / 3_600_000);
+  const hours = Math.max(0, (now.getTime() - new Date(lastFedISO).getTime()) / 3_600_000);
   return clamp(storedHunger + hours * DRIFT_PER_HOUR);
 };
 
-export const feed = (hunger: number): number => clamp(hunger - FEED_PER_TAP);
+export const feed = (hunger: number): number =>
+  Math.max(HUNGER_FLOOR, Math.min(100, hunger - FEED_PER_TAP));
 
-export const isHungry = (hunger: number): boolean => hunger >= HUNGRY_THRESHOLD;
+// Strictly greater, matching the prototype's `hunger > 55`.
+export const isHungry = (hunger: number): boolean => hunger > HUNGRY_THRESHOLD;

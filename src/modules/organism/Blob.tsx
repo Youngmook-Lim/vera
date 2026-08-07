@@ -91,10 +91,11 @@ export function Blob({ hunger, tapNonce }: { hunger: number; tapNonce: number })
             positions={[0, 0.52, 0.92]}
           />
         </Path>
-        {/* eyes */}
+        {/* four dark circles per the restyle: two paired eyes, a third eye
+            above them, one below */}
         <Circle cx={CX - 16} cy={CY - 6} r={5} color="#10231a" />
         <Circle cx={CX + 16} cy={CY - 6} r={5} color="#10231a" />
-        {/* mouth */}
+        <Circle cx={CX} cy={CY - 22} r={4} color="#10231a" />
         <Circle cx={CX} cy={CY + 14} r={3} color="#10231a" />
       </Group>
     </Canvas>

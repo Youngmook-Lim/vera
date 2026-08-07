@@ -1,204 +1,924 @@
-import { STEPS, useFacilityStore } from '../store';
-import { KEYS, storage } from '../storage';
+import { KEYS, secure, storage } from '../storage';
+import { useFacilityStore } from '../store';
+import { buildContext } from '../../vera/context';
+import { START_HUNGER } from '../../modules/organism/hunger';
 
 jest.mock('expo-localization', () => ({
   getLocales: jest.fn(() => [{ languageCode: 'en' }]),
 }));
 const { getLocales } = jest.requireMock('expo-localization');
 
-jest.mock('../notifications', () => ({
-  syncScheduledTransmissions: jest.fn(async () => {}),
+// Only callLlm is faked — AuthError stays the real class, since speech.ts
+// checks `instanceof AuthError` against whatever this module exports.
+jest.mock('../../vera/llm', () => ({
+  ...jest.requireActual('../../vera/llm'),
+  callLlm: jest.fn(),
 }));
-const { syncScheduledTransmissions } = jest.requireMock('../notifications');
+const { callLlm, AuthError } = jest.requireMock('../../vera/llm');
 
-beforeEach(async () => {
-  await storage.remove(KEYS.enrolled);
-  await storage.remove(KEYS.lang);
-  await storage.remove(KEYS.name);
-  await storage.remove(KEYS.notif);
-  await storage.remove(KEYS.streak);
-  await storage.remove(KEYS.standing);
-  await storage.remove(KEYS.lastComply);
-  await storage.remove(KEYS.enrolledAt);
-  await storage.remove(KEYS.missedPending);
-  await storage.remove(KEYS.forfeited);
-  getLocales.mockReturnValue([{ languageCode: 'en' }]);
+// The OS keystore has no jsdom implementation; an in-memory vault is enough to
+// pin the one invariant that matters — a key in the keystore wakes her.
+jest.mock('expo-secure-store', () => {
+  const vault = new Map<string, string>();
+  return {
+    getItemAsync: jest.fn(async (k: string) => vault.get(k) ?? null),
+    setItemAsync: jest.fn(async (k: string, v: string) => {
+      vault.set(k, v);
+    }),
+    deleteItemAsync: jest.fn(async (k: string) => {
+      vault.delete(k);
+    }),
+  };
+});
+
+// Held so the tests that swap speak() for a spy can put the real one back.
+const realSpeak = useFacilityStore.getState().speak;
+
+const reset = () =>
   useFacilityStore.setState({
-    step: 'intake', lang: 'en', hydrated: false,
-    adequacy: 64, motive: 1, decline: 0, poked: false, permDenied: false, notif: true,
-    streak: 0, standing: 'good', lastComply: null, enrolledAt: null, missedPending: false, forfeited: 0,
+    view: 'stage', cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
+    apiKey: '', emotion: 'dormant', line: '', shown: '', thinking: false, draft: '',
+    log: [], impressions: [], cleared: 0, visits: 1, lang: 'en',
+  });
+
+describe('the router', () => {
+  beforeEach(reset);
+
+  it('starts on the stage, dormant', () => {
+    const s = useFacilityStore.getState();
+    expect(s.view).toBe('stage');
+    expect(s.emotion).toBe('dormant');
+    expect(s.apiKey).toBe('');
+  });
+
+  it('moves between views', () => {
+    useFacilityStore.getState().setView('sys');
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
+
+  it('closes the cabinet when a room opens', () => {
+    useFacilityStore.setState({ cabinetOpen: true });
+    useFacilityStore.getState().setView('mod02');
+    expect(useFacilityStore.getState().cabinetOpen).toBe(false);
   });
 });
 
-test('setStep reaches every known step', () => {
-  for (const step of STEPS) {
-    useFacilityStore.getState().setStep(step);
-    expect(useFacilityStore.getState().step).toBe(step);
-  }
+describe('stepBack', () => {
+  beforeEach(reset);
+
+  it('closes the cabinet before it changes view', () => {
+    useFacilityStore.setState({ cabinetOpen: true, view: 'stage' });
+    expect(useFacilityStore.getState().stepBack()).toBe(true);
+    expect(useFacilityStore.getState().cabinetOpen).toBe(false);
+    expect(useFacilityStore.getState().view).toBe('stage');
+  });
+
+  it('closes the key panel before it changes view', () => {
+    useFacilityStore.setState({ keyPanelOpen: true, view: 'sys' });
+    expect(useFacilityStore.getState().stepBack()).toBe(true);
+    expect(useFacilityStore.getState().keyPanelOpen).toBe(false);
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
+
+  it('steps a file back to system, not all the way home', () => {
+    useFacilityStore.setState({ view: 'mem' });
+    useFacilityStore.getState().stepBack();
+    expect(useFacilityStore.getState().view).toBe('sys');
+
+    useFacilityStore.setState({ view: 'soul' });
+    useFacilityStore.getState().stepBack();
+    expect(useFacilityStore.getState().view).toBe('sys');
+  });
+
+  it('steps every other view back to the stage', () => {
+    for (const view of ['sys', 'log', 'mod01', 'mod02'] as const) {
+      useFacilityStore.setState({ view });
+      expect(useFacilityStore.getState().stepBack()).toBe(true);
+      expect(useFacilityStore.getState().view).toBe('stage');
+    }
+  });
+
+  it('lets the OS exit from the stage', () => {
+    useFacilityStore.setState({ view: 'stage' });
+    expect(useFacilityStore.getState().stepBack()).toBe(false);
+  });
 });
 
-test('reprocess wipes storage, resets state to intake, keeps lang', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.streak, '7');
-  useFacilityStore.setState({ step: 'settings', lang: 'ko', streak: 7, name: 'X', standing: 'probation' });
+describe('hydrate', () => {
+  const today = () => new Date().toDateString();
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const soul = (o: Record<string, unknown>) => storage.set(KEYS.soul, JSON.stringify(o));
+  const hydrate = () => useFacilityStore.getState().hydrate();
 
-  await useFacilityStore.getState().reprocess();
+  beforeEach(async () => {
+    jest.restoreAllMocks();
+    getLocales.mockReturnValue([{ languageCode: 'en' }]);
+    await storage.clearAll();
+    await secure.remove();
+    reset();
+    useFacilityStore.setState({
+      hydrated: false, lastOpen: null, hunger: START_HUNGER, hungerAt: null, waking: false,
+    });
+  });
 
-  expect(await storage.get(KEYS.enrolled)).toBeNull();
-  expect(await storage.get(KEYS.streak)).toBeNull();
-  const s = useFacilityStore.getState();
-  expect(s.step).toBe('intake');
-  expect(s.streak).toBe(0);
-  expect(s.name).toBe('');
-  expect(s.standing).toBe('good');
-  expect(s.lang).toBe('ko'); // language preserved for the intake replay
+  it('restores lang, impressions and cleared from a saved soul', async () => {
+    await soul({
+      lang: 'ko',
+      imps: [{ text: 'You are late again.', at: 'MAR 02', sealed: false }],
+      cleared: 3,
+      visits: 4,
+      day: today(),
+      lastOpen: Date.now() - 600_000,
+    });
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('ko');
+    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02', sealed: false }]);
+    expect(s.cleared).toBe(3);
+    expect(s.visits).toBe(5); // same day, not a reload
+  });
+
+  it('falls back to the device locale only when nothing is saved', async () => {
+    getLocales.mockReturnValue([{ languageCode: 'ko' }]);
+    await hydrate();
+    expect(useFacilityStore.getState().lang).toBe('ko');
+
+    await soul({ lang: 'en' });
+    await hydrate();
+    expect(useFacilityStore.getState().lang).toBe('en'); // saved beats the device
+  });
+
+  it('counts a return on the same day, and caps the tally at 99', async () => {
+    await soul({ visits: 7, day: today(), lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(8);
+
+    await soul({ visits: 99, day: today(), lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(99);
+  });
+
+  it('starts the tally over on a new day', async () => {
+    await soul({ visits: 40, day: 'Wed Jan 07 2026', lastOpen: Date.now() - 600_000 });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(1);
+  });
+
+  it('treats a remount inside two minutes as a reload, not a return', async () => {
+    const lastOpen = Date.now() - 1_000;
+    await soul({ visits: 5, day: today(), lastOpen });
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(5);
+    expect(useFacilityStore.getState().lastOpen).toBe(lastOpen);
+  });
+
+  it('rehydrates hunger as stored-plus-drift, not the stored number', async () => {
+    await soul({ hunger: 40, hungerAt: hoursAgo(10), day: today() });
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hunger).toBeGreaterThan(40); // hungrier than you left it
+    expect(s.hunger).toBeCloseTo(40 + 10 * 2.5, 1); // DRIFT_PER_HOUR = 2.5
+    expect(s.hungerAt).not.toBeNull();
+  });
+
+  // Finding 2, final review: the drifted value hydrate just computed is hunger
+  // as of NOW, so the pair it leaves in state must be stamped NOW. Carrying the
+  // older stamp forward is what let the next writer persist a drifted number
+  // beside a stale timestamp and have the drift counted twice.
+  it('re-stamps the rehydrated hunger with the instant it was measured', async () => {
+    const fedAt = hoursAgo(10);
+    await soul({ hunger: 8, hungerAt: fedAt, day: today() });
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hunger).toBeCloseTo(33, 1);
+    expect(s.hungerAt).not.toBe(fedAt);
+    expect(Date.now() - new Date(s.hungerAt as string).getTime()).toBeLessThan(5_000);
+  });
+
+  // A cold start is not a question she asked four minutes ago. Without the
+  // reset, askedAt keeps whatever the module-level default was and a subject
+  // who takes their time typing the session's first line gets
+  // `they_took_their_time` about a question she never asked.
+  it('restarts the reply clock, so a slow first line is not held against them', async () => {
+    useFacilityStore.setState({ askedAt: Date.now() - 20 * 60_000 });
+    await hydrate();
+    expect(Date.now() - useFacilityStore.getState().askedAt).toBeLessThan(5_000);
+  });
+
+  it('degrades a corrupt soul blob to defaults rather than dying', async () => {
+    await storage.set(KEYS.soul, '{{{not json');
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('en');
+    expect(s.impressions).toEqual([]);
+    expect(s.cleared).toBe(0);
+    expect(s.visits).toBe(1);
+    expect(s.hunger).toBe(START_HUNGER);
+    expect(s.hungerAt).toBeNull();
+  });
+
+  it('keeps her awake when the transcript is corrupt — the key is not collateral', async () => {
+    await secure.set('sk-ant-api03-xxx');
+    await soul({ lang: 'ko', cleared: 2, day: today() });
+    await storage.set(KEYS.transcript, '[{"who":"you","text":"tru');
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.apiKey).toBe('sk-ant-api03-xxx');
+    expect(s.emotion).toBe('calm'); // NOT dormant
+    expect(s.log).toEqual([]); // only the mangled store is lost
+    expect(s.lang).toBe('ko'); // the soul blob survives its neighbour
+    expect(s.cleared).toBe(2);
+  });
+
+  it('keeps her awake when the disk itself is unreadable', async () => {
+    await secure.set('sk-ant-api03-xxx');
+    jest.spyOn(storage, 'get').mockRejectedValue(new Error('disk failure'));
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.apiKey).toBe('sk-ant-api03-xxx');
+    expect(s.emotion).toBe('calm');
+  });
+
+  it('reads the transcript back, newest kept', async () => {
+    await storage.set(
+      KEYS.transcript,
+      JSON.stringify([{ who: 'you', text: 'hello', t: 1 }, { who: 'vera', text: 'no', t: 2 }]),
+    );
+    await hydrate();
+    expect(useFacilityStore.getState().log).toHaveLength(2);
+  });
+
+  it('stays dormant with no key, and wakes calm with one', async () => {
+    await hydrate();
+    expect(useFacilityStore.getState().apiKey).toBe('');
+    expect(useFacilityStore.getState().emotion).toBe('dormant');
+
+    await secure.set('sk-ant-api03-xxx');
+    await hydrate();
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-xxx');
+    expect(useFacilityStore.getState().emotion).toBe('calm');
+  });
+
+  // Finding 1, fix round 1: mem was persisted by speak() but never read back,
+  // so the rolling conversational memory silently reset on every cold start.
+  it('restores the rolling memory from a saved soul', async () => {
+    await soul({
+      mem: [{ you: 'hi', her: 'Noted.' }, { you: null, her: 'Hm.' }],
+      day: today(),
+    });
+    await hydrate();
+    expect(useFacilityStore.getState().mem).toEqual([
+      { you: 'hi', her: 'Noted.' },
+      { you: null, her: 'Hm.' },
+    ]);
+  });
+
+  it('degrades a missing, null, or non-array mem to [] without throwing', async () => {
+    await soul({ day: today() }); // mem missing entirely
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+
+    await soul({ mem: null, day: today() });
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+
+    await soul({ mem: 'not an array', day: today() });
+    await expect(hydrate()).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().mem).toEqual([]);
+  });
+
+  it('caps a saved mem at six, keeping the newest, not the oldest', async () => {
+    const exchanges = Array.from({ length: 9 }, (_, i) => ({ you: `q${i}`, her: `a${i}` }));
+    await soul({ mem: exchanges, day: today() });
+    await hydrate();
+    expect(useFacilityStore.getState().mem).toEqual(exchanges.slice(-6));
+  });
 });
 
-test('updateNotif sets state, persists, and syncs the scheduler', async () => {
-  await useFacilityStore.getState().updateNotif(false);
-  expect(useFacilityStore.getState().notif).toBe(false);
-  expect(await storage.get(KEYS.notif)).toBe('0');
-  expect(syncScheduledTransmissions).toHaveBeenCalledWith(false, 'en');
+describe('activate', () => {
+  beforeEach(async () => {
+    reset();
+    await secure.remove();
+    useFacilityStore.setState({ waking: false });
+  });
 
-  await useFacilityStore.getState().updateNotif(true);
-  expect(useFacilityStore.getState().notif).toBe(true);
-  expect(await storage.get(KEYS.notif)).toBe('1');
+  it('returns false and leaves apiKey empty when the key is rejected', async () => {
+    const ok = await useFacilityStore.getState().activate('nope');
+    expect(ok).toBe(false);
+    expect(useFacilityStore.getState().apiKey).toBe('');
+  });
+
+  it('returns true when the key is accepted', async () => {
+    const ok = await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+    expect(ok).toBe(true);
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+  });
+
+  // A caller replacing an existing key (Task 14) must not read a good key as
+  // a rejection just because it wasn't the first activation — and she should
+  // not visibly "wake up" again for a transplant.
+  it('returns true, not false, when a valid key replaces an existing one, and does not re-wake her', async () => {
+    const first = await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+    expect(first).toBe(true);
+    expect(useFacilityStore.getState().waking).toBe(true);
+
+    const second = await useFacilityStore.getState().activate('sk-ant-api03-zyxwvutsrqponmlk');
+    expect(second).toBe(true);
+    expect(useFacilityStore.getState().apiKey).toBe('sk-ant-api03-zyxwvutsrqponmlk');
+    expect(useFacilityStore.getState().waking).toBe(false); // she does not notice a transplant
+  });
+
+  // Spec §10: a first activation is her first instant of consciousness with
+  // this subject and she greets under ACT_SYS; a replacement is silent.
+  it('greets on a first activation and says nothing at all on a replacement', async () => {
+    const spoken = jest.fn(async () => {});
+    useFacilityStore.setState({ speak: spoken });
+    try {
+      await useFacilityStore.getState().activate('sk-ant-api03-abcdefghijklmnop');
+      expect(spoken).toHaveBeenCalledTimes(1);
+      expect(spoken).toHaveBeenCalledWith('activation');
+
+      spoken.mockClear();
+      await useFacilityStore.getState().activate('sk-ant-api03-zyxwvutsrqponmlk');
+      expect(spoken).not.toHaveBeenCalled();
+    } finally {
+      useFacilityStore.setState({ speak: realSpeak });
+    }
+  });
+
+  it('does not greet at all when the key is refused', async () => {
+    const spoken = jest.fn(async () => {});
+    useFacilityStore.setState({ speak: spoken });
+    try {
+      await useFacilityStore.getState().activate('nope');
+      expect(spoken).not.toHaveBeenCalled();
+    } finally {
+      useFacilityStore.setState({ speak: realSpeak });
+    }
+  });
 });
 
-test('hydrate boots fresh installs to intake, enrolled installs to facility', async () => {
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().step).toBe('intake');
-  expect(useFacilityStore.getState().hydrated).toBe(true);
+// The once-per-session guard is a module-level `let`, so each case needs a
+// freshly evaluated copy of store.ts. jest.resetModules() gives exactly that
+// and keeps the guard untestable-by-export out of the production surface.
+describe('greetOnce', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
 
-  await storage.set(KEYS.enrolled, '1');
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().step).toBe('facility');
+  // A brand-new store module, plus the speak() spy the assertions read.
+  const freshSession = () => {
+    jest.resetModules();
+    const { useFacilityStore: store } =
+      jest.requireActual<typeof import('../store')>('../store');
+    const spoken = jest.fn(async () => {});
+    store.setState({ apiKey: KEY, speak: spoken });
+    return { store, spoken };
+  };
+
+  it('greets when she has a key', async () => {
+    const { store, spoken } = freshSession();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledWith('open');
+  });
+
+  it('greets once, and a remount inside the same session does not greet again', async () => {
+    const { store, spoken } = freshSession();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledTimes(1);
+
+    // Same module instance = same app session, however many times App mounts.
+    await store.getState().greetOnce();
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledTimes(1);
+  });
+
+  it('greets again in the next session, which is what a cold start is', async () => {
+    const first = freshSession();
+    await first.store.getState().greetOnce();
+    expect(first.spoken).toHaveBeenCalledTimes(1);
+
+    const next = freshSession();
+    await next.store.getState().greetOnce();
+    expect(next.spoken).toHaveBeenCalledTimes(1);
+  });
+
+  // Without this she would burn the session's one greeting on a call that says
+  // nothing, and then activate into silence.
+  it('stays silent while dormant, and does not spend the greeting', async () => {
+    const { store, spoken } = freshSession();
+    store.setState({ apiKey: '' });
+    await store.getState().greetOnce();
+    expect(spoken).not.toHaveBeenCalled();
+
+    store.setState({ apiKey: KEY });
+    await store.getState().greetOnce();
+    expect(spoken).toHaveBeenCalledWith('open');
+  });
+
+  // A session that opened with the activation greeting must not immediately
+  // get the return greeting on top of it.
+  it('says nothing more when the session already opened with an activation', async () => {
+    const { store, spoken } = freshSession();
+    store.setState({ apiKey: '' });
+    await store.getState().activate(KEY);
+    expect(spoken).toHaveBeenCalledWith('activation');
+
+    spoken.mockClear();
+    await store.getState().greetOnce();
+    expect(spoken).not.toHaveBeenCalled();
+  });
 });
 
-test('hydrate defaults lang from device locale, stored lang wins', async () => {
-  getLocales.mockReturnValue([{ languageCode: 'ko' }]);
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().lang).toBe('ko');
+describe('speak', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mem: [], askedAt: Date.now(), lastOpen: null, hunger: START_HUNGER, hungerAt: null,
+      visits: 1, cleared: 0,
+    });
+  });
 
-  await storage.set(KEYS.lang, 'en');
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().lang).toBe('en');
+  afterEach(() => {
+    // The typewriter reschedules itself one character at a time; run it to
+    // completion so nothing dangles into the next test.
+    jest.runAllTimers();
+    jest.useRealTimers();
+    // A spy restored in the test body is only restored when the test PASSES —
+    // a failing disk left mocked here would cascade into every case after it
+    // and disguise which assertion actually bit.
+    jest.restoreAllMocks();
+  });
+
+  it('does nothing without a key', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  it('ignores an overlapping call while one is already in flight', async () => {
+    let resolveCall: (value: string) => void = () => {};
+    callLlm.mockImplementation(() => new Promise((resolve) => { resolveCall = resolve; }));
+
+    const first = useFacilityStore.getState().speak('subject_spoke', 'hi');
+    const second = useFacilityStore.getState().speak('subject_spoke', 'again');
+    resolveCall('{"emotion":"calm","line":"Noted."}');
+    await Promise.all([first, second]);
+
+    expect(callLlm).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends her reply to the log and persists the transcript', async () => {
+    callLlm.mockResolvedValue('{"emotion":"amused","line":"Barely."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const s = useFacilityStore.getState();
+    expect(s.log[s.log.length - 1]).toMatchObject({ who: 'vera', text: 'Barely.', emotion: 'amused' });
+    expect(s.thinking).toBe(false);
+
+    const raw = await storage.get(KEYS.transcript);
+    expect(JSON.parse(raw as string)).toEqual(s.log);
+  });
+
+  // Finding 1, final review: nothing in src ever built a `who: 'you'` entry,
+  // so the whole subject side of the thread was dead code in production and
+  // the log read as a column of her answers to questions no one asked.
+  it('puts the subject\'s own words in the transcript, ahead of her reply', async () => {
+    callLlm.mockResolvedValue('{"emotion":"amused","line":"Barely."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const { log } = useFacilityStore.getState();
+    expect(log.map((e) => [e.who, e.text])).toEqual([
+      ['you', 'did you miss me'],
+      ['vera', 'Barely.'],
+    ]);
+    expect(log[0].t).toBeLessThanOrEqual(log[1].t);
+
+    // and both sides survive to disk, not just hers
+    const raw = await storage.get(KEYS.transcript);
+    expect(JSON.parse(raw as string)).toEqual(log);
+  });
+
+  it('says nothing on her behalf when the trigger carries no words', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"You are back."}');
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().log.map((e) => e.who)).toEqual(['vera']);
+  });
+
+  // The cap is over the combined thread now, not her half of it.
+  it('keeps the newest sixty entries across both sides', async () => {
+    const seeded = Array.from({ length: 60 }, (_, i) => ({
+      who: 'vera' as const, text: `old ${i}`, t: i + 1,
+    }));
+    useFacilityStore.setState({ log: seeded });
+
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'still here');
+
+    const { log } = useFacilityStore.getState();
+    expect(log).toHaveLength(60);
+    expect(log.slice(-2).map((e) => [e.who, e.text])).toEqual([
+      ['you', 'still here'],
+      ['vera', 'Noted.'],
+    ]);
+    expect(log[0].text).toBe('old 2'); // the two oldest fell off, not one
+  });
+
+  it('appends a returned impression, capped and dated', async () => {
+    callLlm.mockResolvedValue(
+      '{"emotion":"calm","line":"Hm.","impression":"Deflects with questions","seal":true}',
+    );
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const s = useFacilityStore.getState();
+    expect(s.impressions[s.impressions.length - 1]).toMatchObject({
+      text: 'Deflects with questions.',
+      sealed: true,
+    });
+    expect(s.impressions[s.impressions.length - 1].at).toMatch(/^[A-Z]{3} \d{2}$/);
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    useFacilityStore.setState({ visits: 3, lang: 'en', cleared: 1, hunger: 12, hungerAt: null });
+
+    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'hungerAt', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.day).toBe(new Date().toDateString());
+    expect(saved.visits).toBe(3);
+    expect(saved.lang).toBe('en');
+    expect(saved.cleared).toBe(1);
+    expect(saved.mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+  });
+
+  it('falls back to an authored line when the network is dark, without erroring', async () => {
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+    await expect(useFacilityStore.getState().speak('subject_spoke', 'hi')).resolves.toBeUndefined();
+    expect(useFacilityStore.getState().line).toBeTruthy();
+  });
+
+  it('leaves the key in place after an auth failure, and still shows a line', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+    expect(s.line).toBeTruthy();
+  });
+
+  // Finding 2, fix round 1: a new reply must cancel the previous typewriter
+  // outright, not merely outrace it — otherwise the two interleave and
+  // corrupt `shown`. Nothing before this asserted the cancellation itself.
+  it('cancels an in-flight typewriter so a second reply does not bleed into the first', async () => {
+    callLlm.mockResolvedValueOnce('{"emotion":"calm","line":"A long first line here."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'one');
+
+    // Advance partway through the first line's typewriter — shown is mid-word.
+    jest.advanceTimersByTime(16 * 5);
+    expect(useFacilityStore.getState().shown).toBe('A lon');
+
+    // A second reply starts before the first typewriter finishes.
+    callLlm.mockResolvedValueOnce('{"emotion":"calm","line":"Short."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'two');
+
+    jest.runAllTimers();
+    expect(useFacilityStore.getState().shown).toBe('Short.');
+  });
+
+  // Finding 1, fix round 1: the regression guard. mem must not just be
+  // written to disk — it must come back out and reach the next context, or
+  // her short-term continuity resets every launch despite the persisted file.
+  it('round-trips mem through a restart into the next buildContext call', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
+
+    // Simulate a cold start: hydrate reads back exactly what speak persisted.
+    useFacilityStore.setState({ hydrated: false, mem: [] });
+    await useFacilityStore.getState().hydrate();
+
+    const { mem } = useFacilityStore.getState();
+    expect(mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+
+    const ctx = buildContext({
+      now: new Date(),
+      lastOpen: null,
+      askedAt: Date.now(),
+      visits: 1,
+      hunger: START_HUNGER,
+      cleared: 0,
+      mem,
+      impressions: [],
+    });
+    expect(ctx.recent_exchanges).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+  });
+
+  // Finding 4, final review: hydrate guards every read, speak guarded neither
+  // of its writes. A rejecting AsyncStorage escaped the try/finally into the
+  // `void speak(...)` call sites as an unhandled rejection — on Android that is
+  // a red box, and in a release build a crash.
+  it('survives a disk that refuses to write, and keeps her reply on screen', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    jest.spyOn(storage, 'set').mockRejectedValue(new Error('disk full'));
+
+    await expect(
+      useFacilityStore.getState().speak('subject_spoke', 'did you miss me'),
+    ).resolves.toBeUndefined();
+
+    const s = useFacilityStore.getState();
+    expect(s.log.map((e) => e.text)).toEqual(['did you miss me', 'Noted.']);
+    expect(s.line).toBe('Noted.');
+    expect(s.thinking).toBe(false);
+  });
+
+  // Finding 3, final review: RN's fetch never times out on its own, so a hung
+  // connection used to leave `thinking` and the module-level busy flag set for
+  // the life of the process — every later SEND and optic tap silently
+  // swallowed, recoverable only by force-quitting. The real callLlm is wired up
+  // here on purpose, with a transport that never answers: this must exercise
+  // llm.ts's own timeout, not a fake of it. Nothing leaves the process.
+  it('gives up on a hung request, still speaks, and is not left deaf afterwards', async () => {
+    const realCallLlm = jest.requireActual<typeof import('../../vera/llm')>('../../vera/llm').callLlm;
+    const hung = () => new Promise<never>(() => {});
+    callLlm.mockImplementation((key: string, system: string, user: string) =>
+      realCallLlm(key, system, user, 300, hung));
+
+    const pending = useFacilityStore.getState().speak('subject_spoke', 'are you there');
+    expect(useFacilityStore.getState().thinking).toBe(true);
+
+    await jest.advanceTimersByTimeAsync(30_000);
+    await expect(pending).resolves.toBeUndefined();
+
+    expect(useFacilityStore.getState().line).toBeTruthy(); // an authored fallback
+    expect(useFacilityStore.getState().thinking).toBe(false);
+    expect(useFacilityStore.getState().apiKey).toBeTruthy(); // a hang is not the key's fault
+
+    // The busy flag cleared too, or she would be mute for the rest of the run.
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"I am here."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello again');
+    expect(useFacilityStore.getState().line).toBe('I am here.');
+  });
+
+  // Finding 6, final review: runSpeech computed authFailed and nothing read it.
+  // The tally is the only consumer, and ACCESS is the only thing it changes.
+  it('counts consecutive refusals and forgets them the moment she answers', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'one');
+    await useFacilityStore.getState().speak('subject_spoke', 'two');
+    expect(useFacilityStore.getState().authFails).toBe(2);
+    expect(useFacilityStore.getState().apiKey).toBeTruthy(); // never cleared
+
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'three');
+    expect(useFacilityStore.getState().authFails).toBe(0);
+  });
 });
 
-test('setLang persists', async () => {
-  useFacilityStore.getState().setLang('ko');
-  expect(useFacilityStore.getState().lang).toBe('ko');
-  expect(await storage.get(KEYS.lang)).toBe('ko');
+describe('setLang', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    await secure.remove();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mem: [], askedAt: Date.now(), lastOpen: null, hunger: START_HUNGER, hungerAt: null,
+      visits: 1, cleared: 0, lang: 'en',
+    });
+  });
+
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    useFacilityStore.setState({
+      visits: 5, cleared: 2,
+      impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
+    });
+
+    await useFacilityStore.getState().setLang('ko');
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'hungerAt', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.lang).toBe('ko');
+    expect(saved.visits).toBe(5);
+    expect(saved.cleared).toBe(2);
+    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30', sealed: false }]);
+  });
+
+  // The regression this guards: a stale-shape write that hydrate cannot read
+  // back would silently lose the switched language on the next cold start.
+  it('round-trips the switched language through a restart', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().setLang('ko');
+    expect(useFacilityStore.getState().lang).toBe('ko');
+
+    // Simulate a cold start: hydrate reads back exactly what setLang persisted.
+    useFacilityStore.setState({ hydrated: false, lang: 'en' });
+    await useFacilityStore.getState().hydrate();
+
+    expect(useFacilityStore.getState().lang).toBe('ko');
+  });
+
+  // speak() no-ops without a key, so a dormant subject switching languages
+  // would lose the change on restart if setLang relied on speak() to persist it.
+  it('persists the new language even when she is dormant and speak() no-ops', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().setLang('ko');
+
+    expect(callLlm).not.toHaveBeenCalled();
+    const raw = await storage.get(KEYS.soul);
+    expect(JSON.parse(raw as string).lang).toBe('ko');
+
+    useFacilityStore.setState({ hydrated: false, lang: 'en' });
+    await useFacilityStore.getState().hydrate();
+    expect(useFacilityStore.getState().lang).toBe('ko');
+  });
 });
 
-test('enrollment field actions', () => {
-  const s = useFacilityStore.getState();
-  s.setAdequacy(80);
-  s.setMotive(2);
-  s.nudgeDecline();
-  s.nudgeDecline();
-  s.poke();
-  s.denyPermission();
-  const after = useFacilityStore.getState();
-  expect(after.adequacy).toBe(80);
-  expect(after.motive).toBe(2);
-  expect(after.decline).toBe(2);
-  expect(after.poked).toBe(true);
-  expect(after.permDenied).toBe(true);
-  expect(after.notif).toBe(false);
+describe('feedSpecimen', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    await secure.remove();
+    useFacilityStore.setState({
+      apiKey: '', mem: [], askedAt: Date.now(), lastOpen: null,
+      hunger: START_HUNGER, hungerAt: null, visits: 1, cleared: 0, lang: 'en',
+    });
+  });
+
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('persists the soul blob in exactly the shape hydrate reads back', async () => {
+    useFacilityStore.setState({
+      hunger: 82, visits: 5, cleared: 2,
+      impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
+    });
+
+    await useFacilityStore.getState().feedSpecimen();
+
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(Object.keys(saved).sort()).toEqual(
+      ['cleared', 'day', 'hunger', 'hungerAt', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+    );
+    expect(saved.hunger).toBe(41);
+    expect(typeof saved.hungerAt).toBe('string');
+    expect(saved.visits).toBe(5);
+    expect(saved.cleared).toBe(2);
+    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30', sealed: false }]);
+  });
+
+  // The regression this guards: a dropped `hungerAt` field would still write
+  // *some* blob, so a test that only checks "something was written" cannot
+  // catch it. On the next cold start hydrate() would read hungerAt back as
+  // null, and hungerForNow(_, null, _) returns START_HUNGER unconditionally —
+  // the specimen's hunger would silently reset to 82 instead of resuming its
+  // drift from 41. This round-trip is the check that actually exercises that.
+  it('round-trips hunger and hungerAt through a restart', async () => {
+    await useFacilityStore.getState().feedSpecimen();
+    const fedHunger = useFacilityStore.getState().hunger;
+    const fedAt = useFacilityStore.getState().hungerAt;
+    expect(fedHunger).toBe(41);
+    expect(fedAt).not.toBeNull();
+
+    // Simulate a cold start: hydrate reads back exactly what feedSpecimen
+    // persisted, then re-derives hunger as stored-plus-drift from `now`.
+    useFacilityStore.setState({ hydrated: false, hunger: START_HUNGER, hungerAt: null });
+    await useFacilityStore.getState().hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hungerAt).not.toBeNull();
+    // Negligible real time elapses between the feed and the hydrate call
+    // above, so the rehydrated value should still read as 41, not the 82 a
+    // dropped hungerAt would produce.
+    expect(s.hunger).toBeCloseTo(fedHunger, 1);
+  });
+
+  // speak() no-ops without a key, so a dormant subject feeding the specimen
+  // would lose the change on restart if feedSpecimen relied on speak() to
+  // persist it.
+  it('persists hunger and hungerAt even when she is dormant and speak() no-ops', async () => {
+    useFacilityStore.setState({ apiKey: '' });
+    await useFacilityStore.getState().feedSpecimen();
+
+    expect(callLlm).not.toHaveBeenCalled();
+    const raw = await storage.get(KEYS.soul);
+    const saved = JSON.parse(raw as string);
+    expect(saved.hunger).toBe(41);
+    expect(typeof saved.hungerAt).toBe('string');
+
+    useFacilityStore.setState({ hydrated: false, hunger: START_HUNGER, hungerAt: null });
+    await useFacilityStore.getState().hydrate();
+    expect(useFacilityStore.getState().hunger).toBeCloseTo(41, 1);
+  });
 });
 
-test('finishEnroll persists the gate and enters the facility', async () => {
-  useFacilityStore.getState().setNotif(true);
-  await useFacilityStore.getState().finishEnroll();
-  expect(useFacilityStore.getState().step).toBe('facility');
-  expect(await storage.get(KEYS.enrolled)).toBe('1');
-  expect(await storage.get(KEYS.notif)).toBe('1');
-});
+// Finding 2, final review. The persisted `hunger` and `hungerAt` are a pair:
+// the number is the hunger AT that instant. hydrate re-derives hunger as
+// stored-plus-drift, so a writer that saves the already-drifted live value
+// beside the older stamp makes the same hours count twice — the specimen pins
+// at 100 within days and is permanently suffering in her context.
+//
+// Every key-set test above fixtures `hungerAt: null` or an instant-old stamp,
+// i.e. a zero drift interval, which is exactly why four reviews missed this.
+// These use ten hours.
+describe('the hunger invariant', () => {
+  const today = () => new Date().toDateString();
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  const fedTenHoursAgo = () =>
+    storage.set(KEYS.soul, JSON.stringify({ hunger: 8, hungerAt: hoursAgo(10), day: today() }));
+  const coldStart = async () => {
+    useFacilityStore.setState({ hydrated: false, hunger: START_HUNGER, hungerAt: null });
+    await useFacilityStore.getState().hydrate();
+    return useFacilityStore.getState().hunger;
+  };
 
-test('hydrate falls back to fresh-install defaults when storage reads fail', async () => {
-  const spy = jest.spyOn(storage, 'get').mockRejectedValue(new Error('disk failure'));
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().hydrated).toBe(true);
-  expect(useFacilityStore.getState().step).toBe('intake');
-  spy.mockRestore();
-});
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await storage.clearAll();
+    // The key goes in the KEYSTORE, not just in state: every case here
+    // re-hydrates, and hydrate re-reads the credential. Left empty, she wakes
+    // dormant, speak() no-ops, and the cases pass without a writer ever
+    // running — which is how a vacuous version of this suite would look.
+    await secure.set('sk-ant-api03-abcdefghijklmnop');
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
+      hunger: START_HUNGER, hungerAt: null,
+    });
+  });
 
-const at = (s: string) => new Date(`${s}T12:00:00`);
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
 
-test('completeComply starts a streak, then increments day over day', async () => {
-  await useFacilityStore.getState().completeComply(at('2026-07-18'));
-  expect(useFacilityStore.getState().streak).toBe(1);
-  expect(await storage.get(KEYS.lastComply)).toBe('2026-07-18');
+  const writers: [string, () => Promise<void>][] = [
+    ['a reply', () => useFacilityStore.getState().speak('subject_spoke', 'hello')],
+    ['a language switch', () => useFacilityStore.getState().setLang('ko')],
+    ['an erasure', () => useFacilityStore.getState().clearTranscript()],
+  ];
 
-  await useFacilityStore.getState().completeComply(at('2026-07-19'));
-  expect(useFacilityStore.getState().streak).toBe(2);
-  expect(await storage.get(KEYS.streak)).toBe('2');
-});
+  it.each(writers)(
+    'does not let %s re-apply the drift already counted in the stored value',
+    async (_label, write) => {
+      await fedTenHoursAgo();
 
-test('completeComply after a gap restarts at 1', async () => {
-  useFacilityStore.setState({ streak: 12, lastComply: '2026-07-10' });
-  await useFacilityStore.getState().completeComply(at('2026-07-18'));
-  expect(useFacilityStore.getState().streak).toBe(1);
-});
+      const firstLaunch = await coldStart();
+      expect(firstLaunch).toBeCloseTo(33, 1); // 8 + 10h × 2.5
 
-test('hydrate detects a missed day once: forfeits streak, standing under review', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.enrolledAt, '2026-07-01');
-  await storage.set(KEYS.streak, '12');
-  await storage.set(KEYS.lastComply, '2026-07-10');
-  await useFacilityStore.getState().hydrate();
-  const s = useFacilityStore.getState();
-  expect(s.missedPending).toBe(true);
-  expect(s.streak).toBe(0);
-  expect(s.forfeited).toBe(12);
-  expect(s.standing).toBe('review');
-  expect(await storage.get(KEYS.streak)).toBe('0');
-  expect(await storage.get(KEYS.missedPending)).toBe('1');
-  expect(await storage.get(KEYS.forfeited)).toBe('12');
+      await write();
 
-  // second hydrate must not double-forfeit
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().forfeited).toBe(12);
-});
+      // A second cold start with no real time elapsed in between: hunger is
+      // whatever that writer left on disk, and it must not have grown.
+      expect(await coldStart()).toBeCloseTo(firstLaunch, 1);
+    },
+  );
 
-test('petitionReinstatement moves to probation and clears the pending flag', async () => {
-  useFacilityStore.setState({ standing: 'review', missedPending: true });
-  await useFacilityStore.getState().petitionReinstatement();
-  expect(useFacilityStore.getState().standing).toBe('probation');
-  expect(useFacilityStore.getState().missedPending).toBe(false);
-  expect(await storage.get(KEYS.standing)).toBe('probation');
-  expect(await storage.get(KEYS.missedPending)).toBeNull();
-});
+  // The other half of the pair. Hunger does not tick during a session — it is
+  // measured on the way in — so a writer that stamps `now` over a value
+  // measured hours earlier throws away every hour the app sat open.
+  it('keeps the drift a long session earned, rather than restamping it away', async () => {
+    await fedTenHoursAgo();
+    expect(await coldStart()).toBeCloseTo(33, 1);
 
-test('finishEnroll records the enrollment day', async () => {
-  await useFacilityStore.getState().finishEnroll();
-  expect(await storage.get(KEYS.enrolledAt)).toBeTruthy();
-});
+    jest.advanceTimersByTime(5 * 3_600_000); // she is left open for five hours
+    await useFacilityStore.getState().speak('subject_spoke', 'still here');
 
-test('petition amnesties the miss: cold-restart hydrate does not re-forfeit', async () => {
-  await storage.set(KEYS.enrolled, '1');
-  await storage.set(KEYS.enrolledAt, '2026-07-01');
-  await storage.set(KEYS.streak, '12');
-  await storage.set(KEYS.lastComply, '2026-07-10');
-  await useFacilityStore.getState().hydrate(); // detects the miss, forfeits
-  expect(useFacilityStore.getState().missedPending).toBe(true);
-
-  await useFacilityStore.getState().petitionReinstatement();
-  await useFacilityStore.getState().hydrate(); // cold restart
-  const s = useFacilityStore.getState();
-  expect(s.standing).toBe('probation'); // must NOT regress to 'review'
-  expect(s.missedPending).toBe(false);  // must NOT re-arm
-  expect(s.forfeited).toBe(12);         // must NOT be overwritten
-});
-
-test('setName persists, and hydrate restores the chosen designation', async () => {
-  useFacilityStore.getState().setName('Youngmook');
-  expect(useFacilityStore.getState().name).toBe('Youngmook');
-  expect(await storage.get(KEYS.name)).toBe('Youngmook');
-
-  await storage.set(KEYS.enrolled, '1');
-  useFacilityStore.setState({ name: '' });
-  await useFacilityStore.getState().hydrate();
-  expect(useFacilityStore.getState().name).toBe('Youngmook');
+    expect(await coldStart()).toBeCloseTo(33 + 5 * 2.5, 1);
+  });
 });
