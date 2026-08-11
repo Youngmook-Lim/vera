@@ -15,6 +15,7 @@ import {
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
 import { View } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { palette } from './src/core/theme';
 import { useFacilityStore } from './src/core/store';
@@ -51,7 +52,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ScreenRouter />
+      {/* the IME height the stage and the log pad themselves by; Android has
+          been edge-to-edge since SDK 54 and never resizes the window for it */}
+      <KeyboardProvider>
+        <ScreenRouter />
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

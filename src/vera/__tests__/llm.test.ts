@@ -1,7 +1,7 @@
 import { AuthError, REQUEST_TIMEOUT_MS, callLlm } from '../llm';
 
 const ANTHROPIC = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
-const GROQ = 'gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const OAI = 'sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
 const GOOGLE = 'AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
 const respond = (payload: unknown, ok = true, status = 200) =>
@@ -17,7 +17,7 @@ describe('callLlm', () => {
 
   it('reads openai choices', async () => {
     const fetchImpl = respond({ choices: [{ message: { content: 'Noted.' } }] });
-    await expect(callLlm(GROQ, 'SOUL', 'hi', 300, fetchImpl)).resolves.toBe('Noted.');
+    await expect(callLlm(OAI, 'SOUL', 'hi', 300, fetchImpl)).resolves.toBe('Noted.');
   });
 
   it('reads gemini candidates', async () => {
@@ -111,4 +111,25 @@ describe('callLlm', () => {
       expect((fetchImpl.mock.calls[0][1].signal as AbortSignal).aborted).toBe(false);
     });
   });
+});
+
+// A thinking Gemini model returns its reasoning alongside the answer; spoken
+// aloud it would be her line.
+it('keeps gemini thought parts out of her mouth', async () => {
+  const fetchImpl = jest.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [{
+        content: {
+          parts: [
+            { text: 'The subject is stalling. Consider suspicion.', thought: true },
+            { text: 'You took your time.' },
+          ],
+        },
+      }],
+    }),
+  });
+  await expect(callLlm('AIzaSyABCDEFGHIJKLMNOP', 'SOUL', 'hi', 300, fetchImpl))
+    .resolves.toBe('You took your time.');
 });

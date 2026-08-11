@@ -1,6 +1,6 @@
 // src/shell/__tests__/Stage.test.tsx
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { ms } from '../../core/theme';
 import * as OpticModule from '../Optic';
@@ -47,18 +47,33 @@ describe('Stage', () => {
   });
 
   it('sizes a short line loud and a long line small', async () => {
-    awake({ shown: 'You returned.' });
+    awake({ line: 'You returned.', shown: 'You returned.' });
     const short = await render(<Stage />);
     expect(short.getByTestId('her-line').props.style).toEqual(
       expect.objectContaining({ fontSize: ms(30) }),
     );
 
     const long = Array.from({ length: 34 }, () => 'word').join(' ');
-    awake({ shown: long });
+    awake({ line: long, shown: long });
     const wordy = await render(<Stage />);
     expect(wordy.getByTestId('her-line').props.style).toEqual(
       expect.objectContaining({ fontSize: ms(15) }),
     );
+  });
+
+  // The typewriter reveals her line a character at a time, and sizing off what
+  // is on screen steps the type down each time the growing word count crosses
+  // a rung of the ladder — mid-sentence, in front of you. The whole line is
+  // known before the first character is drawn, so the size is decided there.
+  it('sizes the type from the whole line, not the part typed so far', async () => {
+    const long = Array.from({ length: 34 }, () => 'word').join(' ');
+    awake({ line: long, shown: 'word word' });
+    const midStream = await render(<Stage />);
+    expect(midStream.getByTestId('her-line').props.style).toEqual(
+      expect.objectContaining({ fontSize: ms(15) }),
+    );
+    // and it is still her line that is on screen, not the whole thing early
+    expect(midStream.getByTestId('her-line').props.children).toBe('word word');
   });
 
   it('hides the conversation pill until there is a transcript', async () => {
@@ -158,6 +173,99 @@ describe('Stage', () => {
     // Skia — mocked to no-ops here, so it cannot be observed in the tree. The
     // prop handover is the part that can be pinned, and it is the part that
     // was missing: the store set `waking` and nothing read it.
+    // She does one thing at a time. The 3a drift is her resting motion; a
+    // touch takes the eye over completely, and the drift only comes back once
+    // she has let the look go. The prototype never has to arbitrate this —
+    // its live eye tracks and never drifts, and its drifting grid cells are
+    // not touchable — so running both at once was ours to get wrong.
+    it('stops the idle drift while she is following your touch', async () => {
+      jest.useFakeTimers();
+      const spy = jest.spyOn(OpticModule, 'Optic');
+      try {
+        // the props the eye is holding right now, not the whole history
+        const now = () => spy.mock.calls.at(-1)?.[0];
+
+        awake();
+        const view = await render(<Stage />);
+        expect(now()).toEqual(expect.objectContaining({ tracking: false }));
+
+        await fireEvent(view.getByTestId('optic'), 'touchStart', {
+          nativeEvent: { pageX: 40, pageY: 90 },
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: true }));
+
+        // 2.6s holding the look, then 0.9s giving it up: the drift resumes on
+        // the far side of both, never during the return.
+        await act(async () => {
+          jest.advanceTimersByTime(2600 + 900 - 1);
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: true }));
+
+        await act(async () => {
+          jest.advanceTimersByTime(1);
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: false }));
+      } finally {
+        spy.mockRestore();
+        jest.useRealTimers();
+      }
+    });
+
+    // The hold is for a look you asked for by touching her, and it is over the
+    // instant she starts answering — waiting out the remainder of 2.6s + 0.9s
+    // left the eye dead still through the first seconds of a brand new state,
+    // which on alarmed (a 1.2s drift) is two whole cycles of nothing.
+    it('gives the eye back the moment she begins to answer', async () => {
+      jest.useFakeTimers();
+      const spy = jest.spyOn(OpticModule, 'Optic');
+      try {
+        const now = () => spy.mock.calls.at(-1)?.[0];
+        awake();
+        const view = await render(<Stage />);
+        await fireEvent(view.getByTestId('optic'), 'touchStart', {
+          nativeEvent: { pageX: 40, pageY: 90 },
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: true }));
+
+        // her line and her new emotion land in one store write
+        await act(async () => {
+          useFacilityStore.setState({ line: 'Noted.', emotion: 'amused' });
+        });
+        // the look comes home over the same 420ms the new state takes to
+        // settle, and the drift has the eye the moment it lands — not at 3.5s
+        await act(async () => {
+          jest.advanceTimersByTime(419);
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: true }));
+
+        await act(async () => {
+          jest.advanceTimersByTime(1);
+        });
+        expect(now()).toEqual(expect.objectContaining({ tracking: false }));
+      } finally {
+        spy.mockRestore();
+        jest.useRealTimers();
+      }
+    });
+
+    // Standing the drift down is the price of following your finger, so a
+    // state that refuses to follow must not pay it. disappointed is `track:0`
+    // — her gaze is clamped to nothing — so suppressing the drift bought
+    // nothing and just froze the eye for three and a half seconds.
+    it('lets a state that will not follow you keep drifting through a touch', async () => {
+      const spy = jest.spyOn(OpticModule, 'Optic');
+      try {
+        awake({ emotion: 'disappointed' });
+        const view = await render(<Stage />);
+        await fireEvent(view.getByTestId('optic'), 'touchStart', {
+          nativeEvent: { pageX: 40, pageY: 90 },
+        });
+        expect(spy.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ tracking: false }));
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     it('hands the wake bloom down to the eye', async () => {
       const spy = jest.spyOn(OpticModule, 'Optic');
       try {

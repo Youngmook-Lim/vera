@@ -26,13 +26,22 @@ type FetchLike = (url: string, init: {
 export const REQUEST_TIMEOUT_MS = 25_000;
 
 interface AnthropicShape { content?: { text?: string }[] }
-interface GeminiShape { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+interface GeminiShape {
+  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+}
 interface OaiShape { choices?: { message?: { content?: string } }[] }
 
 const textOf = (payload: unknown): string => {
   const j = payload as AnthropicShape & GeminiShape & OaiShape;
   if (j?.content) return j.content.map((b) => b.text ?? '').join('');
-  if (j?.candidates) return (j.candidates[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
+  if (j?.candidates) {
+    // A Gemini model that thinks returns its reasoning as parts marked
+    // `thought`. Concatenated in, they would be spoken as her line.
+    return (j.candidates[0]?.content?.parts ?? [])
+      .filter((p) => !p.thought)
+      .map((p) => p.text ?? '')
+      .join('');
+  }
   return j?.choices?.[0]?.message?.content ?? '';
 };
 

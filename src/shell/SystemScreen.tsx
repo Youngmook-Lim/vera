@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../core/i18n';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
@@ -23,13 +24,22 @@ const hhmm = (t: number): string => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-function SectionLabel({ text, lang }: { text: string; lang: Lang }) {
+function SectionLabel({ text, lang, first }: { text: string; lang: Lang; first?: boolean }) {
   return (
-    <Text style={[styles.sectionLabel, { fontFamily: font('mono', 600, lang) }]}>{text}</Text>
+    <Text
+      style={[
+        styles.sectionLabel,
+        first && styles.sectionLabelFirst,
+        { fontFamily: font('mono', 500, lang) },
+      ]}
+    >
+      {text}
+    </Text>
   );
 }
 
 export function SystemScreen() {
+  const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const apiKey = useFacilityStore((s) => s.apiKey);
   const impressions = useFacilityStore((s) => s.impressions);
@@ -44,7 +54,12 @@ export function SystemScreen() {
   const refused = authFails >= AUTH_FAILS_BEFORE_HINT;
 
   return (
-    <View style={styles.screen}>
+    <View
+      style={[
+        styles.screen,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
+    >
       <View style={styles.header}>
         <Pressable onPress={() => setView('stage')} hitSlop={12}>
           <Text style={styles.back}>‹</Text>
@@ -54,34 +69,30 @@ export function SystemScreen() {
 
       <View style={styles.body}>
         <View style={styles.section}>
-          <SectionLabel text={t.files} lang={lang} />
+          <SectionLabel text={t.files} lang={lang} first />
 
           <Pressable style={styles.tile} onPress={() => setView('mem')}>
             <View style={styles.tileText}>
-              <Text style={[styles.tileName, { fontFamily: font('mono', 600, lang) }]}>
+              <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
                 MEMORY.md
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
-                {t.memSub}
+                {`${t.memSub} · ${impressions.length} ${t.entries}`}
               </Text>
             </View>
-            <Text style={[styles.tileBadge, { fontFamily: font('mono', 600, lang) }]}>
-              {`${impressions.length} ${t.entries}`}
-            </Text>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
           </Pressable>
 
           <Pressable style={styles.tile} onPress={() => setView('soul')}>
             <View style={styles.tileText}>
-              <Text style={[styles.tileName, { fontFamily: font('mono', 600, lang) }]}>
+              <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
                 SOUL.md
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {t.soulSub}
               </Text>
             </View>
-            <Text style={[styles.tileBadge, { fontFamily: font('mono', 600, lang) }]}>
-              {t.ident}
-            </Text>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
           </Pressable>
         </View>
 
@@ -92,10 +103,10 @@ export function SystemScreen() {
             style={styles.row}
             onPress={() => void setLang(lang === 'en' ? 'ko' : 'en')}
           >
-            <Text style={[styles.rowLabel, { fontFamily: font('mono', 600, lang) }]}>
+            <Text style={[styles.rowLabel, { fontFamily: font('mono', 500, lang) }]}>
               {t.lang}
             </Text>
-            <Text style={[styles.rowValue, { fontFamily: font('mono', 600, lang) }]}>
+            <Text style={[styles.rowValue, { fontFamily: font('mono', 500, lang) }]}>
               {lang === 'en' ? 'EN / ko' : 'en / KO'}
             </Text>
           </Pressable>
@@ -104,29 +115,28 @@ export function SystemScreen() {
         <View style={styles.section}>
           <SectionLabel text={t.access} lang={lang} />
 
-          <View style={styles.row}>
+          {/* One row: the mask and its route stack on the left, CHANGE is the
+              right-hand affordance, and the whole row opens the panel (4a). */}
+          <Pressable style={styles.row} onPress={() => setKeyPanel(true)}>
             <View style={styles.tileText}>
-              <Text style={[styles.rowLabel, { fontFamily: font('mono', 600, lang) }]}>
+              <Text style={[styles.rowLabel, { fontFamily: font('mono', 500, lang) }]}>
                 {t.apiKey}
               </Text>
-              <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
+              <Text
+                testID="key-mask"
+                style={[
+                  styles.tileSub,
+                  { fontFamily: font('mono', 500, lang) },
+                  refused && { color: palette.danger },
+                ]}
+              >
+                {maskKey(apiKey)}
+              </Text>
+              <Text style={[styles.tileRoute, { fontFamily: font('mono', 500, lang) }]}>
                 {provider ? provider.label : t.provUnknown}
               </Text>
             </View>
-            <Text
-              testID="key-mask"
-              style={[
-                styles.rowValue,
-                { fontFamily: font('mono', 600, lang) },
-                refused && { color: palette.danger },
-              ]}
-            >
-              {maskKey(apiKey)}
-            </Text>
-          </View>
-
-          <Pressable style={styles.changeButton} onPress={() => setKeyPanel(true)}>
-            <Text style={[styles.changeText, { fontFamily: font('mono', 600, lang) }]}>
+            <Text style={[styles.changeText, { fontFamily: font('mono', 500, lang) }]}>
               {t.keyEdit}
             </Text>
           </Pressable>
@@ -142,107 +152,119 @@ export function SystemScreen() {
   );
 }
 
+// 4a's SYSTEM view. The rows are flat and hairline-separated — the design has
+// no cards here; a boxed panel per row was an invention.
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.bg,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
+    backgroundColor: palette.bgDeep,
   },
+  // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingBottom: 14,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: palette.borderSoft,
   },
   back: {
-    fontSize: ms(18),
-    color: palette.textMuted,
-  },
-  title: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.22,
+    fontSize: ms(11),
     color: palette.textDim,
   },
+  title: {
+    fontSize: ms(8.5),
+    letterSpacing: ms(8.5) * 0.2,
+    color: palette.textDim,
+  },
+  // `padding:20px 20px 0`
   body: {
     flex: 1,
-    paddingTop: 18,
-    gap: 26,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  section: {
-    gap: 10,
-  },
+  section: {},
+  // `padding:26px 0 12px` between sections; the first one has no top gap
   sectionLabel: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.24,
-    color: palette.textFaint,
+    color: palette.textGhostest,
+    paddingTop: 26,
+    paddingBottom: 12,
   },
+  sectionLabelFirst: {
+    paddingTop: 0,
+  },
+  // `padding:15px 0; border-top:1px solid #221f18`
   tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: palette.panel,
-    borderWidth: 1,
-    borderColor: palette.border,
+    gap: 13,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderColor: palette.borderSoft,
   },
   tileText: {
-    gap: 3,
-    flexShrink: 1,
+    flex: 1,
   },
   tileName: {
     fontSize: ms(11),
+    letterSpacing: ms(11) * 0.06,
     color: palette.text,
   },
   tileSub: {
-    fontSize: ms(8),
-    color: palette.textDim,
-  },
-  tileBadge: {
-    fontSize: ms(7.5),
-    letterSpacing: ms(7.5) * 0.12,
+    marginTop: 5,
+    fontSize: ms(8.5),
     color: palette.textFaint,
   },
+  tileRoute: {
+    marginTop: 4,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.1,
+    color: palette.textGhostest,
+  },
+  chevron: {
+    fontSize: ms(10),
+    color: palette.textGhost,
+  },
+  // preferences and access rules are ruled top AND bottom
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: palette.panel,
-    borderWidth: 1,
-    borderColor: palette.border,
+    gap: 12,
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: palette.borderSoft,
   },
   rowLabel: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.14,
+    fontSize: ms(11),
+    letterSpacing: ms(11) * 0.06,
     color: palette.text,
   },
   rowValue: {
     fontSize: ms(9),
-    letterSpacing: ms(9) * 0.08,
+    letterSpacing: ms(9) * 0.16,
     color: palette.amber,
-  },
-  changeButton: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
   },
   changeText: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.16,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.16,
     color: palette.amber,
   },
+  // `padding:16px 20px 20px`, right-aligned
   footer: {
     alignItems: 'flex-end',
-    paddingTop: 14,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   footerText: {
-    fontSize: ms(7.5),
-    letterSpacing: ms(7.5) * 0.1,
-    color: palette.textGhost,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.18,
+    color: '#33302a',
   },
 });

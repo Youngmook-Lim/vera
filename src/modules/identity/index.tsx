@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
 import { useFacilityStore } from '../../core/store';
@@ -31,6 +32,7 @@ function ExitAndLabel({ lang }: { lang: Lang }) {
 }
 
 export function IdentityScreen() {
+  const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const t = T[lang];
 
@@ -86,7 +88,10 @@ export function IdentityScreen() {
   };
 
   return (
-    <View style={styles.screen} testID="view-mod02">
+    <View
+      style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      testID="view-mod02"
+    >
       <View style={styles.header}>
         <ExitAndLabel lang={lang} />
         <Text style={[styles.headerLabel, { fontFamily: serif(lang) }]}>{t.label}</Text>
@@ -142,8 +147,10 @@ function IdentityTile({ onPress }: { onPress: () => void }) {
   const lang = useFacilityStore((s) => s.lang);
   const t = T[lang];
   return (
+    // The slot numeral sits above the title, not centred with it (4a).
     <Pressable testID="tile-mod02" style={tileStyles.tile} onPress={onPress}>
-      <Text style={[tileStyles.title, { fontFamily: serif(lang) }]}>{t.label}</Text>
+      <Text style={[tileStyles.slot, { fontFamily: serif(lang) }]}>02</Text>
+      <Text style={[tileStyles.title, { fontFamily: serifItalic(lang) }]}>{t.label}</Text>
     </Pressable>
   );
 }
@@ -238,9 +245,11 @@ const styles = StyleSheet.create({
     color: palette.identity.ink,
     padding: 0,
   },
+  // the design's hover ink for this glyph — on paper the darker value is the
+  // legible one, and a touch screen never reaches the resting tone
   removeGlyph: {
-    fontSize: ms(15),
-    color: palette.identity.inkFaint,
+    fontSize: ms(17),
+    color: palette.identity.inkPressed,
   },
   empty: {
     marginTop: 24,
@@ -268,20 +277,25 @@ const styles = StyleSheet.create({
 });
 
 const tileStyles = StyleSheet.create({
+  // `height:86px; radius 14; padding:11px; justify-content:space-between`
   tile: {
-    width: GRID_TILE_PX,
+    flex: 1,
     height: GRID_TILE_PX,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: palette.identity.paper,
     borderWidth: 1,
     borderColor: palette.identity.tileBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
+    justifyContent: 'space-between',
+    padding: 11,
+    overflow: 'hidden',
+  },
+  slot: {
+    fontSize: ms(11),
+    color: palette.identity.inkGhost,
   },
   title: {
-    fontSize: ms(10.5),
-    textAlign: 'center',
+    fontSize: ms(13),
+    lineHeight: ms(13) * 1.25,
     color: palette.identity.ink,
   },
 });

@@ -6,19 +6,48 @@ const DEEPSEEK = 'sk-0123456789abcdef0123456789abcdef';
 const OPENAI = 'sk-proj-ABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
 const GROQ = 'gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const GOOGLE = 'AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+// The form AI Studio issues now; `AIza` standard keys stop working in Sep 2026.
+const GOOGLE_AUTH = 'AQ.Ab8RN6JlKmNoPqRsTuVwXyZ0123456789abcdefghij';
 
 describe('providerFor', () => {
   it('routes each accepted shape to its own service', () => {
     expect(providerFor(ANTHROPIC)?.label).toBe('ANTHROPIC');
     expect(providerFor(OPENROUTER)?.label).toBe('OPENROUTER');
     expect(providerFor(OPENAI)?.label).toBe('OPENAI');
-    expect(providerFor(GROQ)?.label).toBe('GROQ');
     expect(providerFor(GOOGLE)?.label).toBe('GOOGLE');
   });
 
-  // The deepseek and openai patterns overlap; order in PROVIDERS decides.
+  // Anthropic and OpenRouter keys satisfy the openai pattern too, so order in
+  // PROVIDERS is what keeps them off the wrong endpoint.
+  it('keeps sk-ant- and sk-or- off the openai route', () => {
+    expect(providerFor(ANTHROPIC)?.label).not.toBe('OPENAI');
+    expect(providerFor(OPENROUTER)?.label).not.toBe('OPENAI');
+  });
+
+  // A key the subject creates in AI Studio today starts AQ.Ab — refusing it
+  // at the gate means she never wakes at all.
+  it('accepts both google key shapes, old and new', () => {
+    expect(providerFor(GOOGLE)?.label).toBe('GOOGLE');
+    expect(providerFor(GOOGLE_AUTH)?.label).toBe('GOOGLE');
+    expect(validateKey(GOOGLE_AUTH)).toMatchObject({ ok: true });
+  });
+
+  // gemini-2.0-flash is shut down; a live model id is the difference between
+  // her answering and her falling back forever on a perfectly good key.
+  it('points google at a model that still exists', () => {
+    const google = providerFor(GOOGLE);
+    expect(google?.model).toBe('gemini-2.5-flash-lite');
+    expect(google?.url).toContain('gemini-2.5-flash-lite:generateContent');
+  });
+
+  // A deepseek key cannot be refused — sk- + 32 hex satisfies the openai
+  // pattern too — so it needs its own route or it mis-routes silently.
   it('sends a 32-hex sk- key to deepseek, not openai', () => {
     expect(providerFor(DEEPSEEK)?.label).toBe('DEEPSEEK');
+  });
+
+  it('no longer routes groq', () => {
+    expect(providerFor(GROQ)).toBeNull();
   });
 
   it('returns null for a shape it does not know', () => {
@@ -45,10 +74,11 @@ describe('validateKey', () => {
   // that is the accepted cost of validating at the door (spec §9).
   it('refuses a well-formed key from a provider it does not route', () => {
     expect(validateKey('xai-abcdefghijklmnopqrstuvwxyz')).toEqual({ ok: false, reason: 'unrecognised' });
+    expect(validateKey(GROQ)).toEqual({ ok: false, reason: 'unrecognised' });
   });
 
   it('trims before judging', () => {
-    expect(validateKey(`  ${GROQ}  `)).toMatchObject({ ok: true });
+    expect(validateKey(`  ${OPENAI}  `)).toMatchObject({ ok: true });
   });
 });
 
@@ -78,8 +108,8 @@ describe('buildRequest', () => {
   });
 
   it('uses a bearer token and a system message for openai-shaped services', () => {
-    const req = buildRequest(GROQ, 'SOUL', 'hello', 300);
-    expect(req.headers.authorization).toBe(`Bearer ${GROQ}`);
+    const req = buildRequest(OPENAI, 'SOUL', 'hello', 300);
+    expect(req.headers.authorization).toBe(`Bearer ${OPENAI}`);
     expect(req.body).toMatchObject({
       messages: [
         { role: 'system', content: 'SOUL' },

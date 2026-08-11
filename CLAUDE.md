@@ -4,7 +4,13 @@
 
 Dark-comedy Android app. **V.E.R.A.** — a deadpan, faux-supportive AI administrator — owns the whole screen. She is a live model woken by the subject's own API key, she keeps two files, and she has opinions about you. React Native + Expo (TypeScript), Android-first, bilingual en/ko.
 
-**Read first:** `docs/superpowers/specs/2026-07-30-overhaul-design.md` (the v2 spec — every section number cited in code comments points here) · `docs/architecture.md` (stack, structure, mechanics) · `design/README.md` + `design/The Facility.dc.html` (the v1 pixel-final prototype; still the source for the palette and for Module 01's terrarium, but its enrollment/daily screens are gone).
+**Read first:** `design/The Facility - Overhaul.dc.html` — **the v2 prototype, and the authority on every pixel.** The spec below is a *derivation* of it and is wrong in places (it gives module tiles a 12px radius; the design uses 14px). Implementation target is turn **4a** (the live prototype — its own runtime lives in a `<script type="text/x-dc">` block near the end, holding the `EM` emotion table and `applyEmotion`), with the optic from turn **3a**, since 4a's stage eye carries no lid at all. Sections are `<section class="dv-turn" id="tN">`, options `<div class="dv-opt" id="4a">`.
+
+Pulled from Claude Design project `bc25a219-1ba4-4fef-9978-f21c0e6596dd` ("Overhauling VERA's design") with the `DesignSync` tool. **`list_projects` will not show it** — that method filters to design-system projects and this is a plain one; go straight to `get_project` / `list_files` / `get_file` with the UUID.
+
+Then: `docs/superpowers/specs/2026-07-30-overhaul-design.md` (the v2 spec — every section number cited in code comments points here) · `docs/architecture.md` (stack, structure, mechanics) · `design/The Facility.dc.html` (the v1 prototype; still the source for Module 01's terrarium, but its enrollment/daily screens are gone).
+
+**The hover rule.** The prototype is a web page and states several controls twice — a resting colour and a `style-hover` one. A touch screen has no hover, so every such pair is resolved to the **hover** value (see the note at the top of `src/core/theme.ts`). Don't "fix" these back to the resting colour.
 
 ## Where the build is
 
@@ -40,7 +46,7 @@ Pure decision-making modules (`fluid`, `emotions`, `providers`, `llm`, `context`
 
 Module 02 owns its own store — it has nothing to do with her soul or the transcript, and she is not told what is in it. **MEMORY.md is never written to disk as text**: `FileScreen` composes it at render time out of `impressions`. **SOUL.md is read-only** and is the literal system prompt, not a paraphrase of it. The transcript is the only thing the subject can erase, and erasing it costs her the wording, never the verdict.
 
-**The six accepted key shapes (spec §9), order significant** — DeepSeek's pattern is a strict subset of OpenAI's, so it must be tested first:
+**The five accepted key shapes (spec §9), order significant** — every `sk-` shape below also satisfies OpenAI's pattern (its class includes the hyphen, and 32 hex digits are alphanumerics), so anthropic, openrouter and deepseek must all be tested before it:
 
 | label | pattern | model |
 |---|---|---|
@@ -48,10 +54,13 @@ Module 02 owns its own store — it has nothing to do with her soul or the trans
 | OPENROUTER | `^sk-or-` | `anthropic/claude-sonnet-4.5` |
 | DEEPSEEK | `^sk-[0-9a-f]{32}$` | `deepseek-chat` |
 | OPENAI | `^sk-(proj-)?[A-Za-z0-9_-]{20,}$` | `gpt-4o-mini` |
-| GROQ | `^gsk_` | `llama-3.3-70b-versatile` |
-| GOOGLE | `^AIza` | `gemini-2.0-flash` |
+| GOOGLE | `^(AIza\|AQ\.)` | `gemini-2.5-flash-lite` |
 
-GROQ is Groq the inference provider, not xAI's Grok. Anything under 8 characters, containing whitespace, or matching none of the six is refused at the gate. The accepted consequence: a **valid** key from an unlisted provider (Mistral, Together, xAI) is refused too. Requests go straight from the device to the matched provider — there is no server in this project. A key on the device is readable by anyone holding the phone; it is the subject's own.
+Groq was dropped (2026-08-07); the spec's §9 table still lists all six and is out of date on this point and on the Gemini rows below.
+
+**Two Gemini gotchas, both live.** Google is migrating keys from `AIza` (standard) to `AQ.Ab…` (auth, service-account-bound): AI Studio issues **only** the new form now, and from **September 2026** the API rejects standard keys outright — so a gate matching only `^AIza` refuses every key a subject can currently create. And `gemini-2.0-flash` is **shut down**; `gemini-2.5-flash-lite` is the replacement and is the one 2.5 model with **thinking off by default**, which matters because a thinking model would spend the 300-token budget on thoughts and return no text. `llm.ts` also filters out response parts marked `thought` so reasoning is never spoken as her line. A retired model 404s rather than 401s, so it never raises `AuthError` — she just falls back to an authored line forever and looks alive. A test pins the model id for that reason.
+
+Anything under 8 characters, containing whitespace, or matching none of the five is refused at the gate. The accepted consequence: a **valid** key from an unlisted provider (Mistral, Together, xAI, Groq) is refused. Requests go straight from the device to the matched provider — there is no server in this project. A key on the device is readable by anyone holding the phone; it is the subject's own.
 
 ## Conventions & gotchas
 

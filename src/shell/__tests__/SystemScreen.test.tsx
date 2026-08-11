@@ -76,8 +76,11 @@ describe('SystemScreen', () => {
   it('leaves the credential alone on a single refusal', async () => {
     useFacilityStore.setState({ authFails: 1 });
     const view = await render(<SystemScreen />);
+    // 4a sets the mask as the row's dim sub-line; amber belongs to CHANGE.
+    // What matters here is that one refusal leaves it unmarked.
     const style = StyleSheet.flatten(view.getByTestId('key-mask').props.style);
-    expect(style.color).toBe(palette.amber);
+    expect(style.color).toBe(palette.textFaint);
+    expect(style.color).not.toBe(palette.danger);
   });
 
   it('marks the credential once refusals repeat', async () => {

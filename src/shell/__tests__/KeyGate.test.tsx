@@ -32,7 +32,7 @@ describe('KeyGate', () => {
   // dialogue — but a gate that refuses you has to say what it wants (spec §9).
   it('lists the accepted routes without her mentioning them', async () => {
     const view = await render(<KeyGate />);
-    expect(view.getByText('ANTHROPIC · OPENROUTER · OPENAI · DEEPSEEK · GROQ · GOOGLE')).toBeTruthy();
+    expect(view.getByText('ANTHROPIC · OPENROUTER · OPENAI · DEEPSEEK · GOOGLE')).toBeTruthy();
   });
 
   it('refuses a key it does not recognise and stays dormant', async () => {

@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import type { LogEntry } from '../core/store';
 import type { Lang } from '../core/i18n';
 import { T } from './strings';
+import { ThinkingDots } from './ThinkingDots';
+import { useKeyboardInset } from './useKeyboardInset';
 
 // The transcript, and the one thing the subject may burn. Her conclusions are
 // not here — they are in MEMORY.md, and CLEAR does not reach them (spec §8).
@@ -19,34 +23,36 @@ const hhmm = (t: number): string => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
+// The stamp sits above your bubble, not under it (4a).
 function YouLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
   return (
     <View style={styles.youRow}>
+      <Text style={[styles.stamp, { fontFamily: font('mono', 500, lang) }]}>{hhmm(entry.t)}</Text>
       <View style={styles.youBubble}>
         <Text style={[styles.youText, { fontFamily: font('mono', 500, lang) }]}>{entry.text}</Text>
       </View>
-      <Text style={styles.stamp}>{hhmm(entry.t)}</Text>
     </View>
   );
 }
 
+// Only the rule down her left edge carries the emotion's colour — the tag
+// itself stays grey, and her lines take no timestamp (4a).
 function HerLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
   const emotion: EmotionKey = entry.emotion ?? 'calm';
   const iris = EMOTIONS[emotion].iris;
   return (
     <View style={[styles.herRow, { borderLeftColor: iris }]}>
-      <View style={styles.herHead}>
-        <Text style={[styles.herTag, { fontFamily: font('mono', 600, lang), color: iris }]}>
-          {`V.E.R.A. · ${emotionLabel(emotion, lang)}`}
-        </Text>
-        <Text style={styles.stamp}>{hhmm(entry.t)}</Text>
-      </View>
+      <Text style={[styles.herTag, { fontFamily: font('mono', 500, lang) }]}>
+        {`V.E.R.A. · ${emotionLabel(emotion, lang)}`}
+      </Text>
       <Text style={[styles.herText, { fontFamily: serif(lang) }]}>{entry.text}</Text>
     </View>
   );
 }
 
 export function LogScreen() {
+  const insets = useSafeAreaInsets();
+  const keyboardInset = useKeyboardInset();
   const lang = useFacilityStore((s) => s.lang);
   const log = useFacilityStore((s) => s.log);
   const emotion = useFacilityStore((s) => s.emotion);
@@ -84,30 +90,30 @@ export function LogScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, { paddingTop: insets.top }, keyboardInset]}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Pressable onPress={back} hitSlop={12}>
-            <Text style={styles.back}>‹</Text>
-          </Pressable>
+        <Pressable onPress={back} hitSlop={12} style={styles.headerLeft}>
+          <Text style={[styles.back, { fontFamily: font('mono', 500, lang) }]}>‹</Text>
           <View style={[styles.dot, { backgroundColor: iris }]} />
-          <Text style={[styles.emotionLabel, { fontFamily: font('mono', 600, lang) }]}>
+          <Text
+            style={[styles.emotionLabel, { color: iris, fontFamily: font('mono', 500, lang) }]}
+          >
             {emotionLabel(emotion, lang)}
           </Text>
-        </View>
+        </Pressable>
 
         {confirming ? (
           <View style={styles.confirmRow}>
             <Pressable onPress={() => setConfirmingClear(false)} hitSlop={10}>
-              <Text style={[styles.keep, { fontFamily: font('mono', 600, lang) }]}>{t.keep}</Text>
+              <Text style={[styles.keep, { fontFamily: font('mono', 500, lang) }]}>{t.keep}</Text>
             </Pressable>
-            <Pressable onPress={() => void clearTranscript()} hitSlop={10}>
-              <Text style={[styles.erase, { fontFamily: font('mono', 600, lang) }]}>{t.erase}</Text>
+            <Pressable onPress={() => void clearTranscript()} hitSlop={10} style={styles.eraseChip}>
+              <Text style={[styles.erase, { fontFamily: font('mono', 500, lang) }]}>{t.erase}</Text>
             </Pressable>
           </View>
         ) : (
-          <Pressable onPress={() => setConfirmingClear(true)} hitSlop={10}>
-            <Text style={[styles.clear, { fontFamily: font('mono', 600, lang) }]}>{t.clear}</Text>
+          <Pressable onPress={() => setConfirmingClear(true)} hitSlop={10} style={styles.clearHit}>
+            <Text style={[styles.clear, { fontFamily: font('mono', 500, lang) }]}>{t.clear}</Text>
           </Pressable>
         )}
       </View>
@@ -136,8 +142,10 @@ export function LogScreen() {
         )}
       </ScrollView>
 
+      {thinking ? <ThinkingDots style={styles.thinking} /> : null}
+
       <View style={styles.inputRow}>
-        <Text style={styles.chevron}>›</Text>
+        <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
         <TextInput
           style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
           value={draft}
@@ -146,161 +154,195 @@ export function LogScreen() {
           placeholderTextColor={palette.textFaint}
           onSubmitEditing={send}
         />
-        <Pressable onPress={send} hitSlop={8}>
-          <Text style={[styles.send, { fontFamily: font('mono', 600, lang) }]}>{t.send}</Text>
+        <Pressable onPress={send} hitSlop={8} style={styles.sendButton}>
+          <Text style={[styles.send, { fontFamily: font('mono', 500, lang) }]}>{t.send}</Text>
         </Pressable>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
+// 4a's log view, verbatim. Layout 1:1; only type passes through ms().
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.bg,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
+    backgroundColor: palette.bgDeep,
   },
+  // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 14,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: palette.borderSoft,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
   },
   back: {
-    fontSize: ms(18),
-    color: palette.textMuted,
+    fontSize: ms(13),
+    color: palette.textDim,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   emotionLabel: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.22,
-    color: palette.textDim,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.18,
   },
   confirmRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
   },
+  clearHit: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  // red is CLEAR's hover state, and the only warning a touch screen can show
+  // before the KEEP / ERASE confirmation
   clear: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.16,
-    color: palette.textDim,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.18,
+    color: palette.danger,
   },
   keep: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.16,
-    color: palette.textMuted,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.16,
+    color: palette.textFaint,
+  },
+  // the destructive half is the only chip on the screen
+  eraseChip: {
+    borderWidth: 1,
+    borderColor: '#ff4a3d55',
+    backgroundColor: '#ff4a3d10',
+    borderRadius: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
   },
   erase: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.16,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.16,
     color: palette.danger,
   },
   thread: {
     flex: 1,
   },
+  // `padding:20px 20px 8px; gap:16px`
   threadInner: {
-    paddingVertical: 18,
-    gap: 18,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+    gap: 16,
   },
   youRow: {
     alignSelf: 'flex-end',
-    maxWidth: '84%',
+    maxWidth: '76%',
     alignItems: 'flex-end',
-    gap: 4,
+    gap: 5,
   },
   youBubble: {
     backgroundColor: YOU_BG,
+    borderWidth: 1,
+    borderColor: palette.border,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 4,
     borderBottomLeftRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 10,
   },
   youText: {
-    fontSize: ms(11),
-    lineHeight: ms(11) * 1.5,
-    color: palette.text,
-    textAlign: 'right',
+    fontSize: ms(11.5),
+    lineHeight: ms(11.5) * 1.62,
+    color: palette.textMuted,
   },
   stamp: {
     fontSize: ms(7),
     letterSpacing: ms(7) * 0.14,
-    color: palette.textGhost,
+    color: '#33302a',
   },
   herRow: {
     alignSelf: 'flex-start',
-    maxWidth: '92%',
     borderLeftWidth: 2,
     paddingLeft: 14,
     gap: 6,
   },
-  herHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   herTag: {
-    fontSize: ms(7.5),
-    letterSpacing: ms(7.5) * 0.2,
+    fontSize: ms(7),
+    letterSpacing: ms(7) * 0.14,
+    color: palette.textGhost,
   },
   herText: {
     fontSize: ms(17),
-    lineHeight: ms(17) * 1.35,
+    lineHeight: ms(17) * 1.5,
     color: palette.text,
   },
   empty: {
-    flex: 1,
+    marginVertical: 'auto',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 12,
-    paddingVertical: 60,
   },
   emptyLabel: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.24,
-    color: palette.textFaint,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.22,
+    color: palette.textGhostest,
   },
   emptyLine: {
-    fontSize: ms(17),
-    color: palette.textDim,
+    maxWidth: 230,
+    fontSize: ms(15),
+    lineHeight: ms(15) * 1.5,
+    color: palette.textFaint,
     textAlign: 'center',
   },
+  // `padding:0 20px 10px; gap:7px`
+  thinking: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    gap: 7,
+  },
+  // the same card as the stage, `margin:8px 18px 18px`
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderTopWidth: 1,
-    borderColor: palette.hairline,
-    paddingTop: 14,
+    gap: 11,
+    marginTop: 8,
+    marginHorizontal: 18,
+    marginBottom: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
   },
   chevron: {
-    fontSize: ms(16),
+    fontSize: ms(11),
     color: palette.amber,
   },
   input: {
     flex: 1,
     padding: 0,
-    fontSize: ms(11),
+    fontSize: ms(12.5),
     color: palette.text,
   },
+  sendButton: {
+    borderWidth: 1,
+    borderColor: palette.amberEdgeSoft,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+  },
   send: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.12,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.18,
     color: palette.amber,
   },
 });

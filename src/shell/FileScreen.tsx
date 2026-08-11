@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Impression } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
@@ -50,6 +51,7 @@ const buildMemoryMd = (impressions: Impression[], cleared: number): string => {
 };
 
 export function FileScreen() {
+  const insets = useSafeAreaInsets();
   const view = useFacilityStore((s) => s.view);
   const lang = useFacilityStore((s) => s.lang);
   const impressions = useFacilityStore((s) => s.impressions);
@@ -64,15 +66,19 @@ export function FileScreen() {
   const rightFooter = isSoul ? t.everyReply : t.byV;
 
   return (
-    <View style={styles.screen}>
+    <View
+      style={[
+        styles.screen,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
+    >
       <View style={styles.header}>
-        <Pressable onPress={() => setView('sys')} hitSlop={12}>
-          <Text style={styles.back}>‹</Text>
+        {/* the file's note sits opposite its name, not stacked under it (4a) */}
+        <Pressable onPress={() => setView('sys')} hitSlop={12} style={styles.headerLeft}>
+          <Text style={[styles.back, { fontFamily: font('mono', 500, lang) }]}>‹</Text>
+          <Text style={[styles.name, { fontFamily: font('mono', 500, lang) }]}>{name}</Text>
         </Pressable>
-        <View style={styles.headerText}>
-          <Text style={[styles.name, { fontFamily: font('mono', 600, lang) }]}>{name}</Text>
-          <Text style={[styles.meta, { fontFamily: font('mono', 500, lang) }]}>{meta}</Text>
-        </View>
+        <Text style={[styles.meta, { fontFamily: font('mono', 500, lang) }]}>{meta}</Text>
       </View>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner}>
@@ -85,10 +91,10 @@ export function FileScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Text style={[styles.footerLeft, { fontFamily: font('mono', 600, lang) }]}>
+        <Text style={[styles.footerLeft, { fontFamily: font('mono', 500, lang) }]}>
           {t.sealed}
         </Text>
-        <Text style={[styles.footerRight, { fontFamily: font('mono', 600, lang) }]}>
+        <Text style={[styles.footerRight, { fontFamily: font('mono', 500, lang) }]}>
           {rightFooter}
         </Text>
       </View>
@@ -96,66 +102,75 @@ export function FileScreen() {
   );
 }
 
+// 4a's file reader, verbatim.
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: palette.bgFile,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
   },
+  // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingBottom: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: palette.borderSoft,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   back: {
-    fontSize: ms(18),
-    color: palette.textMuted,
-  },
-  headerText: {
-    gap: 2,
+    fontSize: ms(11),
+    color: palette.textDim,
   },
   name: {
-    fontSize: ms(13),
-    letterSpacing: ms(13) * 0.04,
+    fontSize: ms(8.5),
+    letterSpacing: ms(8.5) * 0.14,
     color: palette.text,
   },
   meta: {
-    fontSize: ms(8),
-    letterSpacing: ms(8) * 0.08,
-    color: palette.textFaint,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.16,
+    color: palette.textGhostest,
   },
   body: {
     flex: 1,
   },
+  // `padding:22px 20px 0`
   bodyInner: {
-    paddingVertical: 18,
+    paddingHorizontal: 20,
+    paddingTop: 22,
   },
   bodyText: {
     fontSize: ms(10.5),
-    lineHeight: ms(10.5) * 1.6,
+    lineHeight: ms(10.5) * 1.9,
+    letterSpacing: ms(10.5) * 0.01,
     color: palette.textMuted,
   },
+  // `padding:14px 20px 20px; border-top:1px solid #221f18`
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
     paddingTop: 14,
+    paddingBottom: 20,
     borderTopWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: palette.borderSoft,
   },
   footerLeft: {
     fontSize: ms(7.5),
-    letterSpacing: ms(7.5) * 0.16,
+    letterSpacing: ms(7.5) * 0.22,
     color: palette.sealed,
   },
   footerRight: {
     fontSize: ms(7.5),
-    letterSpacing: ms(7.5) * 0.16,
-    color: palette.textFaint,
+    letterSpacing: ms(7.5) * 0.12,
+    color: '#33302a',
   },
 });

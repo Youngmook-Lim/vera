@@ -1,6 +1,13 @@
 import type { Lang } from './i18n';
 
 // Every value verbatim from the design doc's 4a markup. Do not tweak.
+//
+// THE HOVER RULE. The prototype is a web page and states several controls
+// twice: a resting colour and a `style-hover` one. A touch screen has no
+// hover, so the resting value is all anyone would ever see and the design's
+// intent — this is pressable, this one is destructive — never arrives. Every
+// such pair below is resolved to the HOVER value, which is the state the
+// design meant you to read the control in.
 export const palette = {
   // the shell — her stage and the views behind it
   bg: '#14130f',
@@ -11,14 +18,23 @@ export const palette = {
   border: '#2c2a22',
   borderSoft: '#221f18',
   borderFaint: '#232118',
+  borderPill: '#3d382b', // hover of #262319
+  borderLift: '#4a4740', // hover of #2c2a22, on the ACCESS cancel button
   hairline: '#35322a',
+  hairlineDim: '#6c6656',
   text: '#f2e7d3',
+  textSoft: '#c9c1b2',
   textDim: '#8a8578',
   textMuted: '#a8a29a',
+  textPill: '#a89f8c',
   textFaint: '#57534a',
   textGhost: '#4a4740',
   textGhostest: '#3a372c',
   amber: '#f4b43a',
+  // the amber button skin: wash + edge, both at their hover strength
+  amberWash: '#f4b43a1f', // hover of #f4b43a12
+  amberEdge: '#f4b43a88', // hover of #f4b43a44
+  amberEdgeSoft: '#f4b43a66', // hover of the SEND button's #35322a
   danger: '#ff4a3d',
   dangerSoft: '#ff6a5a',
   sealed: '#9d8757',
@@ -46,6 +62,7 @@ export const palette = {
     ink: '#1c1a15',
     inkSoft: '#6b6455',
     inkFaint: '#9a917d',
+    inkPressed: '#4a4438', // hover of the line-remove glyph's #8a7f68
     inkGhost: '#b3aa95',
     tileBorder: '#d6cdb9',
   },

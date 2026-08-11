@@ -1,7 +1,10 @@
-// Six routes, and only six. The key's own shape picks one; a shape that
+// Five routes, and only five. The key's own shape picks one; a shape that
 // matches none is refused at the gate rather than guessed at (spec §9).
-// GROQ is Groq the inference provider — not xAI's Grok, which is a different
-// company with an `xai-` prefix and is not routed here.
+//
+// Groq was dropped deliberately: a valid `gsk_` key is now refused at the
+// door. DeepSeek stays because its keys cannot be refused — `sk-` + 32 hex
+// satisfies the openai pattern too — so without a route of its own it would
+// silently mis-route and fail at OpenAI instead.
 export type ProviderKind = 'anthropic' | 'oai' | 'gemini';
 
 export interface Provider {
@@ -12,8 +15,10 @@ export interface Provider {
   model: string;
 }
 
-// ORDER IS SIGNIFICANT. The deepseek pattern is a strict subset of the openai
-// one, so deepseek must be tested first or its keys route to openai.
+// ORDER IS SIGNIFICANT. Every `sk-` shape below also satisfies the openai
+// pattern — its character class includes the hyphen, and 32 hex digits are
+// plain alphanumerics — so anthropic, openrouter and deepseek must all be
+// tested before openai or their keys route to the wrong endpoint.
 export const PROVIDERS: readonly Provider[] = [
   {
     label: 'ANTHROPIC', test: /^sk-ant-/, kind: 'anthropic',
@@ -32,13 +37,20 @@ export const PROVIDERS: readonly Provider[] = [
     url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini',
   },
   {
-    label: 'GROQ', test: /^gsk_/, kind: 'oai',
-    url: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile',
-  },
-  {
-    label: 'GOOGLE', test: /^AIza/, kind: 'gemini',
-    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    model: 'gemini-2.0-flash',
+    // TWO shapes. Google is migrating Gemini keys from `AIza` (standard keys)
+    // to `AQ.Ab…` (auth keys, bound to a service account): AI Studio issues
+    // only the new form now, and from September 2026 the API rejects standard
+    // keys outright. A gate that knows only `AIza` refuses every key a subject
+    // can currently create — and refuses it at the door, so she never even
+    // wakes. Both are accepted until the old one stops being issued at all.
+    label: 'GOOGLE', test: /^(AIza|AQ\.)/, kind: 'gemini',
+    // Separately: gemini-2.0-flash was SHUT DOWN. An accepted key on a retired
+    // model 404s, which is not a 401, so it shows an authored fallback line
+    // rather than an error — she looks alive and says nothing of substance.
+    // flash-lite is the one 2.5 model with thinking OFF by default; the others
+    // would spend this request's 300 tokens on thoughts and return no text.
+    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+    model: 'gemini-2.5-flash-lite',
   },
 ];
 

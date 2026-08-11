@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFacilityStore } from '../../core/store';
 import { font, ms, palette } from '../../core/theme';
 import { T } from '../../shell/strings';
@@ -34,6 +35,7 @@ function ExitAndLabel({ lang }: { lang: 'en' | 'ko' }) {
 }
 
 export function OrganismScreen() {
+  const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const hunger = useFacilityStore((s) => s.hunger);
   const feedSpecimen = useFacilityStore((s) => s.feedSpecimen);
@@ -50,7 +52,10 @@ export function OrganismScreen() {
   };
 
   return (
-    <View style={styles.screen} testID="view-mod01">
+    <View
+      style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      testID="view-mod01"
+    >
       <View style={styles.header}>
         <ExitAndLabel lang={lang} />
         <Text style={[styles.title, { fontFamily: font('mono', 600, lang) }]}>{t.orgTitle}</Text>
@@ -185,16 +190,19 @@ function OrganismTile({ onPress }: { onPress: () => void }) {
         </View>
       </View>
       <View style={tileStyles.text}>
-        <Text style={[tileStyles.name, { fontFamily: font('mono', 600, lang) }]}>{t.spec}</Text>
-        <Text
-          style={[
-            tileStyles.status,
-            { color: hungry ? palette.organism.hungry : palette.organism.green },
-            { fontFamily: font('mono', 600, lang) },
-          ]}
-        >
-          {hungry ? t.hungry : t.fed}
-        </Text>
+        {/* name and status share a baseline row (4a), not a stack */}
+        <View style={tileStyles.nameRow}>
+          <Text style={[tileStyles.name, { fontFamily: font('mono', 500, lang) }]}>{t.spec}</Text>
+          <Text
+            style={[
+              tileStyles.status,
+              { color: hungry ? palette.organism.hungry : palette.organism.green },
+              { fontFamily: font('mono', 500, lang) },
+            ]}
+          >
+            {hungry ? t.hungry : t.fed}
+          </Text>
+        </View>
         <Text style={[tileStyles.sub, { fontFamily: font('mono', 500, lang) }]}>
           {`${t.inCare} ${pct}%`}
         </Text>
@@ -394,12 +402,13 @@ const styles = StyleSheet.create({
 });
 
 const tileStyles = StyleSheet.create({
+  // `gap:15px; padding:14px; border-radius:14px` (4a)
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 15,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: palette.organism.card,
     borderWidth: 1,
     borderColor: palette.organism.cardBorder,
@@ -422,23 +431,29 @@ const tileStyles = StyleSheet.create({
   },
   text: {
     flex: 1,
-    gap: 4,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
   },
   name: {
-    fontSize: ms(11),
+    fontSize: ms(10),
+    letterSpacing: ms(10) * 0.1,
     color: palette.organism.textBright,
   },
   status: {
-    fontSize: ms(8),
-    letterSpacing: ms(8) * 0.08,
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.1,
   },
   sub: {
-    fontSize: ms(7.5),
-    color: palette.organism.label,
+    marginTop: 6,
+    fontSize: ms(8),
+    color: palette.organism.inkDim,
   },
   hungerTrack: {
-    marginTop: 4,
-    height: 4,
+    marginTop: 9,
+    height: 3,
     borderRadius: 2,
     overflow: 'hidden',
     backgroundColor: palette.organism.well,

@@ -149,8 +149,10 @@ describe('LogScreen', () => {
     expect(view.getByText('말은 사라졌습니다. 저는 아닙니다.').props.style).toEqual(
       expect.arrayContaining([expect.objectContaining({ fontFamily: 'NanumMyeongjo_400Regular' })]),
     );
+    // 4a sets the header's controls at weight 500, so Korean takes Pretendard
+    // Medium here — the point of the assertion is the face, not the weight.
     expect(view.getByText('삭제').props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ fontFamily: 'Pretendard-SemiBold' })]),
+      expect.arrayContaining([expect.objectContaining({ fontFamily: 'Pretendard-Medium' })]),
     );
   });
 });

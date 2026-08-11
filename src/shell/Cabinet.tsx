@@ -41,11 +41,11 @@ export function Cabinet() {
           <View style={styles.grabBar} />
 
           <View style={styles.header}>
-            <Text style={[styles.title, { fontFamily: font('mono', 600, lang) }]}>
+            <Text style={[styles.title, { fontFamily: font('mono', 500, lang) }]}>
               {t.cabinet}
             </Text>
             <Pressable onPress={close} accessibilityLabel={`${t.alloc} ${countLabel}`}>
-              <Text style={[styles.count, { fontFamily: font('mono', 600, lang) }]}>
+              <Text style={[styles.count, { fontFamily: font('mono', 500, lang) }]}>
                 {countLabel}
               </Text>
             </Pressable>
@@ -64,7 +64,7 @@ export function Cabinet() {
 
             {emptySlots.map((entry) => (
               <View key={entry.slot} testID={`tile-${entry.slot}`} style={styles.emptyTile}>
-                <Text style={[styles.emptyNumeral, { fontFamily: font('mono', 600, lang) }]}>
+                <Text style={[styles.emptyNumeral, { fontFamily: font('mono', 500, lang) }]}>
                   {entry.slot}
                 </Text>
               </View>
@@ -76,68 +76,73 @@ export function Cabinet() {
   );
 }
 
+// 4a's drawer. It is flush to the screen edges and rounded only at the top —
+// the inset, floating card was an invention.
 const styles = StyleSheet.create({
   scrim: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: '#08080699',
     justifyContent: 'flex-end',
   },
+  // `left:0;right:0;bottom:0; border-radius:20px 20px 34px 34px; padding:0 18px 20px`
   sheet: {
     backgroundColor: '#17171a',
+    borderTopWidth: 1,
+    borderColor: palette.hairline,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 34,
     borderBottomRightRadius: 34,
-    paddingTop: 10,
-    paddingBottom: 28,
-    marginBottom: 10,
-    marginHorizontal: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
   },
+  // `padding:9px 0 4px`, a 34px bar
   grabBar: {
     alignSelf: 'center',
-    width: 40,
+    width: 34,
     height: 4,
     borderRadius: 2,
     backgroundColor: palette.hairline,
+    marginTop: 9,
+    marginBottom: 4,
   },
+  // `padding:8px 2px 16px`
   header: {
-    marginTop: 14,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 2,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: ms(10),
-    letterSpacing: ms(10) * 0.2,
-    color: palette.text,
-  },
-  count: {
     fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.1,
+    letterSpacing: ms(8.5) * 0.22,
     color: palette.textDim,
   },
-  featureRow: {
-    marginTop: 18,
-    marginHorizontal: 20,
+  count: {
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.14,
+    color: palette.textGhost,
   },
+  featureRow: {},
+  // `margin-top:11px; gap:10px`
   grid: {
-    marginTop: 14,
-    marginHorizontal: 20,
+    marginTop: 11,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   emptyTile: {
-    width: GRID_TILE_PX,
+    flex: 1,
     height: GRID_TILE_PX,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: palette.borderFaint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyNumeral: {
-    fontSize: ms(18),
-    color: palette.textGhost,
+    fontSize: ms(24),
+    color: '#2b2820',
   },
 });

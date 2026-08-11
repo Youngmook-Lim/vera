@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   cancelAnimation,
+  withDelay,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -11,51 +13,55 @@ import Animated, {
 import { fluid } from '../core/fluid';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif } from '../core/theme';
-import { EMOTIONS, emotionLabel } from '../vera/emotions';
+import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
 import { Optic } from './Optic';
+import { gazeFor } from './opticGeometry';
+import { useKeyboardInset } from './useKeyboardInset';
 import { T } from './strings';
+import { ThinkingDots } from './ThinkingDots';
 
 // Nothing on the stage but her: an eye, a label, one line of dialogue, one
 // input, and a drawer handle. Everything below is in service of that.
 
-const GAZE_RANGE_PX = 120; // finger travel, in px, that reads as a full gaze deflection
-const GAZE_CLAIM_PX = 8; // move threshold before the stage claims the gesture (lets taps through)
+const OPTIC_PX = 158;
+const LOOK_MS = 420; // the design's own pupil transition
+const HOLD_MS = 2600; // how long she keeps looking where you touched
+const RELEASE_MS = 900; // and how unhurriedly she gives it up
 const DRAWER_DRAG_PX = 22; // upward travel on the handle that counts as "open" (spec: >22px)
-
-const clamp = (v: number) => Math.max(-1, Math.min(1, v));
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
 // the optic itself.
-function usePulseOpacity(duration: number, from: number, to: number) {
+function usePulseOpacity(duration: number, from: number, to: number, delay = 0) {
   const v = useSharedValue(from);
   useEffect(() => {
-    v.value = withRepeat(
-      withSequence(withTiming(to, { duration }), withTiming(from, { duration })),
-      -1,
-      true,
+    v.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(withTiming(to, { duration }), withTiming(from, { duration })),
+        -1,
+        true,
+      ),
     );
     return () => cancelAnimation(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [duration]);
   return useAnimatedStyle(() => ({ opacity: v.value }));
 }
 
-function PulseDot({ color }: { color: string }) {
-  const style = usePulseOpacity(900, 0.35, 1);
+// fdot, whose duration applyEmotion sets to the emotion's own blink interval —
+// the header dot keeps her tempo, not a fixed one.
+function PulseDot({ color, duration }: { color: string; duration: number }) {
+  const style = usePulseOpacity(duration / 2, 1, 0.28);
   return <Animated.View style={[styles.pulseDot, { backgroundColor: color }, style]} />;
-}
-
-function ThinkingDots() {
-  const style = usePulseOpacity(500, 0.3, 1);
-  return <Animated.Text style={style}>...</Animated.Text>;
 }
 
 export function Stage() {
   const apiKey = useFacilityStore((s) => s.apiKey);
   const emotion = useFacilityStore((s) => s.emotion);
   const lang = useFacilityStore((s) => s.lang);
+  const line = useFacilityStore((s) => s.line);
   const shown = useFacilityStore((s) => s.shown);
   const thinking = useFacilityStore((s) => s.thinking);
   const draft = useFacilityStore((s) => s.draft);
@@ -67,30 +73,99 @@ export function Stage() {
   const setView = useFacilityStore((s) => s.setView);
   const speak = useFacilityStore((s) => s.speak);
 
+  // Android is edge-to-edge from SDK 54 on, so the stage draws under the status
+  // bar and the gesture strip. The 28/20 of the mock is padding below the
+  // system chrome, not instead of it.
+  const insets = useSafeAreaInsets();
+  const keyboardInset = useKeyboardInset();
+
   const awake = Boolean(apiKey);
   const t = T[lang];
   const iris = EMOTIONS[emotion].iris;
-  const { fontSize, lineHeight } = fluid(shown, lang);
+  // `track:0` is disappointed and dormant — they will not follow your finger.
+  const follows = EMOTIONS[emotion].track > 0;
+  // Sized from the WHOLE line, drawn from what has been typed so far. The
+  // store has the finished line before the typewriter draws its first
+  // character; sizing off `shown` instead re-ran the ladder on a word count
+  // that was still climbing, so the type stepped down under her mid-sentence.
+  const { fontSize, lineHeight } = fluid(line, lang);
 
-  const gaze = useSharedValue({ x: 0, y: 0 });
+  const gazeX = useSharedValue(0);
+  const gazeY = useSharedValue(0);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Whether the eye is hers to move or yours. She does one thing at a time:
+  // the 3a drift is her resting motion, a touch takes the eye over, and the
+  // drift only resumes once the look has been let go. Nothing in the design
+  // arbitrates this — its live eye tracks and never drifts, and the drifting
+  // grid cells cannot be touched — so the timeline is ours to own, and it
+  // lives here because the hold and the release do.
+  const [tracking, setTracking] = useState(false);
+  const restTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // A pan over the whole stage nudges her gaze; the optic itself clamps the
-  // travel by how far this emotion is willing to track (opticGeometry.track).
-  const stagePan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_evt, g) =>
-        Math.abs(g.dx) > GAZE_CLAIM_PX || Math.abs(g.dy) > GAZE_CLAIM_PX,
-      onPanResponderMove: (_evt, g) => {
-        gaze.value = { x: clamp(g.dx / GAZE_RANGE_PX), y: clamp(g.dy / GAZE_RANGE_PX) };
-      },
-      onPanResponderRelease: () => {
-        gaze.value = { x: 0, y: 0 };
-      },
-      onPanResponderTerminate: () => {
-        gaze.value = { x: 0, y: 0 };
-      },
-    }),
-  ).current;
+  // Where the optic sits in window space, so a touch anywhere on the stage can
+  // be turned into a direction to look. measureInWindow rather than onLayout's
+  // parent-relative box: the touch gives us pageX/pageY, and this keeps both
+  // in the same coordinate space with no chain of offsets to get wrong.
+  const opticBox = useRef<View>(null);
+  const opticCentre = useRef<{ x: number; y: number } | null>(null);
+  const measureOptic = () => {
+    opticBox.current?.measureInWindow((x, y, w, h) => {
+      opticCentre.current = { x: x + w / 2, y: y + h / 2 };
+    });
+  };
+
+  // She looks where you TAP, and holds it — 4a drives the pupil from the
+  // finger's position, and its onPointerUp does not recentre. onTouchStart on
+  // the stage sees touches on its children too, so tapping the input or a
+  // control turns her head as well, which is the point.
+  const aim = (pageX: number, pageY: number) => {
+    // The touch takes the eye whether or not we can aim it: knowing where the
+    // eye SITS is what needs the measurement, and until it lands she simply
+    // holds dead ahead instead of wandering.
+    setTracking(true);
+    const centre = opticCentre.current;
+    if (centre) {
+      const look = gazeFor(pageX, pageY, centre.x, centre.y, OPTIC_PX);
+      gazeX.value = withTiming(look.x, { duration: LOOK_MS });
+      gazeY.value = withTiming(look.y, { duration: LOOK_MS });
+    }
+
+    // She holds the look, then loses interest and drifts back to centre,
+    // where the idle wander takes over again. 4a never recentres, but 4a has
+    // no idle drift to go back TO — left alone she would wander around
+    // wherever you last touched, forever.
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => {
+      gazeX.value = withTiming(0, { duration: RELEASE_MS });
+      gazeY.value = withTiming(0, { duration: RELEASE_MS });
+    }, HOLD_MS);
+
+    // The drift waits out the whole handover — the hold AND the return — so
+    // the eye is never being moved by two things at once.
+    if (restTimer.current) clearTimeout(restTimer.current);
+    restTimer.current = setTimeout(() => setTracking(false), HOLD_MS + RELEASE_MS);
+  };
+
+  // She begins to answer, and whatever is left of the hold is over: her line
+  // and her new emotion land in the same store write, so this runs on the
+  // frame the eye starts becoming that state. The look comes home over the
+  // same 420ms the aperture, the lids and the colour take to change, and the
+  // drift has the eye the moment that settles — she doesn't stare past your
+  // finger through the first seconds of a state you have never seen.
+  useEffect(() => {
+    if (!line) return;
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (restTimer.current) clearTimeout(restTimer.current);
+    gazeX.value = withTiming(0, { duration: LOOK_MS });
+    gazeY.value = withTiming(0, { duration: LOOK_MS });
+    restTimer.current = setTimeout(() => setTracking(false), LOOK_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line]);
+
+  useEffect(() => () => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (restTimer.current) clearTimeout(restTimer.current);
+  }, []);
 
   // The drawer handle answers to either a tap or an upward drag past 22px —
   // one responder covers both, since claiming it mid-drag would otherwise
@@ -106,10 +181,25 @@ export function Stage() {
     }),
   ).current;
 
+  // TEMPORARY — a bench for the optic, dev builds only. Typing an emotion's
+  // exact name ('amused', 'suspicious', …) forces that state instead of
+  // sending the line to her, so one state can be watched on its own for as
+  // long as you like. No new copy: the line she shows is her own emotion
+  // label. Delete this and its call in send() once the eye is signed off.
+  const forceEmotion = (text: string) => {
+    if (!__DEV__) return false;
+    const key = text.toLowerCase();
+    if (!(key in EMOTIONS)) return false;
+    const label = emotionLabel(key as EmotionKey, lang);
+    useFacilityStore.setState({ emotion: key as EmotionKey, line: label, shown: label });
+    return true;
+  };
+
   const send = () => {
     const text = draft.trim();
     if (!text || thinking) return;
     setDraft('');
+    if (forceEmotion(text)) return; // TEMPORARY, see above
     void speak('subject_spoke', text);
   };
 
@@ -122,54 +212,84 @@ export function Stage() {
   };
 
   return (
-    <View style={styles.stage} {...stagePan.panHandlers}>
+    <Animated.View
+      style={[styles.stage, { paddingTop: insets.top }, keyboardInset]}
+      onTouchStart={(e) => aim(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <PulseDot color={iris} />
+          <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />
           <Text style={[styles.wordmark, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
         </View>
         {awake ? (
-          <Pressable onPress={() => setView('sys')} hitSlop={12}>
-            <Text style={styles.headerDots}>•••</Text>
+          // Three drawn dots, not a "•••" glyph — the design sets them at 3px
+          // with a 3px gap, which no bullet run reproduces.
+          <Pressable onPress={() => setView('sys')} hitSlop={12} style={styles.headerDots}>
+            <View style={styles.headerDot} />
+            <View style={styles.headerDot} />
+            <View style={styles.headerDot} />
           </Pressable>
         ) : null}
       </View>
 
+      {/* Its own centred row between the header and the optic, once a
+          transcript exists (4a). */}
       {log.length > 0 && apiKey ? (
-        <Pressable style={styles.pill} onPress={() => setView('log')}>
-          <View style={styles.hairlines}>
-            <View style={[styles.hairline, styles.hairlineAmber]} />
-            <View style={styles.hairline} />
-            <View style={styles.hairline} />
-          </View>
-          <Text style={[styles.pillText, { fontFamily: font('mono', 600, lang) }]}>{t.conv}</Text>
-        </Pressable>
+        <View style={styles.pillRow}>
+          <Pressable style={styles.pill} onPress={() => setView('log')}>
+            <View style={styles.hairlines}>
+              <View style={[styles.hairline, styles.hairlineLong, styles.hairlineAmber]} />
+              <View style={[styles.hairline, styles.hairlineShort]} />
+              <View style={[styles.hairline, styles.hairlineMid]} />
+            </View>
+            <Text style={[styles.pillText, { fontFamily: font('mono', 500, lang) }]}>{t.conv}</Text>
+          </Pressable>
+        </View>
       ) : null}
 
       <View style={styles.centre}>
-        <Optic emotion={emotion} size={158} gaze={gaze} onPress={poke} waking={waking} />
-        <View style={styles.labelRow}>
-          <View style={[styles.emotionDot, { backgroundColor: iris }]} />
-          <Text style={[styles.emotionLabel, { fontFamily: font('mono', 600, lang) }]}>
-            {emotionLabel(emotion, lang)}
-          </Text>
+        <View ref={opticBox} onLayout={measureOptic} collapsable={false}>
+          <Optic
+            emotion={emotion}
+            size={OPTIC_PX}
+            gazeX={gazeX}
+            gazeY={gazeY}
+            // A state that refuses to follow you never hands the eye over:
+            // her gaze is clamped to nothing, so standing the drift down
+            // would buy a still eye and nothing else. Read at render, not at
+            // the touch, so turning away mid-look gives the drift straight
+            // back.
+            tracking={tracking && follows}
+            onPress={poke}
+            waking={waking}
+          />
         </View>
-        <Text
-          testID="her-line"
-          style={StyleSheet.flatten([
-            styles.line,
-            { fontSize, lineHeight, fontFamily: serif(lang) },
-          ])}
-        >
-          {shown}
+        <View style={styles.speech}>
+          <View style={styles.labelRow}>
+            <View style={[styles.emotionDot, { backgroundColor: iris }]} />
+            <Text
+              style={[styles.emotionLabel, { color: iris, fontFamily: font('mono', 500, lang) }]}
+            >
+              {emotionLabel(emotion, lang)}
+            </Text>
+          </View>
+          <Text
+            testID="her-line"
+            style={StyleSheet.flatten([
+              styles.line,
+              { fontSize, lineHeight, fontFamily: serif(lang) },
+            ])}
+          >
+            {shown}
+          </Text>
           {thinking ? <ThinkingDots /> : null}
-        </Text>
+        </View>
       </View>
 
       {awake ? (
         <>
           <View style={styles.inputRow}>
-            <Text style={styles.chevron}>›</Text>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
               value={draft}
@@ -178,14 +298,14 @@ export function Stage() {
               placeholderTextColor={palette.textFaint}
               onSubmitEditing={send}
             />
-            <Pressable onPress={send} hitSlop={8}>
-              <Text style={[styles.send, { fontFamily: font('mono', 600, lang) }]}>{t.send}</Text>
+            <Pressable onPress={send} hitSlop={8} style={styles.sendButton}>
+              <Text style={[styles.send, { fontFamily: font('mono', 500, lang) }]}>{t.send}</Text>
             </Pressable>
           </View>
 
           <View style={styles.drawer} {...handlePan.panHandlers}>
             <View style={styles.handleBar} />
-            <Text style={[styles.handleLabel, { fontFamily: font('mono', 600, lang) }]}>
+            <Text style={[styles.handleLabel, { fontFamily: font('mono', 500, lang) }]}>
               {t.cabinet}
             </Text>
           </View>
@@ -193,22 +313,24 @@ export function Stage() {
       ) : (
         <KeyGate />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
+// Every number below is read off 4a in `design/The Facility - Overhaul.dc.html`.
+// Layout is 1:1 with the mock; only type passes through ms().
 const styles = StyleSheet.create({
   stage: {
     flex: 1,
     backgroundColor: palette.bg,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 20,
   },
+  // `padding:16px 20px 0`
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -223,107 +345,145 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.22,
-    color: palette.amber,
-  },
-  headerDots: {
-    fontSize: ms(11),
     color: palette.textDim,
   },
-  pill: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
+  headerDots: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 3,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  headerDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: palette.textGhost,
+  },
+  // `padding:15px 0 0`, centred
+  pillRow: {
+    alignItems: 'center',
+    paddingTop: 15,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    borderRadius: 22,
     backgroundColor: palette.panel,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: palette.borderPill,
   },
   hairlines: {
-    gap: 2,
+    gap: 2.5,
+    alignItems: 'flex-start',
   },
   hairline: {
-    width: 14,
     height: 1.5,
     borderRadius: 1,
-    backgroundColor: '#6c6656',
+    backgroundColor: palette.hairlineDim,
   },
+  hairlineLong: { width: 11 },
+  hairlineShort: { width: 7 },
+  hairlineMid: { width: 9 },
   hairlineAmber: {
     backgroundColor: palette.amber,
   },
   pillText: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.1,
-    color: palette.textMuted,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.2,
+    color: palette.textPill,
   },
+  // `flex:1 … gap:26px; padding:0 32px`
   centre: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 26,
+    paddingHorizontal: 32,
+    minHeight: 0,
+  },
+  // the label and her line ride together under the optic, `gap:16px`
+  speech: {
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
   },
   labelRow: {
-    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 9,
   },
   emotionDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
+  // colour comes from the iris, not a fixed grey — applyEmotion sets it.
   emotionLabel: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.22,
-    color: palette.textDim,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.24,
   },
   line: {
-    marginTop: 18,
-    maxWidth: '88%',
     textAlign: 'center',
     color: palette.text,
   },
+  // A card, not a hairline rule: `margin:0 20px 14px; padding:13px 14px;
+  // background:#1a1913; border:1px solid #2c2a22; border-radius:12px`
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderTopWidth: 1,
-    borderColor: palette.hairline,
-    paddingTop: 14,
+    gap: 11,
+    marginHorizontal: 20,
     marginBottom: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
   },
   chevron: {
-    fontSize: ms(16),
+    fontSize: ms(11),
     color: palette.amber,
   },
   input: {
     flex: 1,
     padding: 0,
-    fontSize: ms(11),
+    fontSize: ms(12.5),
     color: palette.text,
   },
+  // a bordered button; amber because that is its hover state (see theme.ts)
+  sendButton: {
+    borderWidth: 1,
+    borderColor: palette.amberEdgeSoft,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+  },
   send: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.12,
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.18,
     color: palette.amber,
   },
+  // `padding:4px 0 14px; gap:8px`
   drawer: {
     alignItems: 'center',
     gap: 8,
-    paddingTop: 6,
+    paddingTop: 4,
+    paddingBottom: 14,
   },
   handleBar: {
     width: 56,
     height: 4,
     borderRadius: 2,
-    backgroundColor: palette.hairline,
+    backgroundColor: palette.border,
   },
   handleLabel: {
     fontSize: ms(7),
     letterSpacing: ms(7) * 0.26,
-    color: palette.textFaint,
+    color: palette.textGhostest,
   },
 });

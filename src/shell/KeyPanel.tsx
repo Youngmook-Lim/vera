@@ -45,22 +45,25 @@ export function KeyPanel() {
     <Modal transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.backdrop}>
         <View style={styles.panel}>
-          <Text style={[styles.title, { fontFamily: serif(lang) }]}>{t.access}</Text>
-          <Text style={[styles.subtitle, { fontFamily: font('mono', 500, lang) }]}>
-            {t.keyTitle}
-          </Text>
+          {/* ACCESS is the small mono eyebrow; her serif carries the question
+              under it (4a) — the two were the wrong way round. */}
+          <Text style={[styles.eyebrow, { fontFamily: font('mono', 500, lang) }]}>{t.access}</Text>
+          <Text style={[styles.title, { fontFamily: serif(lang) }]}>{t.keyTitle}</Text>
 
-          <TextInput
-            style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
-            value={draft}
-            onChangeText={onChangeText}
-            placeholder={t.gatePh}
-            placeholderTextColor={palette.textFaint}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            onSubmitEditing={() => void onSave()}
-          />
+          <View style={styles.inputRow}>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
+            <TextInput
+              style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
+              value={draft}
+              onChangeText={onChangeText}
+              placeholder={t.gatePh}
+              placeholderTextColor={palette.textFaint}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={() => void onSave()}
+            />
+          </View>
           {rejected ? (
             <Text style={[styles.error, { fontFamily: font('mono', 500, lang) }]}>
               {t.gateBad}
@@ -91,79 +94,103 @@ export function KeyPanel() {
   );
 }
 
+// 4a's ACCESS modal, verbatim.
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: '#080806cc',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 22,
   },
+  // `padding:20px 18px 16px; gap:13px; radius 18; border #35322a`
   panel: {
     width: '100%',
-    maxWidth: 340,
-    padding: 20,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderRadius: 18,
     backgroundColor: palette.panelAlt,
     borderWidth: 1,
-    borderColor: palette.border,
-    gap: 12,
+    borderColor: palette.hairline,
+    gap: 13,
+  },
+  eyebrow: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.24,
+    color: palette.textFaint,
   },
   title: {
     fontSize: ms(19),
+    lineHeight: ms(19) * 1.34,
     color: palette.text,
   },
-  subtitle: {
-    fontSize: ms(9),
-    color: palette.textDim,
-  },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+    backgroundColor: palette.bgDeep,
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: ms(11),
+    borderRadius: 11,
+  },
+  chevron: {
+    fontSize: ms(10),
+    color: palette.textFaint,
+  },
+  input: {
+    flex: 1,
+    padding: 0,
+    fontSize: ms(12),
+    letterSpacing: ms(12) * 0.06,
     color: palette.text,
   },
   error: {
     fontSize: ms(9),
+    lineHeight: ms(9) * 1.6,
     color: palette.dangerSoft,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 9,
   },
   cancelButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 10,
+    borderColor: palette.borderLift,
+    borderRadius: 11,
     paddingVertical: 12,
     alignItems: 'center',
   },
   cancelText: {
-    fontSize: ms(9.5),
-    letterSpacing: ms(9.5) * 0.12,
-    color: palette.textMuted,
+    fontSize: ms(9),
+    letterSpacing: ms(9) * 0.18,
+    color: palette.textDim,
   },
   saveButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: palette.amber,
-    borderRadius: 10,
+    borderColor: palette.amberEdge,
+    backgroundColor: palette.amberWash,
+    borderRadius: 11,
     paddingVertical: 12,
     alignItems: 'center',
   },
   saveText: {
-    fontSize: ms(9.5),
-    letterSpacing: ms(9.5) * 0.12,
+    fontSize: ms(9),
+    letterSpacing: ms(9) * 0.18,
     color: palette.amber,
   },
+  // the one control that destroys something: red, because that is the state
+  // the design shows when you are about to press it
   removeText: {
+    marginTop: 2,
+    paddingVertical: 6,
     fontSize: ms(8),
-    letterSpacing: ms(8) * 0.1,
-    color: '#6c4a44',
+    letterSpacing: ms(8) * 0.16,
+    color: palette.danger,
     textAlign: 'center',
   },
 });
