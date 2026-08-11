@@ -16,7 +16,9 @@ Then: `docs/superpowers/specs/2026-07-30-overhaul-design.md` (the v2 spec — ev
 
 **v2 is complete and wired** (branch `v2-overhaul`, plan: `docs/superpowers/plans/2026-07-30-overhaul.md`, 18 tasks). The v1 Personal Enrichment Program — enrollment, daily compliance, streak, standing, transmission log, settings, and the results / incinerator / field / hazard modules — was **deleted** in Task 8. What remains is her, one specimen, one room you write yourself, and two empty slots.
 
-Not yet done: a new EAS dev build (see below), on-device verification of the whole loop, and a Korean native-speaker copy pass.
+A v2 dev build is on the phone, and the optic was signed off against it on **2026-08-11** — the lids, the drift, the blink, the catchlight and the type ladder are confirmed in the hand, not only in the tests. That matters more than usual here: the eye is Skia driven by reanimated, both no-ops under jest, so nothing about how it *looks* can be caught by `npm test`.
+
+Not yet done: on-device verification of the rest of the loop, and a Korean native-speaker copy pass.
 
 ## What exists
 
@@ -68,7 +70,7 @@ Anything under 8 characters, containing whitespace, or matching none of the five
 - Verify with `npm test` and `npx tsc --noEmit`. Jest is pinned to 29 (jest-expo 57 requires it); RTL v14 is fully async (`await render(...)`, `await fireEvent.press(...)`, **`await view.unmount()`** — omitting that last one causes overlapping `act()` and `toJSON()` returning null); jest uses the `react-native-worklets/jest/resolver.js` resolver.
 - **No test may make a real network request.** Mock `src/vera/llm.ts` with a `jest.requireActual` spread so `AuthError` stays a real class for `speech.ts`'s `instanceof`, and mock `expo-secure-store` with an in-memory vault (the OS keystore has no jsdom implementation).
 - Skia can't run in jest (jsdom); it's mocked as a no-op Proxy in `jest.setup.ts`. **Never put logic inside a Skia component** — it is invisible to tests. Skia now carries two things: the optic (`Optic.tsx`, continuous animation) and Specimen-03's blob (`modules/organism/Blob.tsx`).
-- **`expo-secure-store` is native and the two new fonts are new assets, so the dev build installed before 2026-07-30 cannot load v2.** A new `npx eas-cli@latest build -p android --profile development` is required before v2 runs on the phone. Profiles live in `eas.json` (Android APK, `internal` distribution, node pinned 24.14.1). Run with `npx expo start` (auto-detects `expo-dev-client`).
+- **`expo-secure-store` is native and the two new fonts are new assets, so a dev build installed before 2026-07-30 cannot load v2.** The one on the phone is current. Build another with `npx eas-cli@latest build -p android --profile development`, and expect to need one whenever a native dependency moves — `npx expo install --check` currently wants patch bumps to `react-native`, `reanimated`, `react-native-worklets`, `expo-dev-client` and `expo-splash-screen`, deferred on 2026-08-11 so as not to invalidate a working build mid-verification. Profiles live in `eas.json` (Android APK, `internal` distribution, node pinned 24.14.1). Run with `npx expo start` (auto-detects `expo-dev-client`).
 - **`expo-notifications` is gone**, along with `@react-native-community/slider`. There are no notifications, no permission ceremony, and no background work of any kind in v2 — the daily loop that justified them was deleted.
 - **`.npmrc` (committed) pins `legacy-peer-deps=false`** — a global `~/.npmrc` with legacy-peer-deps=true silently drops `@react-native/babel-preset` + its metro/hermes peer subtree from the lockfile, which breaks EAS Build's strict `npm ci`. Keep it; don't regenerate the lock with legacy-peer-deps on.
 - No navigation library (conditional render on `view` **is** the router), no raster UI assets, fonts bundled locally (no CDN).
