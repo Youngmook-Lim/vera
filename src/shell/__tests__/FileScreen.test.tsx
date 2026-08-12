@@ -17,7 +17,7 @@ describe('FileScreen', () => {
     });
     const view = await render(<FileScreen />);
     const body = view.getByTestId('file-body').props.children as string;
-    expect(body).toContain('subject: #50640');
+    expect(body).toContain('entries: 1');
     expect(body).toContain('Deflects with questions.');
   });
 

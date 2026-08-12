@@ -24,8 +24,14 @@ describe('SOUL_MD', () => {
   });
 
   it('holds her to one subject and two sentences', () => {
-    expect(SOUL_MD).toContain('#50640');
+    expect(SOUL_MD).toContain('one subject');
     expect(SOUL_MD).toContain('Under 30 words');
+  });
+
+  // The numbered designation belonged to the deleted facility lore. She has one
+  // subject, not a case file with an index.
+  it('does not number the subject', () => {
+    expect(SOUL_MD).not.toMatch(/#\d/);
   });
 
   // LAYER 1: Snapshot test — catches ANY drift in SOUL_MD. Regenerating it with

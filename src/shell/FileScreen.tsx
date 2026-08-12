@@ -26,7 +26,6 @@ const buildMemoryMd = (impressions: Impression[], cleared: number): string => {
   const header = [
     '# MEMORY.md',
     '',
-    'subject: #50640',
     `entries: ${total}`,
     `sealed: ${sealedCount}`,
     `erasures: ${cleared}`,
