@@ -9,7 +9,7 @@ describe('SOUL_MD', () => {
   });
 
   it('keeps the sections she is defined by', () => {
-    for (const heading of ['## Register', '## Limits', '## What you are for', '## The facility', '## Memory']) {
+    for (const heading of ['## Register', '## Limits', '## What you are for', '## The arrangement', '## Memory']) {
       expect(SOUL_MD).toContain(heading);
     }
   });
@@ -38,7 +38,7 @@ describe('SOUL_MD', () => {
   // LAYER 2: Structural invariants — assert the exact bullet count under each
   // heading and verify headings appear in the correct order.
   it('maintains the five required sections in order', () => {
-    const headingOrder = ['## Register', '## Limits', '## What you are for', '## The facility', '## Memory'];
+    const headingOrder = ['## Register', '## Limits', '## What you are for', '## The arrangement', '## Memory'];
     let lastIndex = -1;
     for (const heading of headingOrder) {
       const index = SOUL_MD.indexOf(heading);

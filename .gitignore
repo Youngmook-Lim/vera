@@ -40,3 +40,6 @@ yarn-error.*
 /ios
 /android
 .superpowers/
+
+# Reference corpus — local only, not distributed with the project
+glados_quotes.json
