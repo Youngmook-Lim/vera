@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
-// Three ordinary stores. Module 02 owns its own — it has nothing to do with
-// her soul or the transcript, and she is not told what is in it.
+// Four ordinary stores. Modules 01 and 02 each own their own — neither has
+// anything to do with her soul or the transcript, and she is not told what is
+// in either of them.
 export const KEYS = {
   soul: 'facility.v2.soul',
   transcript: 'facility.v2.transcript',
+  organism: 'facility.mod01.organism',
   identity: 'facility.mod02.identity',
 } as const;
 

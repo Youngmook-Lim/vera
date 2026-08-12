@@ -3,7 +3,6 @@ import { runSpeech } from '../speech';
 
 const deps = (over = {}) => ({
   key: 'sk-ant-api03-abcdefghijklmnop',
-  trigger: 'subject_spoke' as const,
   said: 'did you miss me',
   lang: 'en' as const,
   context: { time_of_day: 'afternoon', recent_exchanges: [], what_you_have_concluded_about_them: [] },
@@ -51,11 +50,5 @@ describe('runSpeech', () => {
     const d = deps({ call: jest.fn().mockRejectedValue(new AuthError()) });
     const result = await runSpeech(d);
     expect(result.authFailed).toBe(true);
-  });
-
-  it('uses the authored greeting when waking', async () => {
-    const d = deps({ trigger: 'activation', said: null, call: jest.fn().mockRejectedValue(new Error('down')) });
-    const result = await runSpeech(d);
-    expect(result.line).toContain('There you are.');
   });
 });

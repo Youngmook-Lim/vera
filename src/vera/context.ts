@@ -9,8 +9,6 @@ export interface SpeakContext {
   what_you_have_concluded_about_them: string[];
   notable?: string;
   they_took_their_time?: true;
-  specimen?: string;
-  erasures?: number;
 }
 
 export interface ContextInput {
@@ -18,8 +16,6 @@ export interface ContextInput {
   lastOpen: number | null;
   askedAt: number;
   visits: number;
-  hunger: number;
-  cleared: number;
   mem: Exchange[];
   impressions: string[];
 }
@@ -49,8 +45,6 @@ export const buildContext = (input: ContextInput): SpeakContext => {
   else if (input.visits >= 5) ctx.notable = `this is return number ${input.visits} today`;
 
   if ((input.now.getTime() - input.askedAt) / 1000 > 240) ctx.they_took_their_time = true;
-  if (input.hunger > 90) ctx.specimen = 'the specimen is genuinely suffering';
-  if (input.cleared > 1) ctx.erasures = input.cleared;
 
   return ctx;
 };

@@ -2,9 +2,14 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { Cabinet } from '../Cabinet';
+import { useOrganismStore } from '../../modules/organism/store';
 
-beforeEach(() =>
-  useFacilityStore.setState({ cabinetOpen: true, lang: 'en', view: 'stage', hunger: 82 }));
+// Module 01's tile reads the specimen out of the module's own store now, not
+// the shell's. `hydrated` keeps the tile's mount from reaching for the disk.
+beforeEach(() => {
+  useFacilityStore.setState({ cabinetOpen: true, lang: 'en', view: 'stage' });
+  useOrganismStore.setState({ hydrated: true, hunger: 82, hungerAt: null });
+});
 
 describe('Cabinet', () => {
   it('counts what is allocated', async () => {

@@ -22,14 +22,16 @@ Not yet done: on-device verification of the rest of the loop, and a Korean nativ
 
 ## What exists
 
-- `src/core/` — `theme.ts` (v2 palette + emotion hues; `ms()` = mock px ×1.1 **for type only**, layout is 1:1; `font(role, weight, lang)`, `serif(lang)` for her voice), `i18n.ts` (`Lang`, `Strings<T>`, `tmpl()`), `fluid.ts` (word count → font size + line height, two ladders), `storage.ts` (the four stores), `speech.ts` (the whole reply cycle with the network injected), `store.ts` (Zustand; `view` is the router, plus `speak`, `activate`, `removeKey`, `clearTranscript`, `setLang`, `feedSpecimen`, `stepBack`, `hydrate`)
-- `src/vera/` — `soul.ts` (SOUL.md verbatim, sent as her system prompt every reply), `emotions.ts` (nine states: dormant + eight, each carrying the optic's geometry and tempo), `providers.ts` (key-shape matching + request building), `llm.ts` (fetch + normalising three API response shapes; `AuthError` is its own class), `context.ts` (what she is told about this moment), `speak.ts` (prompt assembly, JSON extraction, impression clamp), `fallback.ts` (authored lines for when the model is unreachable — she never shows an error in place of a line)
+- `src/core/` — `theme.ts` (v2 palette + emotion hues; `ms()` = mock px ×1.1 **for type only**, layout is 1:1; `font(role, weight, lang)`, `serif(lang)` for her voice), `i18n.ts` (`Lang`, `Strings<T>`, `tmpl()`), `fluid.ts` (word count → font size + line height, two ladders), `storage.ts` (the five stores), `speech.ts` (the `subject_spoke` reply cycle with the network injected), `store.ts` (Zustand; `view` is the router, plus `speak`, `activate`, `removeKey`, `clearTranscript`, `setLang`, `stepBack`, `hydrate`)
+- `src/vera/` — `soul.ts` (SOUL.md verbatim, sent as her system prompt every reply), `emotions.ts` (nine states: dormant + eight, each carrying the optic's geometry and tempo), `providers.ts` (key-shape matching + request building), `llm.ts` (fetch + normalising three API response shapes; `AuthError` is its own class), `context.ts` (what she is told about this moment), `speak.ts` (prompt assembly, JSON extraction, impression clamp, the `Trigger`/`BankTrigger` split), `bank.ts` (her authored lines for the three stimuli that never reach the model — **placeholder contents**), `fallback.ts` (authored lines for when the model is unreachable mid-conversation — she never shows an error in place of a line)
 - `src/shell/` — `ScreenRouter.tsx` (the view switch + hardware back + both overlays), `Stage.tsx` (her screen), `Optic.tsx` + `opticGeometry.ts` (the Skia eye; every number comes out of the pure module), `Cabinet.tsx`, `KeyGate.tsx`, `KeyPanel.tsx`, `LogScreen.tsx`, `SystemScreen.tsx`, `FileScreen.tsx`, `strings.ts` (the `T` table, en/ko)
-- `src/modules/` — `registry.ts` (four slots: 01 organism, 02 identity, 03/04 empty), `organism/` (Specimen-03, dark green terrarium, Skia blob), `identity/` (bone paper, the one room the subject writes)
+- `src/modules/` — `registry.ts` (four slots: 01 organism, 02 identity, 03/04 empty), `organism/` (Specimen-03, dark green terrarium, Skia blob, and `store.ts` — its own hunger, which the tile and the room share and she never sees), `identity/` (bone paper, the one room the subject writes)
 
-Pure decision-making modules (`fluid`, `emotions`, `providers`, `llm`, `context`, `speak`, `speech`, `opticGeometry`, `hunger`, `identity`) are unit-tested and have no React in them. **Components render and dispatch, nothing more.**
+Pure decision-making modules (`fluid`, `emotions`, `providers`, `llm`, `context`, `speak`, `bank`, `speech`, `opticGeometry`, `hunger`, `identity`) are unit-tested and have no React in them. **Components render and dispatch, nothing more.**
 
 ## The shape of it
+
+**The four stimuli (2026-08-12).** She is purely reactive and answers exactly four things. Only **`subject_spoke`** reaches the model — context is assembled, `runSpeech` runs, an impression may come back. The other three — **`open`** · **`activation`** · **`subject_tapped_your_optic`** — are answered from the authored bank in `src/vera/bank.ts`: no network, no context, no impression, no `thinking` state. Both paths share one tail (transcript, `mem`, typewriter, `saveSoul`), the key guard and the re-entrancy guard; only the live path touches the `authFails` tally. Erasing the transcript, switching language and feeding the specimen are silent actions now — she is told about none of them. `bank.ts`'s tables and its `pick()` are **placeholders awaiting the real bank**; nothing outside that file changes when they are replaced.
 
 **Views:** `stage` · `log` · `sys` · `mem` · `soul` · `mod01` · `mod02`. **Overlays:** the cabinet drawer and the ACCESS key panel — both owned by `ScreenRouter`, both sitting on top of whatever view is showing.
 
@@ -37,16 +39,17 @@ Pure decision-making modules (`fluid`, `emotions`, `providers`, `llm`, `context`
 
 **The doorway rule (spec §4).** Modules are rooms in her building, not screens in her app. The shell owns exactly four things: the tile (identical geometry in the cabinet, painted in the module's own colours), full bleed inside, one exit (top-left, 44px, drawn in the module's own ink — never the shell's amber), and her dot. Everything past the threshold belongs to the module. A new module is **one folder exporting a `ModuleDef` plus one line in `registry.ts`** — both `Cabinet.tsx` and `ScreenRouter.tsx` read the registry, neither names a module.
 
-**The four stores (spec §8).**
+**The five stores (spec §8).**
 
 | store | key | engine | contents |
 |---|---|---|---|
-| soul | `facility.v2.soul` | AsyncStorage | mem (6), visits, day, lastOpen, hunger, lastFed, lang, imps (24), cleared |
+| soul | `facility.v2.soul` | AsyncStorage | mem (6), visits, day, lastOpen, lang, imps (24), cleared |
 | transcript | `facility.v2.transcript` | AsyncStorage | the chat log, capped at 60 |
+| module 01 | `facility.mod01.organism` | AsyncStorage | hunger, hungerAt |
 | module 02 | `facility.mod02.identity` | AsyncStorage | title, lines, revs, month |
 | credential | `facility.v2.credential` | **SecureStore** | the key |
 
-Module 02 owns its own store — it has nothing to do with her soul or the transcript, and she is not told what is in it. **MEMORY.md is never written to disk as text**: `FileScreen` composes it at render time out of `impressions`. **SOUL.md is read-only** and is the literal system prompt, not a paraphrase of it. The transcript is the only thing the subject can erase, and erasing it costs her the wording, never the verdict.
+Modules 01 and 02 each own their own store — neither has anything to do with her soul or the transcript, and she is not told what is in either. Hunger used to live in the soul store because she was told about it; it moved out with the specimen (2026-08-12). `cleared` survives in the soul store for one reason only: MEMORY.md's `erasures: N` line on screen. She is never told the number. **MEMORY.md is never written to disk as text**: `FileScreen` composes it at render time out of `impressions`. **SOUL.md is read-only** and is the literal system prompt, not a paraphrase of it. The transcript is the only thing the subject can erase, and erasing it costs her the wording, never the verdict.
 
 **The five accepted key shapes (spec §9), order significant** — every `sk-` shape below also satisfies OpenAI's pattern (its class includes the hyphen, and 32 hex digits are alphanumerics), so anthropic, openrouter and deepseek must all be tested before it:
 

@@ -7,6 +7,7 @@ import { T } from '../../shell/strings';
 import type { ModuleDef } from '../types';
 import { Blob, BLOB_SIZE } from './Blob';
 import { isHungry } from './hunger';
+import { useOrganism } from './store';
 
 // The 168px vivarium is fixed; only the blob inside it tracks hunger (spec
 // §12: `74 + hunger × 0.24` px).
@@ -37,8 +38,7 @@ function ExitAndLabel({ lang }: { lang: 'en' | 'ko' }) {
 export function OrganismScreen() {
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
-  const hunger = useFacilityStore((s) => s.hunger);
-  const feedSpecimen = useFacilityStore((s) => s.feedSpecimen);
+  const { hunger, feed } = useOrganism();
   const [tapNonce, setTapNonce] = useState(0);
 
   const t = T[lang];
@@ -48,7 +48,7 @@ export function OrganismScreen() {
 
   const onFeed = () => {
     setTapNonce((n) => n + 1);
-    void feedSpecimen();
+    void feed();
   };
 
   return (
@@ -177,7 +177,7 @@ export function OrganismScreen() {
 // registry (see registry.ts's comment for the shape it expects).
 function OrganismTile({ onPress }: { onPress: () => void }) {
   const lang = useFacilityStore((s) => s.lang);
-  const hunger = useFacilityStore((s) => s.hunger);
+  const { hunger } = useOrganism();
   const t = T[lang];
   const hungry = isHungry(hunger);
   const pct = Math.round(hunger);

@@ -5,12 +5,13 @@ import { KEYS } from '../../core/storage';
 import { useFacilityStore } from '../../core/store';
 import { LogScreen } from '../LogScreen';
 
-// clearTranscript tells her she did it, and speak() would otherwise reach the
-// network. Nothing in this file is allowed to leave the process.
+// SEND reaches speak(), which would otherwise reach the network. Nothing in
+// this file is allowed to leave the process.
 jest.mock('../../vera/llm', () => ({
   ...jest.requireActual('../../vera/llm'),
   callLlm: jest.fn(async () => '{"emotion":"disappointed","line":"Noted."}'),
 }));
+const { callLlm } = jest.requireMock('../../vera/llm');
 
 // The OS keystore has no jsdom implementation — an in-memory vault is enough.
 jest.mock('expo-secure-store', () => {
@@ -109,26 +110,24 @@ describe('LogScreen', () => {
     expect(useFacilityStore.getState().impressions).toHaveLength(1);
   });
 
-  // The count is what makes her escalate, and speak() persists the soul store
-  // again on its way out — so this pins both the live value and the written one
-  // after a second erasure, where a stale write would show up as a stuck 1.
-  it('counts every erasure, in state and on disk', async () => {
+  // The count feeds MEMORY.md's `erasures: N` line and nothing else — she is
+  // not told. This pins both the live value and the written one after a second
+  // erasure, where a stale write would show up as a stuck 1.
+  it('counts every erasure, in state and on disk, without telling her', async () => {
     seed({ apiKey: 'sk-ant-api03-abcdefghijklmnop', cleared: 0 });
+    callLlm.mockClear();
 
     await useFacilityStore.getState().clearTranscript();
     expect(useFacilityStore.getState().cleared).toBe(1);
-    // she was told, and her answer is the whole of the new transcript
-    expect(useFacilityStore.getState().log.map((e) => e.text)).toEqual(['Noted.']);
+    // the transcript is empty and stays empty: she has no reply to an erasure
+    expect(useFacilityStore.getState().log).toEqual([]);
+    expect(callLlm).not.toHaveBeenCalled();
 
     await useFacilityStore.getState().clearTranscript();
     expect(useFacilityStore.getState().cleared).toBe(2);
 
     const soul = JSON.parse((await AsyncStorage.getItem(KEYS.soul)) ?? '{}');
     expect(soul.cleared).toBe(2);
-
-    // Her reply typewrites on a chain of real timers; let it finish rather than
-    // leaving one ticking into the next suite.
-    await new Promise((resolve) => setTimeout(resolve, 250));
   });
 
   it('does not leave the confirmation open behind it', async () => {

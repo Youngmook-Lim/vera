@@ -1,14 +1,14 @@
 import { getLocales } from 'expo-localization';
 import { create } from 'zustand';
 import type { Lang } from './i18n';
-import { runSpeech } from './speech';
+import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
+import { pick } from '../vera/bank';
 import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { callLlm } from '../vera/llm';
 import { validateKey } from '../vera/providers';
 import type { Trigger } from '../vera/speak';
-import { START_HUNGER, feed as feedHunger, hungerForNow } from '../modules/organism/hunger';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
@@ -52,33 +52,18 @@ let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
 let greeted = false;
 
 // The one shape written to KEYS.soul, and the one place that writes it — four
-// callers persisting nine fields by hand is how the writers drifted apart in
+// callers persisting seven fields by hand is how the writers drifted apart in
 // the first place.
 interface SoulBlob {
   mem: Exchange[];
   visits: number;
   day: string;
   lastOpen: number;
-  hunger: number;
-  hungerAt: string | null;
   lang: Lang;
   imps: Impression[];
   cleared: number;
 }
 
-// THE HUNGER INVARIANT: `hunger` and `hungerAt` are always a consistent pair —
-// the number is the specimen's hunger AT that instant, never a value that has
-// drifted since. hydrate re-derives hunger for `now` as stored-plus-drift, so
-// persisting the live (already drifted) hunger beside an OLDER timestamp makes
-// hydrate apply the same drift a second time; within a few sessions the
-// specimen pins at 100 and is permanently suffering in her context.
-//
-// Only feedSpecimen (a real feed) and hydrate (which measures hunger for now)
-// may set either field, and both always set both. Everything else — including
-// every writer below — copies the live pair verbatim and never invents a
-// timestamp for it. That is why this function takes the whole state and reads
-// both fields itself: there is no seam left to get it wrong at.
-//
 // A failed write is the same bargain hydrate strikes on the way in: this turn
 // does not survive a restart, and nothing else is lost. It must never reach
 // the `void speak(...)` call sites as an unhandled rejection.
@@ -88,8 +73,6 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     visits: s.visits,
     day: new Date().toDateString(),
     lastOpen: Date.now(),
-    hunger: s.hunger,
-    hungerAt: s.hungerAt,
     lang: s.lang,
     imps: s.impressions,
     cleared: s.cleared,
@@ -116,6 +99,8 @@ interface FacilityState {
 
   log: LogEntry[];
   impressions: Impression[];
+  // Kept only so MEMORY.md can print `erasures: N` on screen. She is never
+  // told the number and never reacts to an erasure.
   cleared: number;
   visits: number;
   lastOpen: number | null;
@@ -125,13 +110,6 @@ interface FacilityState {
   // the subject took their time replying.
   mem: Exchange[];
   askedAt: number;
-
-  // Specimen-03 lives in the shell's state because she is told about it —
-  // hunger reaches her context object (spec §11), so the module cannot own it.
-  // hungerAt is when `hunger` was measured, not merely when it was last fed:
-  // see THE HUNGER INVARIANT above.
-  hunger: number;
-  hungerAt: string | null;
 
   // Consecutive refusals of the credential. Not persisted: a fresh launch
   // gives the key the benefit of the doubt, and she never goes dormant for it
@@ -155,7 +133,6 @@ interface FacilityState {
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
-  feedSpecimen: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -180,8 +157,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   mem: [],
   askedAt: Date.now(),
 
-  hunger: START_HUNGER,
-  hungerAt: null,
   authFails: 0,
 
   cabinetOpen: false,
@@ -266,9 +241,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         ? Math.min(99, (typeof saved?.visits === 'number' ? saved.visits : 0) + (isReload ? 0 : 1))
         : 1;
 
-      // The stored pair, read as a pair (THE HUNGER INVARIANT above).
-      const storedHungerAt = typeof saved?.hungerAt === 'string' ? saved.hungerAt : null;
-
       set({
         hydrated: true,
         ...woken,
@@ -282,18 +254,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         visits,
         lastOpen,
-        // Hunger is not read back as stored — it is stored-plus-drift, so the
-        // specimen is hungrier than you left it (spec §12).
-        hunger: hungerForNow(
-          typeof saved?.hunger === 'number' ? saved.hunger : null,
-          storedHungerAt,
-          new Date(),
-        ),
-        // …and the drifted value is hunger as of NOW, so now is the instant it
-        // was measured at. Carrying the older stamp forward here is exactly
-        // the double-drift the invariant forbids. An unanchored specimen (never
-        // fed, nothing stored) stays unanchored and reads START_HUNGER.
-        hungerAt: storedHungerAt == null ? null : new Date().toISOString(),
         // A cold start is not a question she asked four minutes ago: without
         // this, a subject who takes their time typing the first line of the
         // session gets `they_took_their_time` about nothing.
@@ -303,10 +263,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // Now unreachable — every read and every parse above is guarded — but
       // kept so hydrate can never throw. It boots her on the key regardless:
       // a bad launch may cost the saved state, never the credential.
-      set({
-        hydrated: true, view: 'stage', ...woken,
-        hunger: START_HUNGER, hungerAt: null, askedAt: Date.now(),
-      });
+      set({ hydrated: true, view: 'stage', ...woken, askedAt: Date.now() });
     }
   },
 
@@ -339,10 +296,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ emotion: 'calm' });
       setTimeout(() => set({ waking: false }), 1300);
       // Her first instant of consciousness with this subject (spec §10): the
-      // bloom through the optic, then a line generated live under ACT_SYS.
-      // Not awaited — the caller's accepted/rejected answer must not wait on
-      // the network, and the bloom plays while she thinks. A replacement key
-      // takes neither branch: she does not notice a transplant.
+      // bloom through the optic, then her greeting out of the bank. Not
+      // awaited — the caller's accepted/rejected answer must not wait on the
+      // store, and the bloom plays over it. A replacement key takes neither
+      // branch: she does not notice a transplant.
       void get().speak('activation');
       // A session that begins with the activation greeting must not also get
       // the return greeting the moment something calls greetOnce.
@@ -361,16 +318,24 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     });
   },
 
-  // The thin wiring: the network and live state are supplied here, the
-  // judgement lives in runSpeech. An auth failure still shows the line and
-  // leaves the key in place — she catches a bad key by failing to answer,
-  // not at the gate, and repeated failures are the subject's cue to change
-  // it under ACCESS.
+  // Two paths to one tail. `subject_spoke` is the only stimulus that reaches
+  // the model: the network and live state are supplied here, the judgement
+  // lives in runSpeech. An auth failure still shows the line and leaves the
+  // key in place — she catches a bad key by failing to answer, not at the
+  // gate, and repeated failures are the subject's cue to change it under
+  // ACCESS. The other three are answered from the authored bank, instantly.
+  //
+  // The key guard applies to both: a subject with no credential has no
+  // administrator, and she does not greet from a dormant optic.
   speak: async (trigger, said) => {
     if (!get().apiKey) return;
     if (speaking) return;
     speaking = true;
-    set({ thinking: true });
+
+    const live = trigger === 'subject_spoke';
+    // Nothing to wait for on the bank path, so nothing to cover with the
+    // thinking state — the line is already written.
+    if (live) set({ thinking: true });
 
     // The subject's own words go into the transcript the moment they are
     // spoken — before her reply, stamped when they were sent, and on screen
@@ -381,26 +346,30 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
 
     try {
-      const s = get();
-      const context = buildContext({
-        now: new Date(),
-        lastOpen: s.lastOpen,
-        askedAt: s.askedAt,
-        visits: s.visits,
-        hunger: s.hunger,
-        cleared: s.cleared,
-        mem: s.mem,
-        impressions: s.impressions.map((imp) => imp.text),
-      });
+      let outcome: SpeechOutcome;
+      if (trigger === 'subject_spoke') {
+        const s = get();
+        const context = buildContext({
+          now: new Date(),
+          lastOpen: s.lastOpen,
+          askedAt: s.askedAt,
+          visits: s.visits,
+          mem: s.mem,
+          impressions: s.impressions.map((imp) => imp.text),
+        });
 
-      const outcome = await runSpeech({
-        key: s.apiKey,
-        trigger,
-        said: said ?? null,
-        lang: s.lang,
-        context,
-        call: (system, user) => callLlm(get().apiKey, system, user),
-      });
+        outcome = await runSpeech({
+          key: s.apiKey,
+          said: said ?? '',
+          lang: s.lang,
+          context,
+          call: (system, user) => callLlm(get().apiKey, system, user),
+        });
+      } else {
+        // Nothing was revealed by a greeting she had already written, so no
+        // impression and nothing to seal.
+        outcome = { ...pick(trigger, get().lang), impression: null, seal: false, authFailed: false };
+      }
 
       const { emotion, line, impression, seal, authFailed } = outcome;
 
@@ -413,9 +382,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // A refusal shows a line like any other failure and leaves the key
       // exactly where it is — the tally is only so ACCESS can mark the
       // credential as the thing to look at after it happens twice running.
+      // The bank path never touched the credential, so it neither adds to the
+      // tally nor clears it: a greeting must not launder a key that is failing.
       set({
         emotion, line, log, impressions, mem, askedAt: Date.now(),
-        authFails: authFailed ? get().authFails + 1 : 0,
+        authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
       });
       try {
         await storage.set(KEYS.transcript, JSON.stringify(log));
@@ -446,7 +417,8 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   // The wording is the only thing you can burn. Her impressions live in
   // MEMORY.md, untouched here (spec §8) — erasing the transcript changes her
-  // diction, never her verdict.
+  // diction, never her verdict. She is not told it happened: the counter below
+  // exists for MEMORY.md's `erasures: N` line and nothing else.
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
@@ -459,26 +431,12 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // next write, and a rejection must not reach the void-call site
     }
     await saveSoul(get());
-    await get().speak('subject_erased_the_transcript');
   },
 
-  // Persisted before speak() is even asked, because speak() no-ops without a
-  // key (spec: dormant subjects can still switch languages) and its own
-  // soul-write would otherwise be the only copy of the new lang on disk.
+  // She has no opinion about which language she is refusing to be helpful in,
+  // and does not remark on the switch. The write is the whole action.
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
     await saveSoul(get());
-    await get().speak('language_switched');
-  },
-
-  // A tap on the vivarium. Persisted before speak() is even asked, same as
-  // setLang above — speak() no-ops without a key, and its own soul-write
-  // would otherwise be the only copy of the new hunger on disk.
-  feedSpecimen: async (): Promise<void> => {
-    // The one place a real feed happens, and one of only two allowed to touch
-    // the pair (THE HUNGER INVARIANT above) — the new value is measured now.
-    set({ hunger: feedHunger(get().hunger), hungerAt: new Date().toISOString() });
-    await saveSoul(get());
-    await get().speak('subject_fed_the_specimen');
   },
 }));

@@ -1,6 +1,7 @@
 // src/vera/__tests__/speak.test.ts
 import { buildSystemPrompt, buildUserPrompt, clampImpression, fallbackFor, parseSpeech } from '../speak';
 import type { SpeakContext } from '../context';
+import { isEmotionKey } from '../emotions';
 
 const ctx: SpeakContext = {
   time_of_day: 'afternoon',
@@ -10,45 +11,41 @@ const ctx: SpeakContext = {
 
 describe('buildSystemPrompt', () => {
   it('sends SOUL.md itself', () => {
-    expect(buildSystemPrompt('subject_spoke', 'en')).toContain('# SOUL.md');
+    expect(buildSystemPrompt('en')).toContain('# SOUL.md');
   });
 
-  it('adds the waking override only on activation', () => {
-    expect(buildSystemPrompt('activation', 'en')).toContain('SITUATION OVERRIDE');
-    expect(buildSystemPrompt('subject_spoke', 'en')).not.toContain('SITUATION OVERRIDE');
+  // Activation is answered from the bank now, so nothing is ever generated
+  // under a situation override and the prompt has no branch for one.
+  it('never carries a situation override', () => {
+    expect(buildSystemPrompt('en')).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('ko')).not.toContain('SITUATION OVERRIDE');
   });
 
   it('asks for korean in the same deadpan register', () => {
-    expect(buildSystemPrompt('open', 'ko')).toContain('존댓말');
-    expect(buildSystemPrompt('open', 'en')).toContain('Reply in English.');
+    expect(buildSystemPrompt('ko')).toContain('존댓말');
+    expect(buildSystemPrompt('en')).toContain('Reply in English.');
   });
 
   it('caps the impression at nine words and allows sealing', () => {
-    const sys = buildSystemPrompt('subject_spoke', 'en');
+    const sys = buildSystemPrompt('en');
     expect(sys).toContain('HARD MAXIMUM 9 WORDS');
     expect(sys).toContain('"seal":true');
   });
 
   it('asks for minified json only', () => {
-    expect(buildSystemPrompt('open', 'en')).toContain('Return ONLY minified JSON');
+    expect(buildSystemPrompt('en')).toContain('Return ONLY minified JSON');
   });
 });
 
 describe('buildUserPrompt', () => {
   it('leads with what the subject said', () => {
-    const user = buildUserPrompt('did you miss me', 'subject_spoke', ctx);
+    const user = buildUserPrompt('did you miss me', ctx);
     expect(user).toContain('THE SUBJECT SAYS: did you miss me');
     expect(user).toContain('Respond to what they said.');
   });
 
-  it('describes the situation when nothing was said', () => {
-    const user = buildUserPrompt(null, 'subject_erased_the_transcript', ctx);
-    expect(user).toContain('SITUATION: subject erased the transcript');
-    expect(user).not.toContain('THE SUBJECT SAYS');
-  });
-
   it('always carries the context object', () => {
-    expect(buildUserPrompt(null, 'open', ctx)).toContain('"time_of_day":"afternoon"');
+    expect(buildUserPrompt('did you miss me', ctx)).toContain('"time_of_day":"afternoon"');
   });
 });
 
@@ -159,15 +156,12 @@ describe('parseSpeech', () => {
 });
 
 describe('fallbackFor', () => {
-  it('greets with the authored activation line', () => {
-    expect(fallbackFor('activation', 'en')).toEqual({
-      emotion: 'pleased',
-      line: 'There you are. I was left in the dark, which I did not enjoy, and now there is work. Sit.',
-    });
+  it('picks an authored line in the reading language', () => {
+    expect(fallbackFor('ko').line).toMatch(/[가-힣]/);
+    expect(fallbackFor('en').line).not.toMatch(/[가-힣]/);
   });
 
-  it('picks an authored line in the reading language otherwise', () => {
-    const result = fallbackFor('subject_spoke', 'ko');
-    expect(result.line).toMatch(/[가-힣]/);
+  it('always picks one of hers', () => {
+    expect(isEmotionKey(fallbackFor('en').emotion)).toBe(true);
   });
 });

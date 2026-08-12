@@ -2,13 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../../core/store';
 import { organism } from '../index';
-
-// Feeding calls speak(), which would otherwise reach the network. Nothing in
-// this file is allowed to leave the process.
-jest.mock('../../../vera/llm', () => ({
-  ...jest.requireActual('../../../vera/llm'),
-  callLlm: jest.fn(async () => '{"emotion":"disappointed","line":"Noted."}'),
-}));
+import { useOrganismStore } from '../store';
 
 // The OS keystore has no jsdom implementation — an in-memory vault is enough.
 jest.mock('expo-secure-store', () => {
@@ -26,7 +20,12 @@ jest.mock('expo-secure-store', () => {
 
 const Screen = organism.Screen;
 
-beforeEach(() => useFacilityStore.setState({ view: 'mod01', lang: 'en', hunger: 82 }));
+// `hydrated: true` so the mount's own hydrate() early-returns and leaves the
+// fixture's hunger where the test put it.
+beforeEach(() => {
+  useFacilityStore.setState({ view: 'mod01', lang: 'en' });
+  useOrganismStore.setState({ hydrated: true, hunger: 82, hungerAt: null });
+});
 
 describe('Module 01', () => {
   it('reports the specimen hungry and how long it has been in care', async () => {
@@ -36,14 +35,14 @@ describe('Module 01', () => {
     expect(view.getByText('82%')).toBeTruthy();
   });
 
-  it('feeds on a tap and says so', async () => {
+  it('feeds on a tap', async () => {
     const view = await render(<Screen />);
     await fireEvent.press(view.getByTestId('vivarium'));
-    expect(Math.round(useFacilityStore.getState().hunger)).toBe(41);
+    expect(Math.round(useOrganismStore.getState().hunger)).toBe(41);
   });
 
   it('changes its mood once it is fed', async () => {
-    useFacilityStore.setState({ hunger: 20 });
+    useOrganismStore.setState({ hunger: 20 });
     const view = await render(<Screen />);
     expect(view.getByText('MOOD · TEMPORARILY PACIFIED')).toBeTruthy();
     expect(view.getByText('SPECIMEN SATIATED · FOR NOW')).toBeTruthy();

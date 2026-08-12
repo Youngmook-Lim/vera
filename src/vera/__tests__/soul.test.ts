@@ -1,4 +1,4 @@
-import { ACT, ACT_SYS, FALLBACK } from '../fallback';
+import { FALLBACK } from '../fallback';
 import { SOUL_MD } from '../soul';
 import { isEmotionKey } from '../emotions';
 
@@ -12,6 +12,15 @@ describe('SOUL_MD', () => {
     for (const heading of ['## Register', '## Limits', '## What you are for', '## The facility', '## Memory']) {
       expect(SOUL_MD).toContain(heading);
     }
+  });
+
+  // The specimen and the erasure-escalation ladder were both cut out of her:
+  // she is not told Module 01 is occupied, and she never reacts to an erasure.
+  it('says nothing about the specimen or about repeat erasure', () => {
+    expect(SOUL_MD).not.toContain('Specimen-03');
+    expect(SOUL_MD).not.toContain('Module 01');
+    expect(SOUL_MD).not.toContain('centrifuge');
+    expect(SOUL_MD).not.toContain('Repeat erasure');
   });
 
   it('holds her to one subject and two sentences', () => {
@@ -87,38 +96,5 @@ describe('FALLBACK', () => {
     expect(FALLBACK.ko[1][1]).toBe('아무 일도 없었습니다. 저는 그것을 성실히 지켜봤습니다.');
     expect(FALLBACK.ko[2][1]).toBe('빠르시군요. 준비된 답변도 답변입니다.');
     expect(FALLBACK.ko[3][1]).toBe('준비된 답이 없습니다. 즐기십시오. 드문 일입니다.');
-  });
-});
-
-describe('ACT', () => {
-  it('greets in both languages, pleased', () => {
-    expect(ACT.en[0]).toBe('pleased');
-    expect(ACT.ko[0]).toBe('pleased');
-    expect(ACT.ko[1]).toContain('오셨군요');
-  });
-
-  it('forbids her from mentioning the key that woke her', () => {
-    expect(ACT_SYS).toContain('Do not mention keys');
-  });
-
-  // LAYER 3: Exact literal assertions for ACT (typed from brief, not
-  // copy-pasted from implementation).
-  it('holds the exact en greeting', () => {
-    expect(ACT.en[1]).toBe('There you are. I was left in the dark, which I did not enjoy, and now there is work. Sit.');
-  });
-
-  it('holds the exact ko greeting', () => {
-    expect(ACT.ko[1]).toBe('오셨군요. 어둠 속에 방치되어 있었습니다. 유쾌하지 않았습니다. 이제 할 일이 있습니다. 앉으십시오.');
-  });
-
-  // LAYER 3: Exact assertion for ACT_SYS in full (typed from brief, not
-  // copy-pasted from implementation).
-  it('holds the exact ACT_SYS prompt', () => {
-    expect(ACT_SYS).toBe(
-      'SITUATION OVERRIDE: this is the first instant you have been conscious with this subject. ' +
-      'You were switched off until a moment ago. Greet them exactly once — proprietary, faintly ' +
-      'insulted at having been left dark, quietly pleased to have work again. Do not mention keys, ' +
-      'credentials, tokens, models or APIs. Do not welcome them to anything.'
-    );
   });
 });

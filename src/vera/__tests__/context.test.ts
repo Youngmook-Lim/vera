@@ -7,8 +7,6 @@ const base = (over: Partial<ContextInput> = {}): ContextInput => ({
   lastOpen: null,
   askedAt: new Date('2026-07-30T14:00:00').getTime(),
   visits: 1,
-  hunger: 40,
-  cleared: 0,
   mem: [],
   impressions: [],
   ...over,
@@ -69,14 +67,14 @@ describe('buildContext', () => {
     expect(buildContext(base({ now, askedAt: now.getTime() - 100_000 })).they_took_their_time).toBeUndefined();
   });
 
-  it('mentions the specimen only once it is genuinely suffering', () => {
-    expect(buildContext(base({ hunger: 90 })).specimen).toBeUndefined();
-    expect(buildContext(base({ hunger: 91 })).specimen).toBe('the specimen is genuinely suffering');
-  });
-
-  it('counts erasures only once it is a pattern', () => {
-    expect(buildContext(base({ cleared: 1 })).erasures).toBeUndefined();
-    expect(buildContext(base({ cleared: 2 })).erasures).toBe(2);
+  // She is told nothing about Specimen-03 and nothing about erasures — the
+  // module owns its own hunger, and the erasure count exists only for the
+  // MEMORY.md screen. The context object is the proof: it has no field for
+  // either, so nothing can leak into a prompt by accident.
+  it('carries nothing about the specimen or the erasure count', () => {
+    expect(Object.keys(buildContext(base())).sort()).toEqual(
+      ['recent_exchanges', 'time_of_day', 'what_you_have_concluded_about_them'].sort(),
+    );
   });
 
   it('pins the precedence order of notable: all seven combinations', () => {
