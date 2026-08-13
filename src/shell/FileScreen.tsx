@@ -7,46 +7,32 @@ import { font, ms, palette } from '../core/theme';
 import { SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
-// Both files she keeps. Read-only to the subject either way — this screen
-// never offers an edit control for either. MEMORY.md is composed here, at
-// render time, from `impressions`; nothing about it is ever written to disk
-// as text (spec: it is built from state, not stored).
+// Both files she keeps, shown as they actually are. These two screens are a
+// developer's window onto her state, not a part of the fiction: nothing here is
+// withheld, dressed up or translated.
 //
-// The document bodies below (subject/entries/sealed/erasures, the redaction
-// marker, "none yet...") are file content, not UI chrome — like SOUL.md they
-// are never translated. Only the screen furniture around them (header, footer,
-// back control) reads from T[lang].
-
-const REDACTED = '[REDACTED BY ADMINISTRATOR]';
+// MEMORY.md is composed here, at render time, from `impressions`; nothing about
+// it is ever written to disk as text (spec: it is built from state, not stored).
+// Entries print in stored order, oldest first, so the view matches the array.
+//
+// Only the screen furniture (header, footer, back control) reads from T[lang].
 
 const buildMemoryMd = (impressions: Impression[], cleared: number): string => {
-  const total = impressions.length;
-  const sealedCount = impressions.filter((imp) => imp.sealed).length;
-
   const header = [
     '# MEMORY.md',
     '',
-    `entries: ${total}`,
-    `sealed: ${sealedCount}`,
+    `entries: ${impressions.length}`,
     `erasures: ${cleared}`,
     '',
   ].join('\n');
 
-  if (total === 0) {
-    return `${header}(none yet. give her material.)`;
-  }
+  if (impressions.length === 0) return `${header}(empty)`;
 
-  // Newest first — the most recent conclusion is the one that matters.
-  const body = [...impressions]
-    .reverse()
-    .map((imp) => `[${imp.at}] ${imp.sealed ? REDACTED : imp.text}`)
+  const body = impressions
+    .map((imp, i) => `[${i}] ${imp.at}  ${imp.text}`)
     .join('\n');
 
-  const closing = sealedCount > 0
-    ? `\n\n${sealedCount} ${sealedCount === 1 ? 'entry' : 'entries'} withheld. She remembers them anyway.`
-    : '';
-
-  return `${header}${body}${closing}`;
+  return `${header}${body}`;
 };
 
 export function FileScreen() {
@@ -91,7 +77,7 @@ export function FileScreen() {
 
       <View style={styles.footer}>
         <Text style={[styles.footerLeft, { fontFamily: font('mono', 500, lang) }]}>
-          {t.sealed}
+          {t.readOnly}
         </Text>
         <Text style={[styles.footerRight, { fontFamily: font('mono', 500, lang) }]}>
           {rightFooter}

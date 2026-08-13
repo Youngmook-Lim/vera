@@ -26,10 +26,10 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt('en')).toContain('Reply in English.');
   });
 
-  it('caps the impression at nine words and allows sealing', () => {
+  it('caps the impression at nine words and asks for nothing else', () => {
     const sys = buildSystemPrompt('en');
     expect(sys).toContain('HARD MAXIMUM 9 WORDS');
-    expect(sys).toContain('"seal":true');
+    expect(sys).not.toContain('seal');
   });
 
   it('asks for minified json only', () => {
@@ -68,7 +68,6 @@ describe('parseSpeech', () => {
       emotion: 'amused',
       line: 'Fourth visit today.',
       impression: 'Counts visits. Denies counting.',
-      seal: false,
     });
   });
 
@@ -91,9 +90,12 @@ describe('parseSpeech', () => {
     expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"  "}')?.impression).toBeNull();
   });
 
-  it('seals only on an explicit true', () => {
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"x y","seal":true}')?.seal).toBe(true);
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"x y","seal":"yes"}')?.seal).toBe(false);
+  // Sealing is gone. A model that still volunteers the field — an older prompt,
+  // a stale cache — must not have it survive into the parsed result.
+  it('ignores a seal field entirely', () => {
+    const parsed = parseSpeech('{"emotion":"calm","line":"Hm.","impression":"x y","seal":true}');
+    expect(parsed).toEqual({ emotion: 'calm', line: 'Hm.', impression: 'x y.' });
+    expect(parsed).not.toHaveProperty('seal');
   });
 
   it('returns null rather than throwing on junk', () => {
@@ -116,7 +118,6 @@ describe('parseSpeech', () => {
       emotion: 'calm',
       line: 'Hm.',
       impression: null,
-      seal: false,
     });
     expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!!!"}')?.impression).toBeNull();
     expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.impression).toBeNull();

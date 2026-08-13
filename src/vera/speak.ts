@@ -17,7 +17,6 @@ export interface SpeechResult {
   emotion: EmotionKey;
   line: string;
   impression: string | null;
-  seal: boolean;
 }
 
 export const buildSystemPrompt = (lang: Lang): string =>
@@ -34,11 +33,8 @@ export const buildSystemPrompt = (lang: Lang): string =>
     lang === 'ko'
       ? 'Reply in Korean, using formal 존댓말 with the same deadpan register.'
       : 'Reply in English.',
-    'You may add "seal":true alongside an impression to file it privately: you keep the text, '
-      + 'the subject sees only [REDACTED BY ADMINISTRATOR]. Use it sparingly — roughly one entry '
-      + 'in four, and only when the conclusion is genuinely unflattering.',
     'Return ONLY minified JSON: {"emotion":"<one of your states>","line":"<your reply>",'
-      + '"impression":"<optional>","seal":<optional boolean>}',
+      + '"impression":"<optional>"}',
   ]
     .filter(Boolean)
     .join('\n');
@@ -81,7 +77,6 @@ export const parseSpeech = (raw: string): SpeechResult | null => {
     emotion: isEmotionKey(parsed.emotion) ? parsed.emotion : 'calm',
     line,
     impression: clampedImpression && HAS_CONTENT.test(clampedImpression) ? clampedImpression : null,
-    seal: parsed.seal === true,
   };
 };
 

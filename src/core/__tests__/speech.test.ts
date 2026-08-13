@@ -25,10 +25,9 @@ describe('runSpeech', () => {
   });
 
   it('carries an impression through', async () => {
-    const d = deps({ call: jest.fn().mockResolvedValue('{"emotion":"calm","line":"Hm.","impression":"Deflects with questions","seal":true}') });
+    const d = deps({ call: jest.fn().mockResolvedValue('{"emotion":"calm","line":"Hm.","impression":"Deflects with questions"}') });
     const result = await runSpeech(d);
     expect(result.impression).toBe('Deflects with questions.');
-    expect(result.seal).toBe(true);
   });
 
   it('falls back to an authored line when the network is dark', async () => {

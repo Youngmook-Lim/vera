@@ -123,7 +123,7 @@ describe('hydrate', () => {
   it('restores lang, impressions and cleared from a saved soul', async () => {
     await soul({
       lang: 'ko',
-      imps: [{ text: 'You are late again.', at: 'MAR 02', sealed: false }],
+      imps: [{ text: 'You are late again.', at: 'MAR 02' }],
       cleared: 3,
       visits: 4,
       day: today(),
@@ -135,7 +135,7 @@ describe('hydrate', () => {
     const s = useFacilityStore.getState();
     expect(s.hydrated).toBe(true);
     expect(s.lang).toBe('ko');
-    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02', sealed: false }]);
+    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02' }]);
     expect(s.cleared).toBe(3);
     expect(s.visits).toBe(5); // same day, not a reload
   });
@@ -517,7 +517,6 @@ describe('speak', () => {
     const s = useFacilityStore.getState();
     expect(s.impressions[s.impressions.length - 1]).toMatchObject({
       text: 'Deflects with questions.',
-      sealed: true,
     });
     expect(s.impressions[s.impressions.length - 1].at).toMatch(/^[A-Z]{3} \d{2}$/);
   });
@@ -682,7 +681,7 @@ describe('setLang', () => {
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
     useFacilityStore.setState({
       visits: 5, cleared: 2,
-      impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }],
+      impressions: [{ text: 'Deflects.', at: 'JUL 30' }],
     });
 
     await useFacilityStore.getState().setLang('ko');
@@ -695,7 +694,7 @@ describe('setLang', () => {
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
     expect(saved.cleared).toBe(2);
-    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30', sealed: false }]);
+    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
   });
 
   // The regression this guards: a stale-shape write that hydrate cannot read

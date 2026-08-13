@@ -24,7 +24,6 @@ export interface LogEntry {
 export interface Impression {
   text: string;
   at: string;
-  sealed: boolean;
 }
 
 const LOG_CAP = 60;
@@ -366,16 +365,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           call: (system, user) => callLlm(get().apiKey, system, user),
         });
       } else {
-        // Nothing was revealed by a greeting she had already written, so no
-        // impression and nothing to seal.
-        outcome = { ...pick(trigger, get().lang), impression: null, seal: false, authFailed: false };
+        // Nothing was revealed by a greeting she had already written.
+        outcome = { ...pick(trigger, get().lang), impression: null, authFailed: false };
       }
 
-      const { emotion, line, impression, seal, authFailed } = outcome;
+      const { emotion, line, impression, authFailed } = outcome;
 
       const log = [...get().log, { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
       const impressions = impression
-        ? [...get().impressions, { text: impression, at: mmmdd(Date.now()), sealed: seal }].slice(-IMPRESSION_CAP)
+        ? [...get().impressions, { text: impression, at: mmmdd(Date.now()) }].slice(-IMPRESSION_CAP)
         : get().impressions;
       const mem = [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
 

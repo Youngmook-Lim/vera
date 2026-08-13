@@ -17,7 +17,6 @@ export interface SpeechOutcome {
   emotion: EmotionKey;
   line: string;
   impression: string | null;
-  seal: boolean;
   authFailed: boolean;
 }
 
@@ -35,10 +34,10 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
   } catch (error) {
     if (error instanceof AuthError) {
       const spoken = fallbackFor(deps.lang);
-      return { ...spoken, impression: null, seal: false, authFailed: true };
+      return { ...spoken, impression: null, authFailed: true };
     }
   }
 
   const spoken = fallbackFor(deps.lang);
-  return { ...spoken, impression: null, seal: false, authFailed: false };
+  return { ...spoken, impression: null, authFailed: false };
 };

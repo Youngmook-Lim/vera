@@ -13,7 +13,7 @@ describe('FileScreen', () => {
   it('builds MEMORY.md from her impressions', async () => {
     useFacilityStore.setState({
       view: 'mem', lang: 'en', cleared: 0,
-      impressions: [{ text: 'Deflects with questions.', at: 'JUL 30', sealed: false }],
+      impressions: [{ text: 'Deflects with questions.', at: 'JUL 30' }],
     });
     const view = await render(<FileScreen />);
     const body = view.getByTestId('file-body').props.children as string;
@@ -21,47 +21,44 @@ describe('FileScreen', () => {
     expect(body).toContain('Deflects with questions.');
   });
 
-  // A sealed entry stays in her file and in her reasoning; you see only that
-  // something was withheld.
-  it('withholds a sealed entry', async () => {
+  // This screen is a window onto her state, not a part of the fiction. Sealing
+  // is gone entirely: there is no second audience to withhold anything from,
+  // so nothing here is ever masked.
+  it('never masks an entry', async () => {
     useFacilityStore.setState({
       view: 'mem', lang: 'en', cleared: 0,
-      impressions: [{ text: 'Lies about sleep.', at: 'JUL 30', sealed: true }],
+      impressions: [{ text: 'Lies about sleep.', at: 'JUL 30' }],
     });
     const view = await render(<FileScreen />);
     const body = view.getByTestId('file-body').props.children as string;
-    expect(body).toContain('[REDACTED BY ADMINISTRATOR]');
-    expect(body).not.toContain('Lies about sleep.');
+    expect(body).toContain('Lies about sleep.');
+    expect(body).not.toContain('REDACTED');
+    expect(body).not.toContain('SEALED');
+    expect(body).not.toContain('sealed');
   });
 
-  // Critical: a sealed entry's real text must never reach the render tree at
-  // all, not just be absent from the body's own children string — checking
-  // the whole serialized tree catches a leak through any other prop.
-  it('never renders a sealed entry\'s real text anywhere in the tree', async () => {
+  // Stored order, oldest first, indexed — so a line on screen can be matched
+  // against a position in the persisted array without counting backwards.
+  it('prints entries in stored order, with their index and date', async () => {
     useFacilityStore.setState({
-      view: 'mem', lang: 'en', cleared: 0,
-      impressions: [{ text: 'Lies about sleep.', at: 'JUL 30', sealed: true }],
-    });
-    const view = await render(<FileScreen />);
-    const serialized = JSON.stringify(view.toJSON());
-    expect(serialized).not.toContain('Lies about sleep.');
-  });
-
-  // The entry still counts toward the total even though its text is withheld.
-  it('still counts a sealed entry toward the total', async () => {
-    useFacilityStore.setState({
-      view: 'mem', lang: 'en', cleared: 0,
-      impressions: [{ text: 'Lies about sleep.', at: 'JUL 30', sealed: true }],
+      view: 'mem', lang: 'en', cleared: 2,
+      impressions: [
+        { text: 'Deflects with questions.', at: 'JUL 30' },
+        { text: 'Lies about sleep.', at: 'AUG 01' },
+      ],
     });
     const view = await render(<FileScreen />);
     const body = view.getByTestId('file-body').props.children as string;
-    expect(body).toContain('entries: 1');
-    expect(body).toContain('sealed: 1');
+    expect(body).toContain('[0] JUL 30  Deflects with questions.');
+    expect(body).toContain('[1] AUG 01  Lies about sleep.');
+    expect(body.indexOf('[0]')).toBeLessThan(body.indexOf('[1]'));
+    expect(body).toContain('entries: 2');
+    expect(body).toContain('erasures: 2');
   });
 
-  it('says so when there is nothing on file yet', async () => {
+  it('reports an empty file plainly', async () => {
     useFacilityStore.setState({ view: 'mem', lang: 'en', impressions: [], cleared: 0 });
     const view = await render(<FileScreen />);
-    expect(view.getByTestId('file-body').props.children).toContain('(none yet. give her material.)');
+    expect(view.getByTestId('file-body').props.children).toContain('(empty)');
   });
 });
