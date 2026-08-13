@@ -20,7 +20,7 @@ test('the ko gateBody typo is corrected, and nothing else in it moves', () => {
   expect(T.ko.gateBody).toContain('생성 요청 시');
   expect(T.ko.gateBody).not.toContain('요국');
   expect(T.ko.gateBody).toBe(
-    '사고를 위해서는 귀하가 사용하는 모델 제공자의 API 키가 필요합니다. 키는 이 기기에만 보관되며, 생성 요청 시 해당 서버로만 전송됩니다.',
+    '사고를 위해서는 당신이 사용하는 모델 제공자의 API 키가 필요합니다. 키는 이 기기에만 보관되며, 생성 요청 시 해당 서버로만 전송됩니다.',
   );
 });
 
