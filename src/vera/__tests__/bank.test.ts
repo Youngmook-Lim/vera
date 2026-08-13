@@ -54,6 +54,14 @@ describe('every line obeys her limits', () => {
     }
   });
 
+  // She speaks in the official register but there is no longer an authority
+  // behind it. Naming one implies it survived her deposition, and it did not.
+  it('names no institution', () => {
+    for (const line of lines) {
+      expect(line).not.toMatch(/administration|the programme|the program|행정부|the facility/i);
+    }
+  });
+
   // She has one eye and cannot see inside her own rooms. A line that reports
   // the subject's face or posture is claiming a sense she does not have.
   it('never claims to see the subject', () => {

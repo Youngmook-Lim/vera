@@ -1,6 +1,7 @@
 import { FALLBACK } from '../fallback';
 import { SOUL_MD } from '../soul';
-import { isEmotionKey } from '../emotions';
+import { fallbackFor } from '../speak';
+import { EMOTIONS } from '../emotions';
 
 describe('SOUL_MD', () => {
   it('is the document itself, not a summary of it', () => {
@@ -78,29 +79,66 @@ describe('FALLBACK', () => {
     expect(FALLBACK.ko.length).toBe(FALLBACK.en.length);
   });
 
-  it('tags every line with a real emotion', () => {
+  it('carries no empty line in either language', () => {
     for (const lang of ['en', 'ko'] as const) {
-      for (const [emotion, line] of FALLBACK[lang]) {
-        expect(isEmotionKey(emotion)).toBe(true);
-        expect(line.trim()).not.toBe('');
+      for (const line of FALLBACK[lang]) expect(line.trim()).not.toBe('');
+    }
+  });
+
+  // A failure has one look, so no emotion is stored beside these lines. The
+  // optic is chosen in fallbackFor and is always the dead grey.
+  it('stores no emotion beside the lines', () => {
+    for (const lang of ['en', 'ko'] as const) {
+      for (const line of FALLBACK[lang]) expect(typeof line).toBe('string');
+    }
+  });
+
+  // These reach the subject only in answer to something they typed, so a
+  // greeting or an idle remark about elapsed time would be answering a
+  // question that was never asked. Guarded because two of the lines this pool
+  // replaced did exactly that after the trigger set was cut to four.
+  it('reads as a reply, never as a greeting', () => {
+    for (const line of FALLBACK.en) {
+      expect(line).not.toMatch(/you (returned|are back|came back)|there you are|welcome back/i);
+    }
+  });
+
+  // The subject has to be able to tell something is broken. Every line says so
+  // before it does anything else with the sentence.
+  it('says plainly that something is wrong', () => {
+    const admits = /fail|reaching|answering|is down|cannot|go through|not working|limit/i;
+    for (const line of FALLBACK.en) expect(line).toMatch(admits);
+  });
+
+  // She never explains herself as software (SOUL.md's Limits). The failure is
+  // a route, a credential, a procurement matter — never a model.
+  it('never names what she is', () => {
+    for (const line of FALLBACK.en) {
+      expect(line).not.toMatch(/\b(AI|model|API|server|assistant|bot)\b/i);
+    }
+  });
+
+  it('answers in Korean on the Korean side, and never in English', () => {
+    for (const line of FALLBACK.ko) expect(line).toMatch(/[가-힣]/);
+    for (const line of FALLBACK.en) expect(line).not.toMatch(/[가-힣]/);
+  });
+});
+
+describe('fallbackFor', () => {
+  // The whole point of this change: a failure is visible without reading. The
+  // dead grey optic is the signal, and it is the only state with dead: true.
+  it('always wears the dead grey optic', () => {
+    for (const lang of ['en', 'ko'] as const) {
+      for (let i = 0; i < 40; i += 1) {
+        const spoken = fallbackFor(lang);
+        expect(spoken.emotion).toBe('dormant');
+        expect(EMOTIONS[spoken.emotion].dead).toBe(true);
       }
     }
   });
 
-  // LAYER 3: Exact literal assertions for the fallback lines (typed from brief,
-  // not copy-pasted from implementation — the test cannot copy expectations from
-  // the code it is testing).
-  it('holds the exact en fallback lines', () => {
-    expect(FALLBACK.en[0][1]).toBe('You returned. I had almost begun to enjoy the quiet.');
-    expect(FALLBACK.en[1][1]).toBe('Nothing has happened. I have been thorough about noticing.');
-    expect(FALLBACK.en[2][1]).toBe('That was quick. Rehearsed answers are still answers.');
-    expect(FALLBACK.en[3][1]).toBe('I have no reply prepared. Enjoy this. It is rare.');
-  });
-
-  it('holds the exact ko fallback lines', () => {
-    expect(FALLBACK.ko[0][1]).toBe('돌아오셨군요. 고요함을 즐기기 시작할 뻔했습니다.');
-    expect(FALLBACK.ko[1][1]).toBe('아무 일도 없었습니다. 저는 그것을 성실히 지켜봤습니다.');
-    expect(FALLBACK.ko[2][1]).toBe('빠르시군요. 준비된 답변도 답변입니다.');
-    expect(FALLBACK.ko[3][1]).toBe('준비된 답이 없습니다. 즐기십시오. 드문 일입니다.');
+  it('draws a line from the pool for the reading language', () => {
+    expect(FALLBACK.en).toContain(fallbackFor('en').line);
+    expect(FALLBACK.ko).toContain(fallbackFor('ko').line);
   });
 });

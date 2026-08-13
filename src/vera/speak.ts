@@ -82,8 +82,13 @@ export const parseSpeech = (raw: string): SpeechResult | null => {
 
 // Reached only when the model is unreachable mid-conversation — activation no
 // longer generates a line, so there is no first-instant case to special-case.
+//
+// She does not fail in colour. The optic drops back to `dormant`, the dead grey
+// it wears before she has ever been woken, so a subject who is not reading the
+// words can still tell at a glance that nothing is working. It is the only
+// state with `dead: true`, and this is the only place that chooses it besides
+// going properly dormant. The next reply that succeeds takes the eye back.
 export const fallbackFor = (lang: Lang): { emotion: EmotionKey; line: string } => {
   const pool = FALLBACK[lang];
-  const [emotion, line] = pool[Math.floor(Math.random() * pool.length)];
-  return { emotion, line };
+  return { emotion: 'dormant', line: pool[Math.floor(Math.random() * pool.length)] };
 };
