@@ -45,10 +45,27 @@ moves to MEMORY.md.
 **Ordering is load-bearing.** SOUL.md precedes MEMORY.md so a provider-side
 prompt cache keeps a stable prefix when memory changes.
 
-**Messages come from the transcript.** The last 12 entries of `log`, mapped
-`who: 'you' → user`, `who: 'vera' → assistant`. The separate `mem` array is
-**deleted** — it duplicated the transcript. Erasing the transcript therefore
-still costs her the wording and not the verdict, exactly as today.
+**Messages are the whole of this session, and nothing before it.** Not a
+rolling window: every exchange since the app cold-started, in order. Restarting
+returns her to zero.
+
+This follows from the division the whole design rests on — **within a session
+the conversation carries continuity, across sessions memory does.** A window
+that truncated mid-conversation would break the half that already works.
+
+`hydrate()` stamps `sessionStartedAt`. Messages are the `log` entries with
+`t >= sessionStartedAt`, mapped `who: 'you' → user`, `who: 'vera' → assistant`.
+No third copy of the conversation is kept: the transcript already has
+timestamps, and a cold start produces a new stamp, which is the reset.
+
+`LOG_CAP` rises from 60 to **200**, because at 60 the transcript cap would
+silently truncate any session past about thirty exchanges — the cap exists to
+bound the file, not to decide how much of her own conversation she may see.
+
+The separate `mem` array is **deleted**. It duplicated the transcript. Erasing
+the transcript still costs her the wording and not the verdict, exactly as
+today, and now also empties the session she can see — which is correct, since
+the subject just burned it.
 
 **The transcript does not alternate, and providers require that it does.**
 Three of her four stimuli produce an assistant line with no user line before it
@@ -138,8 +155,14 @@ problem.
 Extraction drains the whole queue when any of these fire:
 
 - the app goes to **background** — the natural session boundary
-- **6** pending exchanges accumulate — so a long conversation does not hoard
+- **6** pending exchanges accumulate — a batch size, not a limit on anything
+  she sees; it is only how many exchanges pile up before the writing call runs
 - **on launch**, if the queue is non-empty — survives being killed
+
+Batching is a quality decision before it is a cost one. An extractor shown a
+single exchange usually has nothing durable to take from it. Shown six, it can
+see that the subject circled one subject three times, or dodged and then
+answered.
 
 Only one extraction runs at a time, guarded like `speak()`.
 
@@ -191,8 +214,10 @@ A pure function. No network, no React, deterministic, unit-testable.
 selectMemories(memory, said, now) → { facts, verdicts, threads }
 ```
 
-**Threads.** The 2 oldest unresolved that are **under 30 days old**, unscored.
-Waiting *is* the relevance, and past a month it stops being waiting.
+**Threads.** All unresolved under **30 days** old, capped at **5**, unscored.
+Waiting *is* the relevance, and past a month it stops being waiting. The cap is
+a backstop rather than a filter: she asks a real question only occasionally, so
+five open at once is already unusual.
 
 **Facts.** Drop non-durable facts past `until`, then:
 
@@ -212,9 +237,14 @@ score = recency(at, halfLife = 30 days) + 2 × log(1 + count)
 
 Top **6**.
 
-**Then a character budget of 1200** across the whole selection, trimming
+**Then a character budget of 3000** across the whole selection, trimming
 lowest-scoring first. Characters, not entry counts — characters are what is
 paid for.
+
+At roughly sixty characters an entry that is about fifty memories, which is a
+detailed picture rather than a stub. The ceiling exists to stop the prompt
+growing forever unnoticed, not to ration her: it should not bind for a long
+time, and the PROMPT screen reports the real number when it starts to.
 
 `tokens(said)` lowercases, strips punctuation and a small stopword list.
 Matching is by word, not meaning: *"the thing I do all day"* will not find
@@ -289,6 +319,9 @@ Guarded specifically:
 - the queue survives a kill: unprocessed exchanges are still there on launch
 - consecutive assistant entries merge, leading ones are dropped, and the array
   always ends on `user` — fed a log of nothing but bank greetings
+- the message array holds the whole session and nothing older: entries stamped
+  before `sessionStartedAt` never appear, and a cold start empties it
+- a session longer than the old 60-entry cap is not truncated
 - migration produces one verdict per impression, keeps the original date string,
   and cannot run twice
 
