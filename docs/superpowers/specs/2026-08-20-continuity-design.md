@@ -210,6 +210,31 @@ Batching is quality, not just cost: an extractor seeing one exchange usually
 has nothing to work with, while six turns reveal that the subject circled a
 topic three times.
 
+### §4.4 Erasure is written directly
+
+Erasing the transcript appends a verdict. No model call — there is nothing to
+interpret, only something to file.
+
+A reserved id, `v_erasure`, holds it. The first erasure creates it with
+`count: 1`; each later one bumps `count` and `at`. The text is authored and
+fixed, and English-only like the rest of MEMORY.md, which is document content
+and never translated.
+
+`count` does the escalation on its own. A verdict reached six times outranks
+almost everything else under §5's scoring, so a subject who erases habitually
+finds it near the top of what she is given, without any ladder being written.
+That is the behaviour the old SOUL.md described in prose — note it, then
+observe the pattern, then treat it as a habit — obtained from the same
+mechanism everything else uses.
+
+This closes a gap the four-stimuli change opened. She no longer reacts to an
+erasure at the time, which was the point, but the extractor only ever sees
+exchanges, and an erasure is not an exchange. Without this she would never
+learn it happened at all, and would cheerfully reference a conversation the
+subject had burned.
+
+The subject can read the entry in MEMORY.md. That is intended.
+
 ---
 
 ## §5 How memory is chosen
@@ -331,6 +356,8 @@ Guarded specifically:
 - `reinforces` bumps rather than duplicates; an unknown id is ignored
 - the queue survives a transcript erasure
 - the queue survives a kill: unprocessed exchanges are still there on launch
+- erasing appends `v_erasure` the first time and bumps its `count` after, never
+  creating a second copy, and never calling the model to do it
 - consecutive assistant entries merge, leading ones are dropped, and the array
   always ends on `user` — fed a log of nothing but bank greetings
 - the message array holds the whole session and nothing older: entries stamped
