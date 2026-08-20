@@ -7,12 +7,12 @@ import { pick } from '../vera/bank';
 import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { callLlm } from '../vera/llm';
-import { validateKey } from '../vera/providers';
+import { providerFor, validateKey } from '../vera/providers';
 import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
-export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'mod01' | 'mod02';
+export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | 'mod01' | 'mod02';
 
 export interface LogEntry {
   who: 'you' | 'vera';
@@ -24,6 +24,24 @@ export interface LogEntry {
 export interface Impression {
   text: string;
   at: string;
+}
+
+// The last reply, as it actually happened. A developer's window onto the
+// request, in the same spirit as the MEMORY.md screen: nothing summarised,
+// nothing withheld. Never persisted — it describes this session only, and it
+// would be the largest thing on disk by an order of magnitude.
+//
+// `system` and `user` are null when she answered from the bank, which is
+// itself the answer to "why did that reply look canned".
+export interface PromptRecord {
+  at: number;
+  trigger: Trigger;
+  route: string;
+  model: string;
+  system: string | null;
+  user: string | null;
+  raw: string | null;
+  outcome: 'model' | 'fallback' | 'bank';
 }
 
 const LOG_CAP = 60;
@@ -115,6 +133,9 @@ interface FacilityState {
   // (spec §10 — a bad key is caught when she fails to answer, not at the gate).
   authFails: number;
 
+  // The last reply's request, for the prompt inspector. Session-only.
+  lastPrompt: PromptRecord | null;
+
   cabinetOpen: boolean;
   keyPanelOpen: boolean;
   confirmingClear: boolean;
@@ -157,6 +178,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   askedAt: Date.now(),
 
   authFails: 0,
+  lastPrompt: null,
 
   cabinetOpen: false,
   keyPanelOpen: false,
@@ -180,7 +202,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ cabinetOpen: false });
       return true;
     }
-    if (s.view === 'mem' || s.view === 'soul') {
+    if (s.view === 'mem' || s.view === 'soul' || s.view === 'prompt') {
       set({ view: 'sys' });
       return true;
     }
@@ -365,11 +387,36 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           call: (system, user) => callLlm(get().apiKey, system, user),
         });
       } else {
-        // Nothing was revealed by a greeting she had already written.
-        outcome = { ...pick(trigger, get().lang), impression: null, authFailed: false };
+        // Nothing was revealed by a greeting she had already written, and
+        // nothing was sent, which is what the inspector reports.
+        outcome = {
+          ...pick(trigger, get().lang),
+          impression: null,
+          authFailed: false,
+          source: 'fallback',
+          debug: { system: null, user: null, raw: null },
+        };
       }
 
       const { emotion, line, impression, authFailed } = outcome;
+
+      // The record of what actually happened, for the prompt inspector. A raw
+      // reply present alongside a `fallback` source means the model answered
+      // and the answer was unreadable — which looks identical to a dead
+      // network on the stage, and is only distinguishable here.
+      const route = providerFor(get().apiKey);
+      set({
+        lastPrompt: {
+          at: Date.now(),
+          trigger,
+          route: route?.label ?? '',
+          model: route?.model ?? '',
+          system: outcome.debug.system,
+          user: outcome.debug.user,
+          raw: outcome.debug.raw,
+          outcome: live ? outcome.source : 'bank',
+        },
+      });
 
       const log = [...get().log, { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
       const impressions = impression

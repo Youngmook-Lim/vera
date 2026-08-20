@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Impression } from '../core/store';
+import type { Impression, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { SOUL_MD } from '../vera/soul';
@@ -16,6 +16,44 @@ import { T } from './strings';
 // Entries print in stored order, oldest first, so the view matches the array.
 //
 // Only the screen furniture (header, footer, back control) reads from T[lang].
+
+// The last request, exactly as it went out. Not a document she keeps — a
+// developer's transcript of one round trip, so the prompt can be read rather
+// than inferred from what she said. The credential never appears: it travels
+// in the request headers, never in the prompt.
+const buildPromptMd = (p: PromptRecord | null): string => {
+  if (!p) return '# LAST PROMPT\n\n(nothing sent yet this session)';
+
+  const head = [
+    '# LAST PROMPT',
+    '',
+    `at: ${new Date(p.at).toISOString()}`,
+    `trigger: ${p.trigger}`,
+    `route: ${p.route || 'none'}`,
+    `model: ${p.model || 'none'}`,
+    `outcome: ${p.outcome}`,
+    '',
+  ].join('\n');
+
+  if (p.outcome === 'bank') {
+    return `${head}(answered from the authored bank. no request was made.)`;
+  }
+
+  const sent = [
+    `--- SYSTEM (${p.system?.length ?? 0} chars) ---`,
+    p.system ?? '(none)',
+    '',
+    `--- USER (${p.user?.length ?? 0} chars) ---`,
+    p.user ?? '(none)',
+    '',
+    '--- RAW REPLY ---',
+    // A null raw means the call threw before answering. A raw that is present
+    // on a `fallback` outcome means she answered and could not be parsed.
+    p.raw ?? '(the request failed before a reply arrived)',
+  ].join('\n');
+
+  return `${head}${sent}`;
+};
 
 const buildMemoryMd = (impressions: Impression[], cleared: number): string => {
   const header = [
@@ -41,14 +79,18 @@ export function FileScreen() {
   const lang = useFacilityStore((s) => s.lang);
   const impressions = useFacilityStore((s) => s.impressions);
   const cleared = useFacilityStore((s) => s.cleared);
+  const lastPrompt = useFacilityStore((s) => s.lastPrompt);
   const setView = useFacilityStore((s) => s.setView);
 
   const t = T[lang];
-  const isSoul = view === 'soul';
-  const name = isSoul ? 'SOUL.md' : 'MEMORY.md';
-  const meta = isSoul ? t.soulSub : t.memSub;
-  const body = isSoul ? SOUL_MD : buildMemoryMd(impressions, cleared);
-  const rightFooter = isSoul ? t.everyReply : t.byV;
+  // Three documents, one reader. Named rather than nested ternaries now that
+  // there is more than one axis of difference between them.
+  const doc = view === 'soul'
+    ? { name: 'SOUL.md', meta: t.soulSub, body: SOUL_MD, footer: t.everyReply }
+    : view === 'prompt'
+      ? { name: 'PROMPT', meta: t.promptSub, body: buildPromptMd(lastPrompt), footer: t.sessionOnly }
+      : { name: 'MEMORY.md', meta: t.memSub, body: buildMemoryMd(impressions, cleared), footer: t.byV };
+  const { name, meta, body, footer: rightFooter } = doc;
 
   return (
     <View

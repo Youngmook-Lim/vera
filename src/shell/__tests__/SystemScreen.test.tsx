@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { palette } from '../../core/theme';
+import { providerFor } from '../../vera/providers';
 import { SystemScreen } from '../SystemScreen';
 
 // setLang calls speak(), which would otherwise reach the network. Nothing in
@@ -54,9 +55,13 @@ describe('SystemScreen', () => {
     expect(view.queryByText(RAW_KEY)).toBeNull();
   });
 
-  it('names the route the key is on', async () => {
+  // The model is not chosen by the subject yet, so the route line reports
+  // which one their key actually reaches rather than offering a choice.
+  it('names the route the key is on, and the model it reaches', async () => {
     const view = await render(<SystemScreen />);
-    expect(view.getByText('ANTHROPIC')).toBeTruthy();
+    const route = view.getByTestId('key-route').props.children as string;
+    expect(route).toContain('ANTHROPIC');
+    expect(route).toContain(providerFor(RAW_KEY)?.model);
   });
 
   it('switches language', async () => {

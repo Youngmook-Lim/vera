@@ -94,6 +94,20 @@ export function SystemScreen() {
             </View>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
           </Pressable>
+
+          {/* Not one of her files — the request behind her last line, so the
+              prompt can be read rather than inferred from what she said. */}
+          <Pressable testID="tile-prompt" style={styles.tile} onPress={() => setView('prompt')}>
+            <View style={styles.tileText}>
+              <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
+                PROMPT
+              </Text>
+              <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
+                {t.promptSub}
+              </Text>
+            </View>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -132,8 +146,13 @@ export function SystemScreen() {
               >
                 {maskKey(apiKey)}
               </Text>
-              <Text style={[styles.tileRoute, { fontFamily: font('mono', 500, lang) }]}>
-                {provider ? provider.label : t.provUnknown}
+              {/* The route and the model it reaches. The model is fixed per
+                  route for now, so this reports rather than offers a choice. */}
+              <Text
+                testID="key-route"
+                style={[styles.tileRoute, { fontFamily: font('mono', 500, lang) }]}
+              >
+                {provider ? `${provider.label} · ${provider.model}` : t.provUnknown}
               </Text>
             </View>
             <Text style={[styles.changeText, { fontFamily: font('mono', 500, lang) }]}>

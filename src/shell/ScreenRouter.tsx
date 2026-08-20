@@ -32,6 +32,7 @@ function CurrentView({ view }: { view: ViewName }) {
     // which of her files it is showing.
     case 'mem':
     case 'soul':
+    case 'prompt':
       return <FileScreen />;
     default: {
       const Screen = MODULE_SCREENS[view];
