@@ -116,7 +116,13 @@ interface Thread {        // something she asked that went unanswered
 }
 ```
 
-Storage caps, oldest dropped: **120** facts, **60** verdicts, **20** threads.
+Storage caps, oldest dropped: **400** facts, **200** verdicts, **50** threads.
+
+Disk is not what constrains these — four hundred facts is about 30 KB. The cost
+is that §4.3 sends the **whole** memory to the extractor so it can supersede and
+merge, which makes storage size into extraction-prompt size. These are set
+generously on the understanding that the answer to a store that outgrows them
+is the consolidation pass in §10, not a tighter cap.
 
 `resolved` means the subject answered, and only the extractor sets it. A thread
 that has gone unanswered for **30 days** is not resolved — she simply stops
@@ -227,24 +233,28 @@ score = 3 × |keys ∩ tokens(said)|
       + (durable ? 1 : 0)
 ```
 
-Top **6**.
-
 **Verdicts.**
 
 ```
 score = recency(at, halfLife = 30 days) + 2 × log(1 + count)
 ```
 
-Top **6**.
+**Neither has a count cap.** Facts and verdicts are pooled, sorted by score, and
+taken highest-first until the character budget is spent.
 
-**Then a character budget of 3000** across the whole selection, trimming
-lowest-scoring first. Characters, not entry counts — characters are what is
-paid for.
+**The character budget is 3000, and it is the only governor.** Two limits are
+one too many: an earlier draft capped selection at six facts and six verdicts,
+which came to roughly a thousand characters, so the budget could never bind and
+raising it changed nothing. One number now decides how much she knows per
+reply, and it is the number that maps to what the subject pays.
 
-At roughly sixty characters an entry that is about fifty memories, which is a
-detailed picture rather than a stub. The ceiling exists to stop the prompt
-growing forever unnoticed, not to ration her: it should not bind for a long
-time, and the PROMPT screen reports the real number when it starts to.
+Threads are taken first and are not charged against the budget — they are few,
+short, and always relevant. Facts and verdicts then fill what remains.
+
+At roughly sixty characters an entry, 3000 is about fifty memories: a detailed
+picture rather than a stub. The ceiling exists to stop the prompt growing
+forever unnoticed, not to ration her. The PROMPT screen reports the real number
+when it starts to bind.
 
 `tokens(said)` lowercases, strips punctuation and a small stopword list.
 Matching is by word, not meaning: *"the thing I do all day"* will not find
@@ -313,6 +323,10 @@ builder, the migration.
 Guarded specifically:
 
 - the character budget is enforced on the composed document, not estimated
+- the budget is the only thing that limits facts and verdicts: given a store
+  large enough to exceed it, selection fills to the budget and stops, and given
+  a small store it returns everything without padding
+- threads are taken first and are not charged against the budget
 - a fact past `until` never appears in a selection, and never leaves the record
 - `reinforces` bumps rather than duplicates; an unknown id is ignored
 - the queue survives a transcript erasure
