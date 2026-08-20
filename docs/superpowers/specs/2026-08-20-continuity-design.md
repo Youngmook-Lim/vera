@@ -56,9 +56,12 @@ Three of her four stimuli produce an assistant line with no user line before it
 more consecutive `vera` entries. Anthropic rejects that outright; the others
 degrade unpredictably. The builder therefore:
 
-- **merges** consecutive same-role entries into one message, newline-joined
+- **merges** consecutive same-role runs into one message, newline-joined
 - **drops** leading assistant messages, since the array must open on `user`
-- **appends** the current input last, so the array always ends on `user`
+
+The array then ends on `user` without anything being appended: `speak()` pushes
+the subject's words into the log *before* the request is built, so the current
+input is already the last entry. Appending it again would duplicate it.
 
 A log consisting only of bank greetings yields an empty message array, and the
 request carries the current input alone. That is correct: she has not said
