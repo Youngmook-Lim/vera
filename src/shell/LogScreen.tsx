@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { useFacilityStore } from '../core/store';
+import { systemTextFor } from './systemText';
 import { font, ms, palette, serif } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import type { LogEntry } from '../core/store';
@@ -31,6 +32,23 @@ function YouLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
       <View style={styles.youBubble}>
         <Text style={[styles.youText, { fontFamily: font('mono', 500, lang) }]}>{entry.text}</Text>
       </View>
+    </View>
+  );
+}
+
+// The app, not her. No bubble, no emotion rule, no serif — a refused
+// credential must not be readable as something she said.
+function SystemLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
+  if (!entry.code) return null;
+  return (
+    <View style={styles.systemRow}>
+      <Text style={[styles.stamp, { fontFamily: font('mono', 500, lang) }]}>{hhmm(entry.t)}</Text>
+      <Text
+        testID="system-line"
+        style={[styles.systemText, { fontFamily: font('mono', 600, lang) }]}
+      >
+        {systemTextFor(entry.code, lang)}
+      </Text>
     </View>
   );
 }
@@ -133,7 +151,9 @@ export function LogScreen() {
           </View>
         ) : (
           log.map((entry, i) =>
-            entry.who === 'you' ? (
+            entry.who === 'system' ? (
+              <SystemLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
+            ) : entry.who === 'you' ? (
               <YouLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
             ) : (
               <HerLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
@@ -241,6 +261,19 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 8,
     gap: 16,
+  },
+  // Deliberately unlike either speaker: no bubble, danger red, mono.
+  systemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  systemText: {
+    flex: 1,
+    fontSize: ms(9),
+    letterSpacing: ms(9) * 0.1,
+    color: palette.danger,
   },
   youRow: {
     alignSelf: 'flex-end',

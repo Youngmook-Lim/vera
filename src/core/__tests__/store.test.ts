@@ -545,13 +545,55 @@ describe('speak', () => {
     expect(useFacilityStore.getState().line).toBeTruthy();
   });
 
-  it('leaves the key in place after an auth failure, and still shows a line', async () => {
+  // A refused credential is the one failure the app reports in its own voice.
+  // She says nothing at all: a line of hers would read like every other
+  // failure and hide a problem only the subject can fix.
+  it('speaks as the system on an auth failure, not as her', async () => {
     callLlm.mockRejectedValue(new AuthError());
     await useFacilityStore.getState().speak('subject_spoke', 'hi');
 
     const s = useFacilityStore.getState();
+    expect(s.systemNotice).toBe('auth');
+    expect(s.line).toBe('');
+    expect(s.emotion).toBe('dormant');
+    expect(s.log[s.log.length - 1]).toMatchObject({ who: 'system', code: 'auth' });
+    // The key stays exactly where it is — she is never sent dormant for it.
     expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+  });
+
+  // The notice is not something she said, so it must not enter the memory she
+  // reasons from. She should be unaware the exchange happened at all.
+  it('keeps the notice out of her memory of the conversation', async () => {
+    useFacilityStore.setState({ mem: [{ you: 'earlier', her: 'Noted.' }] });
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    expect(useFacilityStore.getState().mem).toEqual([{ you: 'earlier', her: 'Noted.' }]);
+  });
+
+  it('clears the notice the moment she answers again', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'one');
+    expect(useFacilityStore.getState().systemNotice).toBe('auth');
+
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'two');
+
+    const s = useFacilityStore.getState();
+    expect(s.systemNotice).toBeNull();
+    expect(s.line).toBe('Noted.');
+  });
+
+  // A network failure is NOT a configuration problem, so she still covers for
+  // it with an authored line. Only the credential gets the system's voice.
+  it('leaves a network failure to her, with no notice', async () => {
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.systemNotice).toBeNull();
     expect(s.line).toBeTruthy();
+    expect(s.log[s.log.length - 1].who).toBe('vera');
   });
 
   // Finding 2, fix round 1: a new reply must cancel the previous typewriter

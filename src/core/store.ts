@@ -14,11 +14,21 @@ import type { Trigger } from '../vera/speak';
 // library, instant swaps.
 export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | 'mod01' | 'mod02';
 
+// `system` is the app speaking, not her. It exists for exactly one situation —
+// a refused credential — and is rendered in danger red and a mono face so it
+// cannot be mistaken for a line of hers.
+export type SystemCode = 'auth';
+
+// A system entry carries a `code`, not prose: the wording lives in the shell's
+// string table, and core has never imported from shell. It also means the
+// notice re-reads in the new language when the subject switches, which a
+// string frozen at write time would not.
 export interface LogEntry {
-  who: 'you' | 'vera';
+  who: 'you' | 'vera' | 'system';
   text: string;
   t: number;
   emotion?: EmotionKey;
+  code?: SystemCode;
 }
 
 export interface Impression {
@@ -136,6 +146,12 @@ interface FacilityState {
   // The last reply's request, for the prompt inspector. Session-only.
   lastPrompt: PromptRecord | null;
 
+  // Set only while the credential is being refused. The one thing the app says
+  // in its own voice, because a bad key is a configuration problem the subject
+  // must fix rather than an event in the fiction. Cleared the moment she
+  // answers again.
+  systemNotice: SystemCode | null;
+
   cabinetOpen: boolean;
   keyPanelOpen: boolean;
   confirmingClear: boolean;
@@ -179,6 +195,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   authFails: 0,
   lastPrompt: null,
+  systemNotice: null,
 
   cabinetOpen: false,
   keyPanelOpen: false,
@@ -312,7 +329,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     await secure.set(key);
     // A new credential starts on a clean tally — the old key's refusals are
     // not this one's.
-    set({ apiKey: key, keyPanelOpen: false, waking: first, authFails: 0 });
+    // A new credential clears the refusal notice with the tally: the old key's
+    // rejection is not this one's, and leaving the red line on screen would
+    // say otherwise until she next happened to speak.
+    set({ apiKey: key, keyPanelOpen: false, waking: first, authFails: 0, systemNotice: null });
     if (first) {
       set({ emotion: 'calm' });
       setTimeout(() => set({ waking: false }), 1300);
@@ -418,19 +438,39 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         },
       });
 
-      const log = [...get().log, { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
+      // A refused credential is the one failure the app reports itself. It is
+      // not an event in the fiction — it is a configuration problem only the
+      // subject can fix, and saying it in her voice would hide it behind a
+      // line that reads like any other. So she says nothing, and the system
+      // speaks instead.
+      const notice: SystemCode | null = authFailed ? 'auth' : null;
+
+      const log = [...get().log, notice
+        ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
+        : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
       const impressions = impression
         ? [...get().impressions, { text: impression, at: mmmdd(Date.now()) }].slice(-IMPRESSION_CAP)
         : get().impressions;
-      const mem = [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
+      // A notice is not something she said, so it never enters her memory of
+      // the conversation. She is unaware the exchange happened at all.
+      const mem = notice
+        ? get().mem
+        : [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
 
-      // A refusal shows a line like any other failure and leaves the key
-      // exactly where it is — the tally is only so ACCESS can mark the
-      // credential as the thing to look at after it happens twice running.
-      // The bank path never touched the credential, so it neither adds to the
-      // tally nor clears it: a greeting must not launder a key that is failing.
+      // A refusal leaves the key exactly where it is — she is never sent
+      // dormant for it, and the tally only tells ACCESS which row to mark
+      // after it happens twice running. The bank path never touched the
+      // credential, so it neither adds to the tally nor clears it: a greeting
+      // must not launder a key that is failing.
+      //
+      // Under a notice she has no line and no emotion. The optic drops to the
+      // dead grey, and the screen shows the system speaking rather than her
+      // saying something evasive about a problem she did not have.
       set({
-        emotion, line, log, impressions, mem, askedAt: Date.now(),
+        emotion: notice ? 'dormant' : emotion,
+        line: notice ? '' : line,
+        systemNotice: notice,
+        log, impressions, mem, askedAt: Date.now(),
         authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
       });
       try {

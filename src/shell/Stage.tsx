@@ -18,6 +18,7 @@ import { KeyGate } from './KeyGate';
 import { Optic } from './Optic';
 import { gazeFor } from './opticGeometry';
 import { useKeyboardInset } from './useKeyboardInset';
+import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
 import { ThinkingDots } from './ThinkingDots';
 
@@ -63,6 +64,7 @@ export function Stage() {
   const lang = useFacilityStore((s) => s.lang);
   const line = useFacilityStore((s) => s.line);
   const shown = useFacilityStore((s) => s.shown);
+  const systemNotice = useFacilityStore((s) => s.systemNotice);
   const thinking = useFacilityStore((s) => s.thinking);
   const draft = useFacilityStore((s) => s.draft);
   const waking = useFacilityStore((s) => s.waking);
@@ -273,15 +275,31 @@ export function Stage() {
               {emotionLabel(emotion, lang)}
             </Text>
           </View>
-          <Text
-            testID="her-line"
-            style={StyleSheet.flatten([
-              styles.line,
-              { fontSize, lineHeight, fontFamily: serif(lang) },
-            ])}
-          >
-            {shown}
-          </Text>
+          {/* The one thing the app says in its own voice. Danger red and the
+              mono face, never her serif, so a refused credential cannot be
+              read as something she said. */}
+          {systemNotice ? (
+            <Text
+              testID="system-notice"
+              style={StyleSheet.flatten([
+                styles.line,
+                styles.notice,
+                { fontFamily: font('mono', 600, lang) },
+              ])}
+            >
+              {SYSTEM_TEXT[systemNotice](t)}
+            </Text>
+          ) : (
+            <Text
+              testID="her-line"
+              style={StyleSheet.flatten([
+                styles.line,
+                { fontSize, lineHeight, fontFamily: serif(lang) },
+              ])}
+            >
+              {shown}
+            </Text>
+          )}
           {thinking ? <ThinkingDots /> : null}
         </View>
       </View>
@@ -429,6 +447,14 @@ const styles = StyleSheet.create({
   line: {
     textAlign: 'center',
     color: palette.text,
+  },
+  // Deliberately unlike her: the danger red, small, wide-tracked and mono.
+  // Nothing on this screen looks like this except the system speaking.
+  notice: {
+    color: palette.danger,
+    fontSize: ms(9.5),
+    lineHeight: ms(9.5) * 1.7,
+    letterSpacing: ms(9.5) * 0.12,
   },
   // A card, not a hairline rule: `margin:0 20px 14px; padding:13px 14px;
   // background:#1a1913; border:1px solid #2c2a22; border-radius:12px`
