@@ -93,6 +93,15 @@ describe('parseSpeech', () => {
     expect(parseSpeech('')).toBeNull();
   });
 
+  // One brace in her prose used to cost the subject the whole reply: the greedy
+  // span runs from it to the last `}` and throws, and she answers with a
+  // fallback line instead of what she actually said. Same recovery as
+  // parseExtraction's.
+  it('recovers the real object when a stray brace precedes it in prose', () => {
+    const raw = 'Filed under { pending }, obviously.\n{"emotion":"amused","line":"Noted."}';
+    expect(parseSpeech(raw)).toEqual({ emotion: 'amused', line: 'Noted.' });
+  });
+
   it('returns null rather than throwing on a wider spread of hostile input', () => {
     expect(parseSpeech(null as unknown as string)).toBeNull();
     expect(parseSpeech(undefined as unknown as string)).toBeNull();

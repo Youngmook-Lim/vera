@@ -51,15 +51,28 @@ export const buildUserPrompt = (said: string, ctx: SpeakContext): string =>
   ].join('\n');
 
 export const parseSpeech = (raw: string): SpeechResult | null => {
-  const match = String(raw ?? '').match(/\{[\s\S]*\}/);
+  const text = String(raw ?? '');
+  const match = text.match(/\{[\s\S]*\}/);
   if (!match) return null;
 
-  let parsed: Record<string, unknown>;
+  let parsed: Record<string, unknown> | undefined;
   try {
     parsed = JSON.parse(match[0]) as Record<string, unknown>;
   } catch {
-    return null;
+    // The greedy span can run from a stray brace ahead of the real object all
+    // the way to its close; narrow to the first opening brace that parses.
+    for (const open of text.matchAll(/\{/g)) {
+      const candidate = text.slice(open.index ?? 0).match(/\{[\s\S]*\}/);
+      if (!candidate) continue;
+      try {
+        parsed = JSON.parse(candidate[0]) as Record<string, unknown>;
+        break;
+      } catch {
+        continue;
+      }
+    }
   }
+  if (!parsed) return null;
 
   const line = typeof parsed.line === 'string' ? parsed.line.trim() : '';
   if (!line) return null;
