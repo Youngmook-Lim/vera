@@ -92,4 +92,13 @@ describe('the budget', () => {
     expect(out.threads).toHaveLength(1);
     expect(spent).toBeGreaterThan(BUDGET_CHARS - 200);
   });
+
+  it('skips a high-scoring entry too large for the remaining budget and still takes a smaller one after it', () => {
+    const verdicts = [
+      verdict({ id: 'v_big', text: 'x'.repeat(BUDGET_CHARS + 1), count: 50 }),
+      verdict({ id: 'v_small', text: 'y'.repeat(50), count: 1 }),
+    ];
+    const out = selectMemories({ ...EMPTY_MEMORY, verdicts }, '', NOW);
+    expect(out.verdicts.map((v) => v.id)).toEqual(['v_small']);
+  });
 });
