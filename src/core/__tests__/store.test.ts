@@ -1,6 +1,7 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
 import { buildContext } from '../../vera/context';
+import type { Turn } from '../../vera/messages';
 
 jest.mock('expo-localization', () => ({
   getLocales: jest.fn(() => [{ languageCode: 'en' }]),
@@ -667,8 +668,8 @@ describe('speak', () => {
   it('gives up on a hung request, still speaks, and is not left deaf afterwards', async () => {
     const realCallLlm = jest.requireActual<typeof import('../../vera/llm')>('../../vera/llm').callLlm;
     const hung = () => new Promise<never>(() => {});
-    callLlm.mockImplementation((key: string, system: string, user: string) =>
-      realCallLlm(key, system, user, 300, hung));
+    callLlm.mockImplementation((key: string, system: string, turns: Turn[]) =>
+      realCallLlm(key, system, turns, 300, hung));
 
     const pending = useFacilityStore.getState().speak('subject_spoke', 'are you there');
     expect(useFacilityStore.getState().thinking).toBe(true);

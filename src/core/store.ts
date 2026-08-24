@@ -404,7 +404,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           said: said ?? '',
           lang: s.lang,
           context,
-          call: (system, user) => callLlm(get().apiKey, system, user),
+          call: (system, user) => callLlm(get().apiKey, system, [{ role: 'user', text: user }]),
         });
       } else {
         // Nothing was revealed by a greeting she had already written, and
