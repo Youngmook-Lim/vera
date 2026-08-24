@@ -207,9 +207,9 @@ describe('hydrate', () => {
 
   // A memory store that parses but is not the shape capMemory expects must not
   // take the rest of the launch with it. Skipping the soul and transcript reads
-  // is not a blip: the next reply's saveSoul would then write `imps: []` and
-  // `visits: 1` over the real history, and since the malformed store is never
-  // rewritten it would happen on every launch, permanently.
+  // is not a blip: the next reply's saveSoul would then write `visits: 1` over
+  // the real history, and since the malformed store is never rewritten it
+  // would happen on every launch, permanently.
   it('keeps the soul and the transcript when the memory store is malformed', async () => {
     await storage.set(KEYS.memory, '{"facts":null,"verdicts":null,"threads":null,"pending":null}');
     await soul({

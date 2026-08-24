@@ -8,8 +8,8 @@ describe('FileScreen', () => {
     useFacilityStore.setState({ view: 'soul', lang: 'en' });
     const view = await render(<FileScreen />);
     expect(view.getByTestId('file-body').props.children).toContain('# SOUL.md');
+    await view.unmount();
   });
-
 });
 
 const MEMORY = {

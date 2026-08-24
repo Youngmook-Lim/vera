@@ -82,7 +82,7 @@ let extracting = false;
 let greeted = false;
 
 // The one shape written to KEYS.soul, and the one place that writes it — four
-// callers persisting seven fields by hand is how the writers drifted apart in
+// callers persisting five fields by hand is how the writers drifted apart in
 // the first place.
 interface SoulBlob {
   visits: number;
@@ -519,9 +519,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
   },
 
-  // The wording is the only thing you can burn. Her impressions live in
-  // MEMORY.md, mostly untouched here (spec §8) — erasing the transcript
-  // changes her diction, not the verdicts already filed. The one exception is
+  // The wording is the only thing you can burn. What she's learned — her
+  // facts, verdicts and threads — lives in MEMORY.md, mostly untouched here
+  // (spec §8) — erasing the transcript changes her diction, not the verdicts
+  // already filed. The one exception is
   // below: she files a verdict about the erasure itself, though she is never
   // told it happened. The counter here exists for MEMORY.md's `erasures: N`
   // line and nothing else.
