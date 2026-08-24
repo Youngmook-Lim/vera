@@ -3,10 +3,10 @@ export interface Exchange {
   her: string;
 }
 
+// Only what is true of this moment. Everything about the subject travels in
+// MEMORY.md now, and the session itself travels as real turns (continuity §2).
 export interface SpeakContext {
   time_of_day: string;
-  recent_exchanges: Exchange[];
-  what_you_have_concluded_about_them: string[];
   notable?: string;
   they_took_their_time?: true;
 }
@@ -16,8 +16,6 @@ export interface ContextInput {
   lastOpen: number | null;
   askedAt: number;
   visits: number;
-  mem: Exchange[];
-  impressions: string[];
 }
 
 const bucket = (hour: number): string =>
@@ -34,8 +32,6 @@ export const buildContext = (input: ContextInput): SpeakContext => {
   const hour = input.now.getHours();
   const ctx: SpeakContext = {
     time_of_day: bucket(hour),
-    recent_exchanges: input.mem.slice(-6),
-    what_you_have_concluded_about_them: input.impressions,
   };
 
   const hoursAway = input.lastOpen == null ? null : (input.now.getTime() - input.lastOpen) / 3_600_000;

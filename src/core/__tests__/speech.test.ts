@@ -1,11 +1,14 @@
 import { AuthError } from '../../vera/llm';
 import { runSpeech } from '../speech';
+import type { Turn } from '../../vera/messages';
 
 const deps = (over = {}) => ({
   key: 'sk-ant-api03-abcdefghijklmnop',
   said: 'did you miss me',
+  turns: [{ role: 'user' as const, text: 'did you miss me' }],
   lang: 'en' as const,
-  context: { time_of_day: 'afternoon', recent_exchanges: [], what_you_have_concluded_about_them: [] },
+  context: { time_of_day: 'afternoon' },
+  memoryMd: '# MEMORY.md\n\n## What you know about them\n- works in software',
   call: jest.fn().mockResolvedValue('{"emotion":"amused","line":"Barely."}'),
   ...over,
 });
@@ -19,15 +22,52 @@ describe('runSpeech', () => {
   it('passes SOUL.md and the context to the model', async () => {
     const d = deps();
     await runSpeech(d);
-    const [system, user] = d.call.mock.calls[0];
+    const [system, turns] = d.call.mock.calls[0];
     expect(system).toContain('# SOUL.md');
-    expect(user).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(turns[turns.length - 1].text).toContain('THE SUBJECT SAYS: did you miss me');
   });
 
-  it('carries an impression through', async () => {
-    const d = deps({ call: jest.fn().mockResolvedValue('{"emotion":"calm","line":"Hm.","impression":"Deflects with questions"}') });
-    const result = await runSpeech(d);
-    expect(result.impression).toBe('Deflects with questions.');
+  it('sends MEMORY.md in the system prompt, after SOUL.md', async () => {
+    const d = deps();
+    await runSpeech(d);
+    const [system] = d.call.mock.calls[0];
+    expect(system).toContain('works in software');
+    expect(system.indexOf('# SOUL.md')).toBeLessThan(system.indexOf('# MEMORY.md'));
+  });
+
+  // The session travels as real turns now, so the whole of it must reach the
+  // model — not a summary of it (continuity §2).
+  it('sends the session as turns, with the composed prompt in place of the last one', async () => {
+    const turns: Turn[] = [
+      { role: 'user', text: 'are you there' },
+      { role: 'assistant', text: 'Regrettably.' },
+      { role: 'user', text: 'did you miss me' },
+    ];
+    const d = deps({ turns });
+    await runSpeech(d);
+
+    const sent: Turn[] = d.call.mock.calls[0][1];
+    expect(sent.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(sent[0].text).toBe('are you there');
+    // The contract this pins: `slice(0, -1)` drops exactly the trailing user
+    // turn buildMessages produced, never a real assistant turn. Asserted on
+    // content, because a length check alone would pass if the wrong one went.
+    expect(sent[1].text).toBe('Regrettably.');
+    expect(sent[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(sent[2].text).toContain('"time_of_day":"afternoon"');
+  });
+
+  // An empty array is an invalid request on all three provider shapes and
+  // nothing downstream guards it. It cannot happen here: with no input turns,
+  // slice(0, -1) is [] and the composed prompt is still appended.
+  it('never sends an empty conversation, even with no turns at all', async () => {
+    const d = deps({ turns: [] });
+    await runSpeech(d);
+
+    const sent: Turn[] = d.call.mock.calls[0][1];
+    expect(sent).toHaveLength(1);
+    expect(sent[0].role).toBe('user');
+    expect(sent[0].text).toContain('THE SUBJECT SAYS: did you miss me');
   });
 
   it('falls back to an authored line when the network is dark', async () => {
@@ -35,7 +75,6 @@ describe('runSpeech', () => {
     const result = await runSpeech(d);
     expect(result.line).toBeTruthy();
     expect(result.authFailed).toBe(false);
-    expect(result.impression).toBeNull();
   });
 
   it('falls back when the model returns something unparseable', async () => {

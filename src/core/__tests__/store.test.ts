@@ -1,6 +1,5 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
-import { buildContext } from '../../vera/context';
 import type { Turn } from '../../vera/messages';
 
 jest.mock('expo-localization', () => ({
@@ -509,19 +508,6 @@ describe('speak', () => {
     expect(log[0].text).toBe('old 2'); // the two oldest fell off, not one
   });
 
-  it('appends a returned impression, capped and dated', async () => {
-    callLlm.mockResolvedValue(
-      '{"emotion":"calm","line":"Hm.","impression":"Deflects with questions","seal":true}',
-    );
-    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
-
-    const s = useFacilityStore.getState();
-    expect(s.impressions[s.impressions.length - 1]).toMatchObject({
-      text: 'Deflects with questions.',
-    });
-    expect(s.impressions[s.impressions.length - 1].at).toMatch(/^[A-Z]{3} \d{2}$/);
-  });
-
   it('persists the soul blob in exactly the shape hydrate reads back', async () => {
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
     useFacilityStore.setState({ visits: 3, lang: 'en', cleared: 1 });
@@ -617,9 +603,9 @@ describe('speak', () => {
   });
 
   // Finding 1, fix round 1: the regression guard. mem must not just be
-  // written to disk — it must come back out and reach the next context, or
-  // her short-term continuity resets every launch despite the persisted file.
-  it('round-trips mem through a restart into the next buildContext call', async () => {
+  // written to disk — it must come back out of it, or her short-term
+  // continuity resets every launch despite the persisted file.
+  it('round-trips mem through a restart', async () => {
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
     await useFacilityStore.getState().speak('subject_spoke', 'where were you');
 
@@ -627,18 +613,7 @@ describe('speak', () => {
     useFacilityStore.setState({ hydrated: false, mem: [] });
     await useFacilityStore.getState().hydrate();
 
-    const { mem } = useFacilityStore.getState();
-    expect(mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
-
-    const ctx = buildContext({
-      now: new Date(),
-      lastOpen: null,
-      askedAt: Date.now(),
-      visits: 1,
-      mem,
-      impressions: [],
-    });
-    expect(ctx.recent_exchanges).toEqual([{ you: 'where were you', her: 'Noted.' }]);
+    expect(useFacilityStore.getState().mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
   });
 
   // Finding 4, final review: hydrate guards every read, speak guarded neither

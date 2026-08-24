@@ -3,14 +3,17 @@ import type { Lang } from './i18n';
 import type { SpeakContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { AuthError } from '../vera/llm';
+import type { Turn } from '../vera/messages';
 import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../vera/speak';
 
 export interface SpeechDeps {
   key: string;
   said: string;
+  turns: Turn[];
   lang: Lang;
   context: SpeakContext;
-  call: (system: string, user: string) => Promise<string>;
+  memoryMd: string;
+  call: (system: string, turns: Turn[]) => Promise<string>;
 }
 
 // Exactly what went out and exactly what came back, kept so the subject can
@@ -26,7 +29,6 @@ export interface SpeechDebug {
 export interface SpeechOutcome {
   emotion: EmotionKey;
   line: string;
-  impression: string | null;
   authFailed: boolean;
   // Whether the line is hers or authored. The caller cannot infer this: a
   // fallback and a real reply are the same shape, which is the point of the
@@ -40,15 +42,18 @@ export interface SpeechOutcome {
 // only by `subject_spoke` — the other three stimuli are answered from the
 // bank and never come through here.
 export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
-  const system = buildSystemPrompt(deps.lang);
+  const system = buildSystemPrompt(deps.lang, deps.memoryMd);
   const user = buildUserPrompt(deps.said, deps.context);
+  // The current input is already the last turn; the user prompt carries only
+  // the situational CONTEXT alongside it.
+  const turns = [...deps.turns.slice(0, -1), { role: 'user' as const, text: user }];
   // Held outside the try so a reply that arrived but would not parse is still
   // reported — that failure and a dead network look identical on screen, and
   // this is the only thing that tells them apart.
   let raw: string | null = null;
 
   try {
-    raw = await deps.call(system, user);
+    raw = await deps.call(system, turns);
     const parsed = parseSpeech(raw);
     if (parsed) {
       return { ...parsed, authFailed: false, source: 'model', debug: { system, user, raw } };
@@ -57,7 +62,7 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
     if (error instanceof AuthError) {
       const spoken = fallbackFor(deps.lang);
       return {
-        ...spoken, impression: null, authFailed: true,
+        ...spoken, authFailed: true,
         source: 'fallback', debug: { system, user, raw },
       };
     }
@@ -65,7 +70,7 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
 
   const spoken = fallbackFor(deps.lang);
   return {
-    ...spoken, impression: null, authFailed: false,
+    ...spoken, authFailed: false,
     source: 'fallback', debug: { system, user, raw },
   };
 };

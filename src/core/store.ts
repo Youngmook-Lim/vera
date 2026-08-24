@@ -7,7 +7,11 @@ import { pick } from '../vera/bank';
 import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { callLlm } from '../vera/llm';
+import { EMPTY_MEMORY, type Memory } from '../vera/memory';
+import { composeMemoryMd } from '../vera/memoryDoc';
+import { buildMessages } from '../vera/messages';
 import { providerFor, validateKey } from '../vera/providers';
+import { selectMemories } from '../vera/select';
 import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
@@ -57,12 +61,6 @@ export interface PromptRecord {
 const LOG_CAP = 60;
 const IMPRESSION_CAP = 24;
 const MEM_CAP = 6;
-
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const mmmdd = (t: number): string => {
-  const d = new Date(t);
-  return `${MONTHS[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
-};
 
 // speak()'s re-entrancy guard and the typewriter's in-flight timer both live
 // outside the store: plain module state, not React state, so an overlapping
@@ -138,6 +136,12 @@ interface FacilityState {
   mem: Exchange[];
   askedAt: number;
 
+  // What she keeps about the subject, and where this session began. The
+  // session boundary is what turns a capped transcript into the conversation
+  // she is currently in (continuity §2).
+  memory: Memory;
+  sessionStartedAt: number;
+
   // Consecutive refusals of the credential. Not persisted: a fresh launch
   // gives the key the benefit of the doubt, and she never goes dormant for it
   // (spec §10 — a bad key is caught when she fails to answer, not at the gate).
@@ -192,6 +196,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   mem: [],
   askedAt: Date.now(),
+
+  memory: EMPTY_MEMORY,
+  sessionStartedAt: Date.now(),
 
   authFails: 0,
   lastPrompt: null,
@@ -395,30 +402,30 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           lastOpen: s.lastOpen,
           askedAt: s.askedAt,
           visits: s.visits,
-          mem: s.mem,
-          impressions: s.impressions.map((imp) => imp.text),
         });
+        const memoryMd = composeMemoryMd(selectMemories(s.memory, said ?? '', Date.now()));
 
         outcome = await runSpeech({
           key: s.apiKey,
           said: said ?? '',
+          turns: buildMessages(s.log, s.sessionStartedAt),
           lang: s.lang,
           context,
-          call: (system, user) => callLlm(get().apiKey, system, [{ role: 'user', text: user }]),
+          memoryMd,
+          call: (system, turns) => callLlm(get().apiKey, system, turns),
         });
       } else {
         // Nothing was revealed by a greeting she had already written, and
         // nothing was sent, which is what the inspector reports.
         outcome = {
           ...pick(trigger, get().lang),
-          impression: null,
           authFailed: false,
           source: 'fallback',
           debug: { system: null, user: null, raw: null },
         };
       }
 
-      const { emotion, line, impression, authFailed } = outcome;
+      const { emotion, line, authFailed } = outcome;
 
       // The record of what actually happened, for the prompt inspector. A raw
       // reply present alongside a `fallback` source means the model answered
@@ -448,9 +455,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const log = [...get().log, notice
         ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
         : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
-      const impressions = impression
-        ? [...get().impressions, { text: impression, at: mmmdd(Date.now()) }].slice(-IMPRESSION_CAP)
-        : get().impressions;
       // A notice is not something she said, so it never enters her memory of
       // the conversation. She is unaware the exchange happened at all.
       const mem = notice
@@ -470,7 +474,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         emotion: notice ? 'dormant' : emotion,
         line: notice ? '' : line,
         systemNotice: notice,
-        log, impressions, mem, askedAt: Date.now(),
+        log, mem, askedAt: Date.now(),
         authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
       });
       try {

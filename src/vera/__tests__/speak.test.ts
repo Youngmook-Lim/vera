@@ -1,39 +1,49 @@
 // src/vera/__tests__/speak.test.ts
-import { buildSystemPrompt, buildUserPrompt, clampImpression, fallbackFor, parseSpeech } from '../speak';
+import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../speak';
 import type { SpeakContext } from '../context';
 import { isEmotionKey } from '../emotions';
 
 const ctx: SpeakContext = {
   time_of_day: 'afternoon',
-  recent_exchanges: [],
-  what_you_have_concluded_about_them: [],
 };
 
 describe('buildSystemPrompt', () => {
-  it('sends SOUL.md itself', () => {
-    expect(buildSystemPrompt('en')).toContain('# SOUL.md');
+  it('sends SOUL.md, then MEMORY.md', () => {
+    const sys = buildSystemPrompt('en', '# MEMORY.md\n\n## What you know about them\n- works in software');
+    expect(sys).toContain('# SOUL.md');
+    expect(sys).toContain('works in software');
+    // Ordering is load-bearing: a provider-side cache keeps a stable prefix
+    // only if the static document comes first (continuity §2).
+    expect(sys.indexOf('# SOUL.md')).toBeLessThan(sys.indexOf('# MEMORY.md'));
+  });
+
+  it('no longer asks her to write impressions', () => {
+    const sys = buildSystemPrompt('en', '# MEMORY.md');
+    expect(sys).not.toContain('impression');
+    expect(sys).not.toContain('HARD MAXIMUM 9 WORDS');
+  });
+
+  it('asks only for an emotion and a line', () => {
+    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
+  });
+
+  it('asks for korean in the same deadpan register', () => {
+    expect(buildSystemPrompt('ko', '# MEMORY.md')).toContain('존댓말');
   });
 
   // Activation is answered from the bank now, so nothing is ever generated
   // under a situation override and the prompt has no branch for one.
   it('never carries a situation override', () => {
-    expect(buildSystemPrompt('en')).not.toContain('SITUATION OVERRIDE');
-    expect(buildSystemPrompt('ko')).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('en', '# MEMORY.md')).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('ko', '# MEMORY.md')).not.toContain('SITUATION OVERRIDE');
   });
 
-  it('asks for korean in the same deadpan register', () => {
-    expect(buildSystemPrompt('ko')).toContain('존댓말');
-    expect(buildSystemPrompt('en')).toContain('Reply in English.');
-  });
-
-  it('caps the impression at nine words and asks for nothing else', () => {
-    const sys = buildSystemPrompt('en');
-    expect(sys).toContain('HARD MAXIMUM 9 WORDS');
-    expect(sys).not.toContain('seal');
+  it('replies in english when the reading language is english', () => {
+    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('Reply in English.');
   });
 
   it('asks for minified json only', () => {
-    expect(buildSystemPrompt('en')).toContain('Return ONLY minified JSON');
+    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('Return ONLY minified JSON');
   });
 });
 
@@ -49,25 +59,12 @@ describe('buildUserPrompt', () => {
   });
 });
 
-describe('clampImpression', () => {
-  it('cuts to nine words and ends with a full stop', () => {
-    const long = 'one two three four five six seven eight nine ten eleven';
-    expect(clampImpression(long)).toBe('one two three four five six seven eight nine.');
-  });
-
-  it('does not double the punctuation', () => {
-    expect(clampImpression('Answers protocol reminders instantly.')).toBe('Answers protocol reminders instantly.');
-    expect(clampImpression('Rehearsed, always;')).toBe('Rehearsed, always.');
-  });
-});
-
 describe('parseSpeech', () => {
   it('reads a clean minified reply', () => {
-    const raw = '{"emotion":"amused","line":"Fourth visit today.","impression":"Counts visits. Denies counting.","seal":false}';
+    const raw = '{"emotion":"amused","line":"Fourth visit today."}';
     expect(parseSpeech(raw)).toEqual({
       emotion: 'amused',
       line: 'Fourth visit today.',
-      impression: 'Counts visits. Denies counting.',
     });
   });
 
@@ -80,22 +77,14 @@ describe('parseSpeech', () => {
     expect(parseSpeech('{"emotion":"smug","line":"Hm."}')?.emotion).toBe('calm');
   });
 
-  it('clamps a long impression', () => {
-    const raw = '{"emotion":"calm","line":"Hm.","impression":"a b c d e f g h i j k"}';
-    expect(parseSpeech(raw)?.impression).toBe('a b c d e f g h i.');
-  });
-
-  it('reports no impression when the field is absent or empty', () => {
-    expect(parseSpeech('{"emotion":"calm","line":"Hm."}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"  "}')?.impression).toBeNull();
-  });
-
-  // Sealing is gone. A model that still volunteers the field — an older prompt,
-  // a stale cache — must not have it survive into the parsed result.
-  it('ignores a seal field entirely', () => {
+  // Sealing is gone, and so is the impression — extraction owns it now
+  // (continuity §1). A model that still volunteers either field — an older
+  // prompt, a stale cache — must not have it survive into the parsed result.
+  it('ignores a seal or impression field entirely', () => {
     const parsed = parseSpeech('{"emotion":"calm","line":"Hm.","impression":"x y","seal":true}');
-    expect(parsed).toEqual({ emotion: 'calm', line: 'Hm.', impression: 'x y.' });
+    expect(parsed).toEqual({ emotion: 'calm', line: 'Hm.' });
     expect(parsed).not.toHaveProperty('seal');
+    expect(parsed).not.toHaveProperty('impression');
   });
 
   it('returns null rather than throwing on junk', () => {
@@ -113,47 +102,6 @@ describe('parseSpeech', () => {
     expect(parseSpeech('not json at all')).toBeNull();
   });
 
-  it('discards a punctuation-only impression instead of storing a bare period', () => {
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"..."}')).toEqual({
-      emotion: 'calm',
-      line: 'Hm.',
-      impression: null,
-    });
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!!!"}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"."}')?.impression).toBeNull();
-
-    // line is preserved even though the impression is discarded
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"..."}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!!!"}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":","}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"."}')?.line).toBe('Hm.');
-  });
-
-  it('discards multi-token punctuation-only impressions, not just a single dot', () => {
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". . ."}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!! ??"}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". !"}')?.impression).toBeNull();
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"   ,   "}')?.impression).toBeNull();
-
-    // line is preserved even though the impression is discarded
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". . ."}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"!! ??"}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":". !"}')?.line).toBe('Hm.');
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"   ,   "}')?.line).toBe('Hm.');
-  });
-
-  it('keeps a Korean impression, since punctuation-detection must not be Latin-only', () => {
-    const raw = '{"emotion":"calm","line":"Hm.","impression":"수면에 대해 거짓말합니다"}';
-    expect(parseSpeech(raw)?.impression).not.toBeNull();
-    expect(parseSpeech(raw)?.impression).toMatch(/[가-힣]/);
-  });
-
-  it('keeps a mixed-punctuation impression that carries real words', () => {
-    expect(parseSpeech('{"emotion":"calm","line":"Hm.","impression":"Deflects. Always."}')?.impression).toBe(
-      'Deflects. Always.',
-    );
-  });
 });
 
 describe('fallbackFor', () => {
