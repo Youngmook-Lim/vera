@@ -44,7 +44,13 @@ describe('parseExtraction', () => {
   // A model reliably emits an ISO date; the store holds epoch milliseconds.
   it('coerces an ISO until into epoch milliseconds', () => {
     const out = parseExtraction('{"facts":[{"text":"deadline","keys":["deadline"],"durable":false,"until":"2026-08-30"}],"verdicts":[],"threads":[],"resolve":[],"retire":[]}');
-    expect(out?.facts[0].until).toBe(Date.parse('2026-08-30'));
+    expect(out?.facts[0]).toMatchObject({ durable: false, until: Date.parse('2026-08-30') });
+  });
+
+  it('accepts a numeric until as an epoch directly, without flipping durable', () => {
+    const epoch = Date.parse('2026-08-30');
+    const out = parseExtraction(`{"facts":[{"text":"deadline","keys":["deadline"],"durable":false,"until":${epoch}}],"verdicts":[],"threads":[],"resolve":[],"retire":[]}`);
+    expect(out?.facts[0]).toMatchObject({ durable: false, until: epoch });
   });
 
   it('makes a fact durable when its expiry cannot be read, rather than losing it', () => {
@@ -55,5 +61,10 @@ describe('parseExtraction', () => {
   it('defaults the maintenance arrays when absent', () => {
     const out = parseExtraction('{"facts":[]}');
     expect(out).toEqual({ facts: [], verdicts: [], threads: [], resolve: [], retire: [] });
+  });
+
+  it('recovers the real object when a stray brace precedes it in prose', () => {
+    const raw = 'Note: { see prior } then:\n{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+    expect(parseExtraction(raw)).toEqual({ facts: [], verdicts: [], threads: [], resolve: [], retire: [] });
   });
 });

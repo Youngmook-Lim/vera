@@ -67,22 +67,41 @@ const ids = (v: unknown): string[] =>
 // Same tolerance as her replies: dig the JSON out of prose, drop unreadable
 // entries rather than throwing (continuity §4.3).
 export const parseExtraction = (raw: string): Extraction | null => {
-  const match = String(raw ?? '').match(/\{[\s\S]*\}/);
+  const text = String(raw ?? '');
+  const match = text.match(/\{[\s\S]*\}/);
   if (!match) return null;
 
-  let parsed: Record<string, unknown>;
+  let parsed: Record<string, unknown> | undefined;
   try {
     parsed = JSON.parse(match[0]) as Record<string, unknown>;
   } catch {
-    return null;
+    // The greedy span can run from a stray brace ahead of the real object all
+    // the way to its close; narrow to the first opening brace that parses.
+    for (const open of text.matchAll(/\{/g)) {
+      const candidate = text.slice(open.index ?? 0).match(/\{[\s\S]*\}/);
+      if (!candidate) continue;
+      try {
+        parsed = JSON.parse(candidate[0]) as Record<string, unknown>;
+        break;
+      } catch {
+        continue;
+      }
+    }
   }
+  if (!parsed) return null;
 
   const facts = (Array.isArray(parsed.facts) ? parsed.facts : [])
     .map((f) => f as Record<string, unknown>)
     .filter((f) => str(f.text).length > 0)
     .map((f) => {
       const durable = f.durable !== false;
-      const parsedUntil = durable ? NaN : Date.parse(str(f.until));
+      const rawUntil = f.until;
+      // A model can plausibly answer with an epoch instead of the ISO date asked for.
+      const parsedUntil = durable
+        ? NaN
+        : typeof rawUntil === 'number' && Number.isFinite(rawUntil)
+          ? rawUntil
+          : Date.parse(str(rawUntil));
       // A fact whose expiry cannot be read is better kept than lost.
       const usable = Number.isFinite(parsedUntil);
       return {
