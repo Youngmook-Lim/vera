@@ -49,8 +49,16 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
   // an empty `said` leaves her own line last — append rather than replace, so a
   // line she actually said is never swallowed.
   const last = deps.turns[deps.turns.length - 1];
-  const body = last?.role === 'user' ? deps.turns.slice(0, -1) : deps.turns;
-  const turns = [...body, { role: 'user' as const, text: user }];
+  const current = last?.role === 'user';
+  const body = current ? deps.turns.slice(0, -1) : deps.turns;
+  // That last user turn can be a merge of several of their lines — a system
+  // entry between two messages merges them, since the array must alternate —
+  // of which only the final one is `said`. Keep the earlier lines; only the
+  // current message carries CONTEXT.
+  const prefix = current && deps.said && last.text !== deps.said && last.text.endsWith(deps.said)
+    ? last.text.slice(0, last.text.length - deps.said.length)
+    : '';
+  const turns = [...body, { role: 'user' as const, text: prefix + user }];
   // Held outside the try so a reply that arrived but would not parse is still
   // reported — that failure and a dead network look identical on screen, and
   // this is the only thing that tells them apart.

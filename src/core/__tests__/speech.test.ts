@@ -1,6 +1,6 @@
 import { AuthError } from '../../vera/llm';
 import { runSpeech } from '../speech';
-import type { Turn } from '../../vera/messages';
+import { buildMessages, type Turn } from '../../vera/messages';
 
 const deps = (over = {}) => ({
   key: 'sk-ant-api03-abcdefghijklmnop',
@@ -75,6 +75,28 @@ describe('runSpeech', () => {
     // entry was 'are you there' and her reply was gone entirely.
     expect(sent[1].text).toBe('Regrettably.');
     expect(sent[2].text).toContain('THE SUBJECT SAYS:');
+  });
+
+  // The seam between the merge and the replace. A refused credential logs a
+  // system entry between two of their messages; buildMessages merges the two
+  // into one turn to keep the array alternating, and the last turn is then a
+  // merge rather than just `said`. Dropping the whole of it deletes the line
+  // that caused the refusal from the conversation she sees.
+  it('keeps their earlier line when a system entry merged it into the last turn', async () => {
+    const turns = buildMessages([
+      { who: 'you', text: 'hi', t: 2 },
+      { who: 'system', text: '', t: 3, code: 'auth' },
+      { who: 'you', text: 'again', t: 4 },
+    ], 1);
+    expect(turns).toEqual([{ role: 'user', text: 'hi\nagain' }]);
+
+    const d = deps({ said: 'again', turns });
+    await runSpeech(d);
+
+    const sent: Turn[] = d.call.mock.calls[0][1];
+    expect(sent).toHaveLength(1);
+    expect(sent[0].text).toContain('hi');
+    expect(sent[0].text).toContain('THE SUBJECT SAYS: again');
   });
 
   // An empty array is an invalid request on all three provider shapes and
