@@ -44,9 +44,13 @@ export interface SpeechOutcome {
 export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
   const system = buildSystemPrompt(deps.lang, deps.memoryMd);
   const user = buildUserPrompt(deps.said, deps.context);
-  // The current input is already the last turn; the user prompt carries only
-  // the situational CONTEXT alongside it.
-  const turns = [...deps.turns.slice(0, -1), { role: 'user' as const, text: user }];
+  // The current input is already the last turn when the subject spoke; the user
+  // prompt carries only the situational CONTEXT alongside it. When it is not —
+  // an empty `said` leaves her own line last — append rather than replace, so a
+  // line she actually said is never swallowed.
+  const last = deps.turns[deps.turns.length - 1];
+  const body = last?.role === 'user' ? deps.turns.slice(0, -1) : deps.turns;
+  const turns = [...body, { role: 'user' as const, text: user }];
   // Held outside the try so a reply that arrived but would not parse is still
   // reported — that failure and a dead network look identical on screen, and
   // this is the only thing that tells them apart.

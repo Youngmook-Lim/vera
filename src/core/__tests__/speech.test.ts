@@ -57,9 +57,30 @@ describe('runSpeech', () => {
     expect(sent[2].text).toContain('"time_of_day":"afternoon"');
   });
 
+  // `speak('subject_spoke')` with an empty `said` pushes nothing into the log,
+  // so buildMessages hands back turns ending in HER line. Replacing the last
+  // turn unconditionally would swallow something she actually said.
+  it('appends rather than replaces when the last turn is one of hers', async () => {
+    const turns: Turn[] = [
+      { role: 'user', text: 'are you there' },
+      { role: 'assistant', text: 'Regrettably.' },
+    ];
+    const d = deps({ said: '', turns });
+    await runSpeech(d);
+
+    const sent: Turn[] = d.call.mock.calls[0][1];
+    expect(sent.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(sent[0].text).toBe('are you there');
+    // The line she said survives — under the old unconditional slice this
+    // entry was 'are you there' and her reply was gone entirely.
+    expect(sent[1].text).toBe('Regrettably.');
+    expect(sent[2].text).toContain('THE SUBJECT SAYS:');
+  });
+
   // An empty array is an invalid request on all three provider shapes and
   // nothing downstream guards it. It cannot happen here: with no input turns,
-  // slice(0, -1) is [] and the composed prompt is still appended.
+  // there is no trailing user turn to replace and the composed prompt is
+  // still appended.
   it('never sends an empty conversation, even with no turns at all', async () => {
     const d = deps({ turns: [] });
     await runSpeech(d);
