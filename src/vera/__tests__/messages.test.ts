@@ -40,6 +40,11 @@ describe('buildMessages', () => {
     expect(out).toEqual([{ role: 'user', text: 'now' }]);
   });
 
+  it('includes an entry sitting exactly on the session boundary', () => {
+    const out = buildMessages([you('before', S - 1), you('boundary', S)], S);
+    expect(out[0].text).toBe('boundary');
+  });
+
   it('is not truncated by a session longer than the old sixty-entry cap', () => {
     const long: LogEntry[] = [];
     for (let i = 0; i < 100; i += 1) {
@@ -52,7 +57,7 @@ describe('buildMessages', () => {
 
   // speak() pushes the subject's words into the log before the request is
   // built, so the current input is already last. Appending it would duplicate.
-  it('ends on user without anything being appended', () => {
+  it('preserves a trailing user turn rather than appending a duplicate', () => {
     const out = buildMessages([you('hi', S + 1), her('Barely.', S + 2), you('rude', S + 3)], S);
     expect(out[out.length - 1].role).toBe('user');
   });
