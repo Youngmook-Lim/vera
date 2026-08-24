@@ -1,5 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
+import type { Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
 
 jest.mock('expo-localization', () => ({
@@ -182,6 +183,15 @@ describe('hydrate', () => {
     useFacilityStore.setState({ askedAt: Date.now() - 20 * 60_000 });
     await hydrate();
     expect(Date.now() - useFacilityStore.getState().askedAt).toBeLessThan(5_000);
+  });
+
+  // A launch is where a session begins. Stamped at store creation instead, the
+  // boundary would be whenever the module happened to load, and the turns she
+  // is sent would be filtered by luck rather than by this launch (continuity §2).
+  it('stamps the session start, so a restart returns her to zero', async () => {
+    useFacilityStore.setState({ sessionStartedAt: 1 });
+    await hydrate();
+    expect(Date.now() - useFacilityStore.getState().sessionStartedAt).toBeLessThan(5_000);
   });
 
   it('degrades a corrupt soul blob to defaults rather than dying', async () => {
@@ -490,8 +500,8 @@ describe('speak', () => {
   });
 
   // The cap is over the combined thread now, not her half of it.
-  it('keeps the newest sixty entries across both sides', async () => {
-    const seeded = Array.from({ length: 60 }, (_, i) => ({
+  it('keeps the newest two hundred entries across both sides', async () => {
+    const seeded = Array.from({ length: 200 }, (_, i) => ({
       who: 'vera' as const, text: `old ${i}`, t: i + 1,
     }));
     useFacilityStore.setState({ log: seeded });
@@ -500,7 +510,7 @@ describe('speak', () => {
     await useFacilityStore.getState().speak('subject_spoke', 'still here');
 
     const { log } = useFacilityStore.getState();
-    expect(log).toHaveLength(60);
+    expect(log).toHaveLength(200);
     expect(log.slice(-2).map((e) => [e.who, e.text])).toEqual([
       ['you', 'still here'],
       ['vera', 'Noted.'],
@@ -817,5 +827,147 @@ describe('the bank path', () => {
     await live;
 
     expect(useFacilityStore.getState().line).toBe('Noted.');
+  });
+});
+
+describe('extraction', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
+
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    callLlm.mockReset();
+    useFacilityStore.setState({
+      apiKey: KEY, memory: { facts: [], verdicts: [], threads: [], pending: [] },
+    });
+  });
+
+  it('queues a finished exchange without calling the model', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'hello', her: 'Noted.' }]);
+    expect(callLlm).toHaveBeenCalledTimes(1);
+  });
+
+  // Nothing was revealed by a line she had already written, and a refusal is
+  // not an exchange at all — neither is material for the file (continuity §4.1).
+  it('queues nothing for a bank-answered stimulus', async () => {
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().memory.pending).toEqual([]);
+  });
+
+  it('queues nothing when the credential was refused', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    expect(useFacilityStore.getState().memory.pending).toEqual([]);
+  });
+
+  // The queue is not a view of the transcript: the log rolls at its own cap and
+  // must not take unread exchanges with it (continuity §4.1).
+  it('queues the exchange even with the transcript already at its cap', async () => {
+    useFacilityStore.setState({
+      log: Array.from({ length: 200 }, (_, i) => ({
+        who: 'vera' as const, text: `old ${i}`, t: i + 1,
+      })),
+    });
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'still here');
+
+    expect(useFacilityStore.getState().log).toHaveLength(200);
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'still here', her: 'Noted.' }]);
+  });
+
+  it('drains the queue and writes memory', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue('{"facts":[{"text":"works in software","keys":["work"],"durable":true}],"verdicts":[],"threads":[],"resolve":[],"retire":[]}');
+
+    await useFacilityStore.getState().extractNow();
+
+    const m = useFacilityStore.getState().memory;
+    expect(m.facts[0].text).toBe('works in software');
+    expect(m.pending).toEqual([]);
+  });
+
+  it('keeps the queue when extraction fails, for the next trigger', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending } });
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
+  });
+
+  it('keeps the queue when extraction returns junk', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending } });
+    callLlm.mockResolvedValue('the model was unwell today');
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
+  });
+
+  it('does nothing at all with an empty queue', async () => {
+    await useFacilityStore.getState().extractNow();
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  // The queue is independent of display and of erasure (continuity §4.1).
+  it('survives a transcript erasure', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    await useFacilityStore.getState().clearTranscript();
+    expect(useFacilityStore.getState().memory.pending).toHaveLength(1);
+  });
+
+  it('survives a kill: the queue is still there on the next launch', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    await useFacilityStore.getState().saveMemory();
+
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending: [] } });
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'hi', her: 'Barely.' }]);
+  });
+
+  it('migrates saved impressions into verdicts on first load, and not twice', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(1);
+
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(1);
+  });
+
+  // The case above cannot fail on its own — the same one impression migrates to
+  // the same one verdict however often it runs. This is the one that bites:
+  // migration mints v_1.. of its own accord, so a second run over a live store
+  // would collide with, and overwrite, everything filed since (continuity §7).
+  it('never migrates over a store that already exists', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+    await useFacilityStore.getState().loadMemory();
+
+    const migrated = useFacilityStore.getState().memory;
+    const filed: Verdict = { id: 'v_2', text: 'Evasive.', firstAt: 1, at: 1, count: 1 };
+    useFacilityStore.setState({ memory: { ...migrated, verdicts: [...migrated.verdicts, filed] } });
+    await useFacilityStore.getState().saveMemory();
+
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts.map((v) => v.text))
+      .toEqual(['Deflects.', 'Evasive.']);
+  });
+
+  // A subject with nothing on file still gets a store written, or every launch
+  // would re-enter the migration path forever.
+  it('writes the store even when there was nothing to migrate', async () => {
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toEqual([]);
+    expect(await storage.get(KEYS.memory)).not.toBeNull();
   });
 });

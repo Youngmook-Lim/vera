@@ -6,10 +6,13 @@ import { KEYS, secure, storage } from './storage';
 import { pick } from '../vera/bank';
 import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
+import { applyExtraction } from '../vera/apply';
+import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
-import { EMPTY_MEMORY, type Memory } from '../vera/memory';
+import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages } from '../vera/messages';
+import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
 import type { Trigger } from '../vera/speak';
@@ -58,15 +61,24 @@ export interface PromptRecord {
   outcome: 'model' | 'fallback' | 'bank';
 }
 
-const LOG_CAP = 60;
+const LOG_CAP = 200;
 const IMPRESSION_CAP = 24;
 const MEM_CAP = 6;
+// How many finished exchanges are allowed to queue before she reads them
+// (continuity §4.2). Small enough that a long session is read while it is still
+// running, large enough that most exchanges cost nothing.
+const EXTRACT_BATCH = 6;
 
 // speak()'s re-entrancy guard and the typewriter's in-flight timer both live
 // outside the store: plain module state, not React state, so an overlapping
 // call can gate and cancel synchronously without waiting on a state update.
 let speaking = false;
 let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
+
+// Guarded like speak(): only one extraction at a time (continuity §4.2). Three
+// triggers can fire it, and two of them can arrive together — a launch that
+// finds a queue, backgrounded a second later.
+let extracting = false;
 
 // The return greeting fires once per app session, and this flag is why it is
 // module state rather than a store field or React state: it survives every
@@ -137,10 +149,10 @@ interface FacilityState {
   mem: Exchange[];
   askedAt: number;
 
-  // What she keeps about the subject, and where this session began. The
-  // session boundary is what turns a capped transcript into the conversation
-  // she is currently in (continuity §2).
+  // Her file, and the exchanges not yet read into it (continuity §3, §4.1).
   memory: Memory;
+  // Stamped by hydrate on a cold start. Messages are the log entries at or
+  // after it, which is how restarting returns her to zero (continuity §2).
   sessionStartedAt: number;
 
   // Consecutive refusals of the credential. Not persisted: a fresh launch
@@ -174,6 +186,9 @@ interface FacilityState {
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
+  loadMemory: () => Promise<void>;
+  saveMemory: () => Promise<void>;
+  extractNow: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -246,6 +261,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const key = await secure.get();
     const woken = { apiKey: key, emotion: key ? ('calm' as const) : ('dormant' as const) };
 
+    // Her file is its own store and its own failure domain — read before the
+    // soul blob, so that whatever happens below cannot cost her what she knows.
+    await get().loadMemory();
+
     try {
       let soulRaw: string | null = null;
       let logRaw: string | null = null;
@@ -304,12 +323,19 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // this, a subject who takes their time typing the first line of the
         // session gets `they_took_their_time` about nothing.
         askedAt: now,
+        // A launch is where the session begins. Stamped at store creation it
+        // would fall wherever the module happened to load, and the turns she
+        // is sent would be filtered by luck rather than by this launch.
+        sessionStartedAt: now,
       });
     } catch {
       // Now unreachable — every read and every parse above is guarded — but
       // kept so hydrate can never throw. It boots her on the key regardless:
       // a bad launch may cost the saved state, never the credential.
-      set({ hydrated: true, view: 'stage', ...woken, askedAt: Date.now() });
+      set({
+        hydrated: true, view: 'stage', ...woken,
+        askedAt: Date.now(), sessionStartedAt: Date.now(),
+      });
     }
   },
 
@@ -498,6 +524,18 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         typewriterHandle = setTimeout(() => tick(1), 16);
       }
 
+      // Queued for extraction, independent of the transcript so an erasure or
+      // the log cap cannot destroy material that was never read (§4.1). A
+      // notice is not an exchange, and the bank path revealed nothing.
+      if (live && !notice) {
+        set({ memory: capMemory({
+          ...get().memory,
+          pending: [...get().memory.pending, { you: said ?? null, her: line }],
+        }) });
+        await get().saveMemory();
+        if (get().memory.pending.length >= EXTRACT_BATCH) void get().extractNow();
+      }
+
       await saveSoul(get());
     } finally {
       set({ thinking: false });
@@ -528,5 +566,71 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
     await saveSoul(get());
+  },
+
+  loadMemory: async (): Promise<void> => {
+    let stored: Memory | null = null;
+    try {
+      const raw = await storage.get(KEYS.memory);
+      stored = raw ? (JSON.parse(raw) as Memory) : null;
+    } catch {
+      // unreadable — she starts a stranger, and says nothing about it (§8)
+      stored = null;
+    }
+
+    if (stored) {
+      set({ memory: capMemory({ ...EMPTY_MEMORY, ...stored }) });
+      return;
+    }
+
+    // First launch after the update: the old impressions become verdicts, once
+    // (continuity §7). Writing the store immediately is the guard against a
+    // second run — a store that exists is never migrated again, which matters
+    // because migration mints its own v_1.. independently of nextId. The write
+    // happens even when there was nothing to migrate, or a subject with no
+    // impressions would re-enter this path on every launch forever.
+    let imps: StoredImpression[] = [];
+    try {
+      const soulRaw = await storage.get(KEYS.soul);
+      const soul = soulRaw ? (JSON.parse(soulRaw) as Record<string, unknown>) : null;
+      imps = Array.isArray(soul?.imps) ? (soul.imps as StoredImpression[]) : [];
+    } catch {
+      imps = [];
+    }
+
+    set({ memory: { ...EMPTY_MEMORY, verdicts: migrateImpressions(imps, Date.now()) } });
+    await get().saveMemory();
+  },
+
+  saveMemory: async (): Promise<void> => {
+    try {
+      await storage.set(KEYS.memory, JSON.stringify(get().memory));
+    } catch {
+      // this batch is lost; the session continues (§8)
+    }
+  },
+
+  extractNow: async (): Promise<void> => {
+    if (extracting) return;
+    const s = get();
+    if (!s.apiKey || s.memory.pending.length === 0) return;
+    extracting = true;
+    try {
+      const raw = await callLlm(
+        s.apiKey,
+        EXTRACT_SYSTEM,
+        [{ role: 'user', text: buildExtractPrompt(s.memory, s.memory.pending) }],
+      );
+      const parsed = parseExtraction(raw);
+      // The queue drains only on success — a failure is retried next trigger.
+      if (!parsed) return;
+      set({ memory: { ...applyExtraction(get().memory, parsed, Date.now()), pending: [] } });
+      await get().saveMemory();
+    } catch {
+      // Never surfaced to the subject: no path by which bookkeeping makes her
+      // show an error (continuity §8).
+    } finally {
+      extracting = false;
+    }
   },
 }));
