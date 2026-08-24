@@ -130,9 +130,10 @@ interface FacilityState {
   visits: number;
   lastOpen: number | null;
 
-  // The rolling memory of the last six exchanges, fed to buildContext as
-  // recent_exchanges. askedAt is when she last spoke, used to tell whether
-  // the subject took their time replying.
+  // The rolling memory of the last six exchanges. Still written and still
+  // persisted, but nothing reads it now that the session reaches her as real
+  // turns (continuity §2). askedAt is when she last spoke, used to tell
+  // whether the subject took their time replying.
   mem: Exchange[];
   askedAt: number;
 
