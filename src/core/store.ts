@@ -11,7 +11,7 @@ import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/ext
 import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, ERASURE_ID, ERASURE_TEXT, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
-import { buildMessages } from '../vera/messages';
+import { buildMessages, type Turn } from '../vera/messages';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
@@ -43,7 +43,11 @@ export interface LogEntry {
 // nothing withheld. Never persisted — it describes this session only, and it
 // would be the largest thing on disk by an order of magnitude.
 //
-// `system` and `user` are null when she answered from the bank, which is
+// `turns` is the conversation exactly as it was sent — the whole alternating
+// array, of which the composed prompt is only the last entry. Recording that
+// entry alone hid every earlier turn that went to the provider.
+//
+// `system` and `turns` are null when she answered from the bank, which is
 // itself the answer to "why did that reply look canned".
 export interface PromptRecord {
   at: number;
@@ -51,9 +55,28 @@ export interface PromptRecord {
   route: string;
   model: string;
   system: string | null;
-  user: string | null;
+  turns: Turn[] | null;
   raw: string | null;
   outcome: 'model' | 'fallback' | 'bank';
+}
+
+// The other call. Extraction reads finished exchanges into her file, is never
+// visible from the stage, and fires seconds after a reply — which is why it
+// has its own slot rather than sharing lastPrompt: one field would overwrite
+// her reply prompt before it could be read. Session-only, like the other.
+//
+// `outcome` is what became of the answer: `applied` when it parsed and the
+// file was updated, `unparseable` when a reply arrived that could not be read,
+// `failed` when the call threw before answering. A failed extraction is the
+// one most worth looking at, so it is recorded rather than swallowed.
+export interface ExtractRecord {
+  at: number;
+  route: string;
+  model: string;
+  system: string;
+  user: string;
+  raw: string | null;
+  outcome: 'applied' | 'unparseable' | 'failed';
 }
 
 const LOG_CAP = 200;
@@ -147,6 +170,8 @@ interface FacilityState {
 
   // The last reply's request, for the prompt inspector. Session-only.
   lastPrompt: PromptRecord | null;
+  // The last extraction's request, kept apart from it for the reason above.
+  lastExtract: ExtractRecord | null;
 
   // Set only while the credential is being refused. The one thing the app says
   // in its own voice, because a bad key is a configuration problem the subject
@@ -201,6 +226,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   authFails: 0,
   lastPrompt: null,
+  lastExtract: null,
   systemNotice: null,
 
   cabinetOpen: false,
@@ -429,7 +455,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           ...pick(trigger, get().lang),
           authFailed: false,
           source: 'fallback',
-          debug: { system: null, user: null, raw: null },
+          debug: { system: null, turns: null, raw: null },
         };
       }
 
@@ -447,7 +473,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           route: route?.label ?? '',
           model: route?.model ?? '',
           system: outcome.debug.system,
-          user: outcome.debug.user,
+          turns: outcome.debug.turns,
           raw: outcome.debug.raw,
           outcome: live ? outcome.source : 'bank',
         },
@@ -629,16 +655,32 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     // read is fixed here so that an exchange finished in the meantime is still
     // waiting afterwards rather than dropped unread (continuity §4.1).
     const batch = s.memory.pending;
+    // Built once and held, so the record shows the prompt that actually went
+    // rather than one rebuilt from memory as it stands afterwards.
+    const prompt = buildExtractPrompt(s.memory, batch);
+    const route = providerFor(s.apiKey);
+    // Filed on every path this can take. She never shows a bookkeeping failure
+    // (continuity §8), so the inspector is the only place it can be seen at all.
+    const file = (raw: string | null, outcome: ExtractRecord['outcome']): void => {
+      set({ lastExtract: {
+        at: Date.now(),
+        route: route?.label ?? '',
+        model: route?.model ?? '',
+        system: EXTRACT_SYSTEM,
+        user: prompt,
+        raw,
+        outcome,
+      } });
+    };
     extracting = true;
     try {
-      const raw = await callLlm(
-        s.apiKey,
-        EXTRACT_SYSTEM,
-        [{ role: 'user', text: buildExtractPrompt(s.memory, batch) }],
-      );
+      const raw = await callLlm(s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }]);
       const parsed = parseExtraction(raw);
       // The queue drains only on success — a failure is retried next trigger.
-      if (!parsed) return;
+      if (!parsed) {
+        file(raw, 'unparseable');
+        return;
+      }
       // Only what was actually read is dropped, and only while it is still
       // sitting at the head of the queue. The queue can have grown (she is not
       // deaf while this runs) or shrunk (the cap dropping from the front, a
@@ -651,10 +693,12 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         ...applyExtraction(get().memory, parsed, Date.now()),
         pending: head ? queue.slice(batch.length) : queue,
       } });
+      file(raw, 'applied');
       await get().saveMemory();
     } catch {
       // Never surfaced to the subject: no path by which bookkeeping makes her
       // show an error (continuity §8).
+      file(null, 'failed');
     } finally {
       extracting = false;
     }

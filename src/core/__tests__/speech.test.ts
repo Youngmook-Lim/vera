@@ -113,6 +113,33 @@ describe('runSpeech', () => {
     expect(sent[0].text).toContain('THE SUBJECT SAYS: did you miss me');
   });
 
+  // The inspector exists so the request can be read rather than inferred. The
+  // composed prompt is only the tail of what went out — recording it alone
+  // hides every earlier turn of the conversation the provider was sent.
+  it('records the whole array it sent, not just the composed last turn', async () => {
+    const turns: Turn[] = [
+      { role: 'user', text: 'are you there' },
+      { role: 'assistant', text: 'Regrettably.' },
+      { role: 'user', text: 'did you miss me' },
+    ];
+    const d = deps({ turns });
+    const result = await runSpeech(d);
+
+    expect(result.debug.turns).toEqual(d.call.mock.calls[0][1]);
+    expect(result.debug.turns?.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(result.debug.turns?.[0].text).toBe('are you there');
+    expect(result.debug.turns?.[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+  });
+
+  // A request that was refused is exactly the one worth reading.
+  it('records what it sent even when no reply came back', async () => {
+    const d = deps({ call: jest.fn().mockRejectedValue(new AuthError()) });
+    const result = await runSpeech(d);
+
+    expect(result.debug.turns).toEqual(d.call.mock.calls[0][1]);
+    expect(result.debug.raw).toBeNull();
+  });
+
   it('falls back to an authored line when the network is dark', async () => {
     const d = deps({ call: jest.fn().mockRejectedValue(new Error('Network request failed')) });
     const result = await runSpeech(d);

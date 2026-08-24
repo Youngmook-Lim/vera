@@ -1,5 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
+import { EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
 
@@ -796,6 +797,110 @@ describe('the bank path', () => {
     await live;
 
     expect(useFacilityStore.getState().line).toBe('Noted.');
+  });
+});
+
+// The inspector is only worth having if it shows the whole request. Both calls
+// go out; both must be readable, and neither may stand on the other.
+describe('the prompt record', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
+  const OK = '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    callLlm.mockReset();
+    useFacilityStore.setState({
+      apiKey: KEY, memory: EMPTY_MEMORY,
+      lastPrompt: null, lastExtract: null,
+      sessionStartedAt: 1, askedAt: Date.now(),
+    });
+  });
+
+  it('carries every turn that went to the provider, not only the composed last one', async () => {
+    useFacilityStore.setState({
+      log: [
+        { who: 'you', text: 'are you there', t: 10 },
+        { who: 'vera', text: 'Regrettably.', t: 11 },
+      ],
+    });
+    callLlm.mockResolvedValue('{"emotion":"amused","line":"Barely."}');
+
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const sent: Turn[] = callLlm.mock.calls[0][2];
+    const record = useFacilityStore.getState().lastPrompt;
+    expect(record?.turns).toEqual(sent);
+    expect(record?.turns?.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(record?.turns?.[0].text).toBe('are you there');
+    expect(record?.turns?.[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+  });
+
+  it('records no turns at all for a stimulus answered from the bank', async () => {
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().lastPrompt)
+      .toMatchObject({ outcome: 'bank', system: null, turns: null });
+  });
+
+  // The call that writes her file is the one hardest to debug by watching her,
+  // so it is recorded on every path it can take.
+  it('records the extraction call when it lands', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue(OK);
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('applied');
+    expect(x?.system).toBe(EXTRACT_SYSTEM);
+    expect(x?.user).toContain('hi');
+    expect(x?.raw).toBe(OK);
+    expect(x?.route).toBe('ANTHROPIC');
+    expect(x?.model).toBe('claude-sonnet-4-5');
+  });
+
+  it('records the extraction call when the request never answered', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('failed');
+    expect(x?.raw).toBeNull();
+    expect(x?.user).toContain('hi');
+  });
+
+  it('records the extraction call when the reply cannot be read', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue('the model was unwell today');
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('unparseable');
+    expect(x?.raw).toBe('the model was unwell today');
+  });
+
+  // The reason the two have separate slots: extraction fires seconds after a
+  // reply, and one shared field would erase the reply prompt before it could
+  // be read.
+  it('keeps her reply prompt readable alongside the extraction that followed it', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    callLlm.mockResolvedValue(OK);
+    await useFacilityStore.getState().extractNow();
+
+    const s = useFacilityStore.getState();
+    expect(s.lastPrompt?.outcome).toBe('model');
+    expect(s.lastPrompt?.turns?.[0].text).toContain('THE SUBJECT SAYS: hello');
+    expect(s.lastExtract?.outcome).toBe('applied');
   });
 });
 

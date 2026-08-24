@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { PromptRecord } from '../core/store';
+import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import type { Memory } from '../vera/memory';
@@ -17,11 +17,22 @@ import { T } from './strings';
 //
 // Only the screen furniture (header, footer, back control) reads from T[lang].
 
-// The last request, exactly as it went out. Not a document she keeps — a
-// developer's transcript of one round trip, so the prompt can be read rather
+// A null raw means the call threw before answering. A raw that is present on a
+// `fallback` outcome means the model answered and could not be parsed.
+const rawSection = (raw: string | null): string[] => [
+  '--- RAW REPLY ---',
+  raw ?? '(the request failed before a reply arrived)',
+];
+
+// The last reply's request, exactly as it went out. Not a document she keeps —
+// a developer's transcript of one round trip, so the prompt can be read rather
 // than inferred from what she said. The credential never appears: it travels
 // in the request headers, never in the prompt.
-const buildPromptMd = (p: PromptRecord | null): string => {
+//
+// Every turn is printed, in the order they were sent. The composed prompt is
+// only the last of them, and the conversation ahead of it went to the provider
+// just as literally.
+const buildReplyMd = (p: PromptRecord | null): string => {
   if (!p) return '# LAST PROMPT\n\n(nothing sent yet this session)';
 
   const head = [
@@ -39,21 +50,52 @@ const buildPromptMd = (p: PromptRecord | null): string => {
     return `${head}(answered from the authored bank. no request was made.)`;
   }
 
+  const turns = p.turns ?? [];
   const sent = [
     `--- SYSTEM (${p.system?.length ?? 0} chars) ---`,
     p.system ?? '(none)',
     '',
-    `--- USER (${p.user?.length ?? 0} chars) ---`,
-    p.user ?? '(none)',
-    '',
-    '--- RAW REPLY ---',
-    // A null raw means the call threw before answering. A raw that is present
-    // on a `fallback` outcome means she answered and could not be parsed.
-    p.raw ?? '(the request failed before a reply arrived)',
+    ...(turns.length === 0
+      ? ['--- TURNS (0) ---', '(none)', '']
+      : turns.flatMap((turn, i) => [
+        `--- TURN ${i + 1}/${turns.length} ${turn.role.toUpperCase()} (${turn.text.length} chars) ---`,
+        turn.text,
+        '',
+      ])),
+    ...rawSection(p.raw),
   ].join('\n');
 
   return `${head}${sent}`;
 };
+
+// The second call, and the only window onto it. Extraction writes her file and
+// says nothing on the stage whatever happens to it, so a failure is printed
+// here as fully as a success.
+const buildExtractMd = (x: ExtractRecord | null): string => {
+  const head = '# LAST EXTRACTION\n\n';
+  if (!x) return `${head}(no extraction has run yet this session)`;
+
+  return head + [
+    `at: ${new Date(x.at).toISOString()}`,
+    `route: ${x.route || 'none'}`,
+    `model: ${x.model || 'none'}`,
+    `outcome: ${x.outcome}`,
+    '',
+    `--- SYSTEM (${x.system.length} chars) ---`,
+    x.system,
+    '',
+    `--- USER (${x.user.length} chars) ---`,
+    x.user,
+    '',
+    ...rawSection(x.raw),
+  ].join('\n');
+};
+
+// Two calls, two sections, one screen. Both are readable at once: extraction
+// fires seconds after a reply, and a screen that showed only the newer request
+// would never once show the one that produced the line on the stage.
+const buildPromptMd = (p: PromptRecord | null, x: ExtractRecord | null): string =>
+  `${buildReplyMd(p)}\n\n\n${buildExtractMd(x)}`;
 
 // The whole record, as it actually is — not the selection she was sent. The
 // PROMPT screen already shows what went out, so this stays the ground truth
@@ -97,6 +139,7 @@ export function FileScreen() {
   const memory = useFacilityStore((s) => s.memory);
   const cleared = useFacilityStore((s) => s.cleared);
   const lastPrompt = useFacilityStore((s) => s.lastPrompt);
+  const lastExtract = useFacilityStore((s) => s.lastExtract);
   const setView = useFacilityStore((s) => s.setView);
 
   const t = T[lang];
@@ -105,7 +148,12 @@ export function FileScreen() {
   const doc = view === 'soul'
     ? { name: 'SOUL.md', meta: t.soulSub, body: SOUL_MD, footer: t.everyReply }
     : view === 'prompt'
-      ? { name: 'PROMPT', meta: t.promptSub, body: buildPromptMd(lastPrompt), footer: t.sessionOnly }
+      ? {
+        name: 'PROMPT',
+        meta: t.promptSub,
+        body: buildPromptMd(lastPrompt, lastExtract),
+        footer: t.sessionOnly,
+      }
       : { name: 'MEMORY.md', meta: t.memSub, body: buildMemoryMd(memory, cleared), footer: t.byV };
   const { name, meta, body, footer: rightFooter } = doc;
 

@@ -19,10 +19,13 @@ export interface SpeechDeps {
 // Exactly what went out and exactly what came back, kept so the subject can
 // read the real payload rather than a description of it. The credential is
 // never in here: buildRequest puts it in the headers, never in the prompt.
-// `raw` is null when the call threw before answering.
+//
+// `turns` is the whole array as sent, not the composed last turn alone — the
+// session travels as alternating turns now, and every one of them went to the
+// provider. `raw` is null when the call threw before answering.
 export interface SpeechDebug {
   system: string | null;
-  user: string | null;
+  turns: Turn[] | null;
   raw: string | null;
 }
 
@@ -68,14 +71,14 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
     raw = await deps.call(system, turns);
     const parsed = parseSpeech(raw);
     if (parsed) {
-      return { ...parsed, authFailed: false, source: 'model', debug: { system, user, raw } };
+      return { ...parsed, authFailed: false, source: 'model', debug: { system, turns, raw } };
     }
   } catch (error) {
     if (error instanceof AuthError) {
       const spoken = fallbackFor(deps.lang);
       return {
         ...spoken, authFailed: true,
-        source: 'fallback', debug: { system, user, raw },
+        source: 'fallback', debug: { system, turns, raw },
       };
     }
   }
@@ -83,6 +86,6 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
   const spoken = fallbackFor(deps.lang);
   return {
     ...spoken, authFailed: false,
-    source: 'fallback', debug: { system, user, raw },
+    source: 'fallback', debug: { system, turns, raw },
   };
 };
