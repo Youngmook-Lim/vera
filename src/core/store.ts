@@ -547,9 +547,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
 
   // The wording is the only thing you can burn. Her impressions live in
-  // MEMORY.md, untouched here (spec §8) — erasing the transcript changes her
-  // diction, never her verdict. She is not told it happened: the counter below
-  // exists for MEMORY.md's `erasures: N` line and nothing else.
+  // MEMORY.md, mostly untouched here (spec §8) — erasing the transcript
+  // changes her diction, not the verdicts already filed. The one exception is
+  // below: she files a verdict about the erasure itself, though she is never
+  // told it happened. The counter here exists for MEMORY.md's `erasures: N`
+  // line and nothing else.
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
