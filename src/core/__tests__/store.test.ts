@@ -38,7 +38,7 @@ const reset = () =>
   useFacilityStore.setState({
     view: 'stage', cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
     apiKey: '', emotion: 'dormant', line: '', shown: '', thinking: false, draft: '',
-    log: [], impressions: [], cleared: 0, visits: 1, lang: 'en',
+    log: [], cleared: 0, visits: 1, lang: 'en',
   });
 
 describe('the router', () => {
@@ -121,25 +121,10 @@ describe('hydrate', () => {
     });
   });
 
-  it('restores lang, impressions and cleared from a saved soul', async () => {
-    await soul({
-      lang: 'ko',
-      imps: [{ text: 'You are late again.', at: 'MAR 02' }],
-      cleared: 3,
-      visits: 4,
-      day: today(),
-      lastOpen: Date.now() - 600_000,
-    });
-
-    await hydrate();
-
-    const s = useFacilityStore.getState();
-    expect(s.hydrated).toBe(true);
-    expect(s.lang).toBe('ko');
-    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02' }]);
-    expect(s.cleared).toBe(3);
-    expect(s.visits).toBe(5); // same day, not a reload
-  });
+  // Deleted: this asserted the old `impressions` field, restored on hydrate
+  // straight from a saved soul's `imps`. That field is gone — lang, cleared
+  // and visits restoring from a saved soul are still covered below, and the
+  // migration of `imps` into verdicts is covered in the 'extraction' describe.
 
   it('falls back to the device locale only when nothing is saved', async () => {
     getLocales.mockReturnValue([{ languageCode: 'ko' }]);
@@ -201,7 +186,6 @@ describe('hydrate', () => {
     const s = useFacilityStore.getState();
     expect(s.hydrated).toBe(true);
     expect(s.lang).toBe('en');
-    expect(s.impressions).toEqual([]);
     expect(s.cleared).toBe(0);
     expect(s.visits).toBe(1);
   });
@@ -230,7 +214,6 @@ describe('hydrate', () => {
     await storage.set(KEYS.memory, '{"facts":null,"verdicts":null,"threads":null,"pending":null}');
     await soul({
       lang: 'ko',
-      imps: [{ text: 'Deflects.', at: 'JUL 30' }],
       visits: 4,
       day: today(),
       lastOpen: Date.now() - 600_000,
@@ -242,7 +225,6 @@ describe('hydrate', () => {
     const s = useFacilityStore.getState();
     expect(s.hydrated).toBe(true);
     expect(s.lang).toBe('ko');
-    expect(s.impressions).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
     expect(s.visits).toBe(5);
     expect(s.log).toHaveLength(1);
     expect(s.memory).toEqual(EMPTY_MEMORY); // she starts a stranger, and only that
@@ -251,7 +233,6 @@ describe('hydrate', () => {
     // carries the subject's real history rather than an empty one.
     await useFacilityStore.getState().setLang('ko');
     const written = JSON.parse((await storage.get(KEYS.soul)) as string);
-    expect(written.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
     expect(written.visits).toBe(5);
   });
 
@@ -287,40 +268,12 @@ describe('hydrate', () => {
     expect(useFacilityStore.getState().emotion).toBe('calm');
   });
 
-  // Finding 1, fix round 1: mem was persisted by speak() but never read back,
-  // so the rolling conversational memory silently reset on every cold start.
-  it('restores the rolling memory from a saved soul', async () => {
-    await soul({
-      mem: [{ you: 'hi', her: 'Noted.' }, { you: null, her: 'Hm.' }],
-      day: today(),
-    });
-    await hydrate();
-    expect(useFacilityStore.getState().mem).toEqual([
-      { you: 'hi', her: 'Noted.' },
-      { you: null, her: 'Hm.' },
-    ]);
-  });
-
-  it('degrades a missing, null, or non-array mem to [] without throwing', async () => {
-    await soul({ day: today() }); // mem missing entirely
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-
-    await soul({ mem: null, day: today() });
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-
-    await soul({ mem: 'not an array', day: today() });
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-  });
-
-  it('caps a saved mem at six, keeping the newest, not the oldest', async () => {
-    const exchanges = Array.from({ length: 9 }, (_, i) => ({ you: `q${i}`, her: `a${i}` }));
-    await soul({ mem: exchanges, day: today() });
-    await hydrate();
-    expect(useFacilityStore.getState().mem).toEqual(exchanges.slice(-6));
-  });
+  // Deleted: 'restores the rolling memory from a saved soul', 'degrades a
+  // missing, null, or non-array mem to [] without throwing', and 'caps a
+  // saved mem at six, keeping the newest, not the oldest'. All three existed
+  // solely to pin the rolling `mem` field's round trip through hydrate. That
+  // field is gone — the session now reaches her as real turns, and her
+  // durable memory is the three-kind record covered under 'extraction' below.
 });
 
 describe('activate', () => {
@@ -464,7 +417,7 @@ describe('speak', () => {
     await storage.clearAll();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0,
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0,
     });
   });
 
@@ -561,13 +514,12 @@ describe('speak', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
     expect(saved.visits).toBe(3);
     expect(saved.lang).toBe('en');
     expect(saved.cleared).toBe(1);
-    expect(saved.mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
   });
 
   it('falls back to an authored line when the network is dark, without erroring', async () => {
@@ -592,15 +544,10 @@ describe('speak', () => {
     expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
   });
 
-  // The notice is not something she said, so it must not enter the memory she
-  // reasons from. She should be unaware the exchange happened at all.
-  it('keeps the notice out of her memory of the conversation', async () => {
-    useFacilityStore.setState({ mem: [{ you: 'earlier', her: 'Noted.' }] });
-    callLlm.mockRejectedValue(new AuthError());
-    await useFacilityStore.getState().speak('subject_spoke', 'hi');
-
-    expect(useFacilityStore.getState().mem).toEqual([{ you: 'earlier', her: 'Noted.' }]);
-  });
+  // Deleted: 'keeps the notice out of her memory of the conversation' pinned
+  // the old rolling `mem` field, which is gone. The equivalent guarantee for
+  // the memory that survives — a notice never reaching `memory.pending` — is
+  // covered by 'queues nothing when the credential was refused' below.
 
   it('clears the notice the moment she answers again', async () => {
     callLlm.mockRejectedValue(new AuthError());
@@ -646,19 +593,11 @@ describe('speak', () => {
     expect(useFacilityStore.getState().shown).toBe('Short.');
   });
 
-  // Finding 1, fix round 1: the regression guard. mem must not just be
-  // written to disk — it must come back out of it, or her short-term
-  // continuity resets every launch despite the persisted file.
-  it('round-trips mem through a restart', async () => {
-    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
-    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
-
-    // Simulate a cold start: hydrate reads back exactly what speak persisted.
-    useFacilityStore.setState({ hydrated: false, mem: [] });
-    await useFacilityStore.getState().hydrate();
-
-    expect(useFacilityStore.getState().mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
-  });
+  // Deleted: 'round-trips mem through a restart' pinned the old rolling `mem`
+  // field's persistence, which is gone along with the field. The equivalent
+  // for what now persists her side of a session — the memory store — is
+  // covered by 'survives a kill: the queue is still there on the next
+  // launch' under 'extraction' below.
 
   // Finding 4, final review: hydrate guards every read, speak guarded neither
   // of its writes. A rejecting AsyncStorage escaped the try/finally into the
@@ -730,7 +669,7 @@ describe('setLang', () => {
     await secure.remove();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
     });
   });
 
@@ -741,22 +680,18 @@ describe('setLang', () => {
 
   it('persists the soul blob in exactly the shape hydrate reads back', async () => {
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
-    useFacilityStore.setState({
-      visits: 5, cleared: 2,
-      impressions: [{ text: 'Deflects.', at: 'JUL 30' }],
-    });
+    useFacilityStore.setState({ visits: 5, cleared: 2 });
 
     await useFacilityStore.getState().setLang('ko');
 
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
     );
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
     expect(saved.cleared).toBe(2);
-    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
   });
 
   // The regression this guards: a stale-shape write that hydrate cannot read
@@ -802,7 +737,7 @@ describe('the bank path', () => {
     await storage.clearAll();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, authFails: 0,
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, authFails: 0,
     });
   });
 
@@ -821,15 +756,15 @@ describe('the bank path', () => {
     expect(s.thinking).toBe(false);
   });
 
-  // The transcript keeps it and her rolling memory keeps it, so the next real
-  // reply knows what she opened with. Nothing was revealed, so no impression.
-  it('logs the line and remembers it, but files nothing', async () => {
+  // The transcript keeps it, so the next real reply knows what she opened
+  // with. Nothing was revealed, so nothing is queued for extraction (the
+  // queue side is covered by 'queues nothing for a bank-answered stimulus'
+  // under 'extraction' below).
+  it('logs the line, but files nothing', async () => {
     await useFacilityStore.getState().speak('open');
 
     const s = useFacilityStore.getState();
     expect(s.log.map((e) => e.who)).toEqual(['vera']);
-    expect(s.mem).toEqual([{ you: null, her: s.line }]);
-    expect(s.impressions).toEqual([]);
 
     const raw = await storage.get(KEYS.transcript);
     expect(JSON.parse(raw as string)).toEqual(s.log);

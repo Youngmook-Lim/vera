@@ -1,8 +1,3 @@
-export interface Exchange {
-  you: string | null;
-  her: string;
-}
-
 // Only what is true of this moment. Everything about the subject travels in
 // MEMORY.md now, and the session itself travels as real turns (continuity §2).
 export interface SpeakContext {

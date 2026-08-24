@@ -31,7 +31,7 @@ beforeEach(() => {
   useFacilityStore.setState({
     hydrated: true, view: 'stage', lang: 'en', emotion: 'dormant',
     apiKey: 'sk-ant-api03-abcdefghijklmnop',
-    log: [], impressions: [],
+    log: [],
     cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
   });
 });

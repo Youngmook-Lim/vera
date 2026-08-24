@@ -5,7 +5,7 @@ import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
 import { applyExtraction } from '../vera/apply';
 import { pick } from '../vera/bank';
-import { buildContext, type Exchange } from '../vera/context';
+import { buildContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
@@ -38,11 +38,6 @@ export interface LogEntry {
   code?: SystemCode;
 }
 
-export interface Impression {
-  text: string;
-  at: string;
-}
-
 // The last reply, as it actually happened. A developer's window onto the
 // request, in the same spirit as the MEMORY.md screen: nothing summarised,
 // nothing withheld. Never persisted — it describes this session only, and it
@@ -62,8 +57,6 @@ export interface PromptRecord {
 }
 
 const LOG_CAP = 200;
-const IMPRESSION_CAP = 24;
-const MEM_CAP = 6;
 // How many finished exchanges are allowed to queue before she reads them
 // (continuity §4.2). Small enough that a long session is read while it is still
 // running, large enough that most exchanges cost nothing.
@@ -92,12 +85,10 @@ let greeted = false;
 // callers persisting seven fields by hand is how the writers drifted apart in
 // the first place.
 interface SoulBlob {
-  mem: Exchange[];
   visits: number;
   day: string;
   lastOpen: number;
   lang: Lang;
-  imps: Impression[];
   cleared: number;
 }
 
@@ -106,12 +97,10 @@ interface SoulBlob {
 // the `void speak(...)` call sites as an unhandled rejection.
 const saveSoul = async (s: FacilityState): Promise<void> => {
   const blob: SoulBlob = {
-    mem: s.mem,
     visits: s.visits,
     day: new Date().toDateString(),
     lastOpen: Date.now(),
     lang: s.lang,
-    imps: s.impressions,
     cleared: s.cleared,
   };
   try {
@@ -135,18 +124,14 @@ interface FacilityState {
   waking: boolean;
 
   log: LogEntry[];
-  impressions: Impression[];
   // Kept only so MEMORY.md can print `erasures: N` on screen. She is never
   // told the number and never reacts to an erasure.
   cleared: number;
   visits: number;
   lastOpen: number | null;
 
-  // The rolling memory of the last six exchanges. Still written and still
-  // persisted, but nothing reads it now that the session reaches her as real
-  // turns (continuity §2). askedAt is when she last spoke, used to tell
-  // whether the subject took their time replying.
-  mem: Exchange[];
+  // askedAt is when she last spoke, used to tell whether the subject took
+  // their time replying.
   askedAt: number;
 
   // Her file, and the exchanges not yet read into it (continuity §3, §4.1).
@@ -205,12 +190,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   waking: false,
 
   log: [],
-  impressions: [],
   cleared: 0,
   visits: 1,
   lastOpen: null,
 
-  mem: [],
   askedAt: Date.now(),
 
   memory: EMPTY_MEMORY,
@@ -314,11 +297,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         ...woken,
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
-        impressions: Array.isArray(saved?.imps) ? (saved.imps as Impression[]).slice(-IMPRESSION_CAP) : [],
-        // The rolling short-term memory, same guard-then-cap treatment as
-        // impressions above — a corrupt or oversized blob degrades to [] or
-        // to its newest six, never a throw.
-        mem: Array.isArray(saved?.mem) ? (saved.mem as Exchange[]).slice(-MEM_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         visits,
         lastOpen,
@@ -485,11 +463,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const log = [...get().log, notice
         ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
         : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
-      // A notice is not something she said, so it never enters her memory of
-      // the conversation. She is unaware the exchange happened at all.
-      const mem = notice
-        ? get().mem
-        : [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
 
       // A refusal leaves the key exactly where it is — she is never sent
       // dormant for it, and the tally only tells ACCESS which row to mark
@@ -504,7 +477,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         emotion: notice ? 'dormant' : emotion,
         line: notice ? '' : line,
         systemNotice: notice,
-        log, mem, askedAt: Date.now(),
+        log, askedAt: Date.now(),
         authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
       });
       try {
@@ -556,7 +529,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
     // open on a later visit to the log.
-    set({ log: [], mem: [], cleared, confirmingClear: false });
+    set({ log: [], cleared, confirmingClear: false });
     try {
       await storage.remove(KEYS.transcript);
     } catch {

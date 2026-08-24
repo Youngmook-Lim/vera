@@ -1,9 +1,10 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Impression, PromptRecord } from '../core/store';
+import type { PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
+import type { Memory } from '../vera/memory';
 import { SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
@@ -11,9 +12,8 @@ import { T } from './strings';
 // developer's window onto her state, not a part of the fiction: nothing here is
 // withheld, dressed up or translated.
 //
-// MEMORY.md is composed here, at render time, from `impressions`; nothing about
-// it is ever written to disk as text (spec: it is built from state, not stored).
-// Entries print in stored order, oldest first, so the view matches the array.
+// MEMORY.md is composed here, at render time, from her memory; nothing about it
+// is ever written to disk as text (spec: it is built from state, not stored).
 //
 // Only the screen furniture (header, footer, back control) reads from T[lang].
 
@@ -55,20 +55,37 @@ const buildPromptMd = (p: PromptRecord | null): string => {
   return `${head}${sent}`;
 };
 
-const buildMemoryMd = (impressions: Impression[], cleared: number): string => {
+// The whole record, as it actually is — not the selection she was sent. The
+// PROMPT screen already shows what went out, so this stays the ground truth
+// (continuity §6). Nothing is hidden: expired facts and resolved threads are
+// marked and kept.
+const buildMemoryMd = (memory: Memory, cleared: number): string => {
+  const { facts, verdicts, threads } = memory;
+  const total = facts.length + verdicts.length + threads.length;
+
   const header = [
     '# MEMORY.md',
     '',
-    `entries: ${impressions.length}`,
+    `facts: ${facts.length}`,
+    `verdicts: ${verdicts.length}`,
+    `threads: ${threads.length}`,
+    `pending: ${memory.pending.length}`,
     `erasures: ${cleared}`,
     '',
   ].join('\n');
 
-  if (impressions.length === 0) return `${header}(empty)`;
+  if (total === 0) return `${header}(empty)`;
 
-  const body = impressions
-    .map((imp, i) => `[${i}] ${imp.at}  ${imp.text}`)
-    .join('\n');
+  const now = Date.now();
+  const body = [
+    ...facts.map((f) => {
+      const expired = !f.durable && f.until !== null && f.until <= now;
+      return `[${f.id}] ${expired ? 'EXPIRED ' : ''}${f.text}  {${f.keys.join(' ')}}`;
+    }),
+    ...verdicts.map((v) =>
+      `[${v.id}] ${v.wasAt ? `${v.wasAt} ` : ''}×${v.count}  ${v.text}`),
+    ...threads.map((t) => `[${t.id}] ${t.resolved ? 'RESOLVED ' : ''}${t.text}`),
+  ].join('\n');
 
   return `${header}${body}`;
 };
@@ -77,7 +94,7 @@ export function FileScreen() {
   const insets = useSafeAreaInsets();
   const view = useFacilityStore((s) => s.view);
   const lang = useFacilityStore((s) => s.lang);
-  const impressions = useFacilityStore((s) => s.impressions);
+  const memory = useFacilityStore((s) => s.memory);
   const cleared = useFacilityStore((s) => s.cleared);
   const lastPrompt = useFacilityStore((s) => s.lastPrompt);
   const setView = useFacilityStore((s) => s.setView);
@@ -89,7 +106,7 @@ export function FileScreen() {
     ? { name: 'SOUL.md', meta: t.soulSub, body: SOUL_MD, footer: t.everyReply }
     : view === 'prompt'
       ? { name: 'PROMPT', meta: t.promptSub, body: buildPromptMd(lastPrompt), footer: t.sessionOnly }
-      : { name: 'MEMORY.md', meta: t.memSub, body: buildMemoryMd(impressions, cleared), footer: t.byV };
+      : { name: 'MEMORY.md', meta: t.memSub, body: buildMemoryMd(memory, cleared), footer: t.byV };
   const { name, meta, body, footer: rightFooter } = doc;
 
   return (

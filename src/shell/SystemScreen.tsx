@@ -42,7 +42,7 @@ export function SystemScreen() {
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const apiKey = useFacilityStore((s) => s.apiKey);
-  const impressions = useFacilityStore((s) => s.impressions);
+  const memory = useFacilityStore((s) => s.memory);
   const authFails = useFacilityStore((s) => s.authFails);
   const visits = useFacilityStore((s) => s.visits);
   const setView = useFacilityStore((s) => s.setView);
@@ -77,7 +77,7 @@ export function SystemScreen() {
                 MEMORY.md
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
-                {`${t.memSub} · ${impressions.length} ${t.entries}`}
+                {`${t.memSub} · ${memory.facts.length + memory.verdicts.length + memory.threads.length} ${t.entries}`}
               </Text>
             </View>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>

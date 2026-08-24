@@ -39,17 +39,18 @@ Pure decision-making modules (`fluid`, `emotions`, `providers`, `llm`, `context`
 
 **The doorway rule (spec §4).** Modules are rooms in her building, not screens in her app. The shell owns exactly four things: the tile (identical geometry in the cabinet, painted in the module's own colours), full bleed inside, one exit (top-left, 44px, drawn in the module's own ink — never the shell's amber), and her dot. Everything past the threshold belongs to the module. A new module is **one folder exporting a `ModuleDef` plus one line in `registry.ts`** — both `Cabinet.tsx` and `ScreenRouter.tsx` read the registry, neither names a module.
 
-**The five stores (spec §8).**
+**The six stores (spec §8).**
 
 | store | key | engine | contents |
 |---|---|---|---|
-| soul | `facility.v2.soul` | AsyncStorage | mem (6), visits, day, lastOpen, lang, imps (24), cleared |
+| soul | `facility.v2.soul` | AsyncStorage | visits, day, lastOpen, lang, cleared |
 | transcript | `facility.v2.transcript` | AsyncStorage | the chat log, capped at 60 |
+| memory | `facility.v2.memory` | AsyncStorage | facts, verdicts, threads, pending |
 | module 01 | `facility.mod01.organism` | AsyncStorage | hunger, hungerAt |
 | module 02 | `facility.mod02.identity` | AsyncStorage | title, lines, revs, month |
 | credential | `facility.v2.credential` | **SecureStore** | the key |
 
-Modules 01 and 02 each own their own store — neither has anything to do with her soul or the transcript, and she is not told what is in either. Hunger used to live in the soul store because she was told about it; it moved out with the specimen (2026-08-12). `cleared` survives in the soul store for one reason only: MEMORY.md's `erasures: N` line on screen. She is never told the number. **MEMORY.md is never written to disk as text**: `FileScreen` composes it at render time out of `impressions`. **SOUL.md is read-only** and is the literal system prompt, not a paraphrase of it. The transcript is the only thing the subject can erase, and erasing it costs her the wording, never the verdict.
+Modules 01 and 02 each own their own store — neither has anything to do with her soul or the transcript, and she is not told what is in either. Hunger used to live in the soul store because she was told about it; it moved out with the specimen (2026-08-12). `cleared` survives in the soul store for one reason only: MEMORY.md's `erasures: N` line on screen. She is never told the number. **MEMORY.md is never written to disk as text**: `FileScreen` composes it at render time from the memory store's three kinds — facts, verdicts, threads, all of it, expired facts and resolved threads marked but never hidden. What reaches her is narrower: `selectMemories` takes unresolved threads first, newest five, under 30 days old, uncharged, then pools facts and verdicts by score into a 3000-character budget. **SOUL.md is read-only** and is the literal system prompt, not a paraphrase of it. The transcript is the only thing the subject can erase, and erasing it costs her the wording, never the verdict.
 
 **The five accepted key shapes (spec §9), order significant** — every `sk-` shape below also satisfies OpenAI's pattern (its class includes the hyphen, and 32 hex digits are alphanumerics), so anthropic, openrouter and deepseek must all be tested before it:
 
