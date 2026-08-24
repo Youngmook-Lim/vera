@@ -582,7 +582,16 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
 
     if (stored) {
-      set({ memory: capMemory({ ...EMPTY_MEMORY, ...stored }) });
+      try {
+        set({ memory: capMemory({ ...EMPTY_MEMORY, ...stored }) });
+      } catch {
+        // It parsed, but it is not the shape: a null where an array belongs
+        // spreads over EMPTY_MEMORY and capMemory slices it. She starts a
+        // stranger — and only that. Throwing here would cost hydrate the soul
+        // blob and the transcript behind it, and the next saveSoul would write
+        // an empty history over the real one, on every launch (§8).
+        set({ memory: EMPTY_MEMORY });
+      }
       return;
     }
 
@@ -631,9 +640,17 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const parsed = parseExtraction(raw);
       // The queue drains only on success — a failure is retried next trigger.
       if (!parsed) return;
+      // Only what was actually read is dropped, and only while it is still
+      // sitting at the head of the queue. The queue can have grown (she is not
+      // deaf while this runs) or shrunk (the cap dropping from the front, a
+      // remount replacing memory) — dropping a fixed count then eats an
+      // exchange nobody read, so an unrecognisable queue is left alone and
+      // re-read next trigger.
+      const queue = get().memory.pending;
+      const head = queue.length >= batch.length && batch.every((e, i) => queue[i] === e);
       set({ memory: {
         ...applyExtraction(get().memory, parsed, Date.now()),
-        pending: get().memory.pending.slice(batch.length),
+        pending: head ? queue.slice(batch.length) : queue,
       } });
       await get().saveMemory();
     } catch {

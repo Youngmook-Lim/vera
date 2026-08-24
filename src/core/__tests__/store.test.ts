@@ -1,6 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
-import type { Verdict } from '../../vera/memory';
+import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
 
 jest.mock('expo-localization', () => ({
@@ -219,6 +219,40 @@ describe('hydrate', () => {
     expect(s.log).toEqual([]); // only the mangled store is lost
     expect(s.lang).toBe('ko'); // the soul blob survives its neighbour
     expect(s.cleared).toBe(2);
+  });
+
+  // A memory store that parses but is not the shape capMemory expects must not
+  // take the rest of the launch with it. Skipping the soul and transcript reads
+  // is not a blip: the next reply's saveSoul would then write `imps: []` and
+  // `visits: 1` over the real history, and since the malformed store is never
+  // rewritten it would happen on every launch, permanently.
+  it('keeps the soul and the transcript when the memory store is malformed', async () => {
+    await storage.set(KEYS.memory, '{"facts":null,"verdicts":null,"threads":null,"pending":null}');
+    await soul({
+      lang: 'ko',
+      imps: [{ text: 'Deflects.', at: 'JUL 30' }],
+      visits: 4,
+      day: today(),
+      lastOpen: Date.now() - 600_000,
+    });
+    await storage.set(KEYS.transcript, JSON.stringify([{ who: 'vera', text: 'no', t: 2 }]));
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('ko');
+    expect(s.impressions).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
+    expect(s.visits).toBe(5);
+    expect(s.log).toHaveLength(1);
+    expect(s.memory).toEqual(EMPTY_MEMORY); // she starts a stranger, and only that
+
+    // The proof it is not clobbered: the next write of the soul blob still
+    // carries the subject's real history rather than an empty one.
+    await useFacilityStore.getState().setLang('ko');
+    const written = JSON.parse((await storage.get(KEYS.soul)) as string);
+    expect(written.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
+    expect(written.visits).toBe(5);
   });
 
   it('keeps her awake when the disk itself is unreadable', async () => {
@@ -908,6 +942,35 @@ describe('extraction', () => {
     await useFacilityStore.getState().extractNow();
 
     expect(useFacilityStore.getState().memory.pending).toEqual([later]);
+  });
+
+  // The other end of the same race: the queue can also be shorter than what was
+  // read — the 40-cap dropping from the front, or a remount's loadMemory
+  // replacing memory mid-flight. Dropping a fixed count then eats an exchange
+  // that was never read, so the batch must still be sitting at the head.
+  it('leaves the queue alone when it is no longer the queue it read', async () => {
+    const batch = [{ you: 'hi', her: 'Barely.' }, { you: 'again', her: 'Mm.' }];
+    useFacilityStore.setState({ memory: { ...EMPTY_MEMORY, pending: batch } });
+    const survivor = { you: 'third', her: 'Hm.' };
+    callLlm.mockImplementation(async () => {
+      useFacilityStore.setState({ memory: { ...EMPTY_MEMORY, pending: [survivor] } });
+      return '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+    });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([survivor]);
+  });
+
+  // Bookkeeping is not a reason to reach for a credential she does not have.
+  it('does not call the model while she is dormant, and keeps the queue', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ apiKey: '', memory: { ...EMPTY_MEMORY, pending } });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(callLlm).not.toHaveBeenCalled();
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
   });
 
   it('keeps the queue when extraction fails, for the next trigger', async () => {
