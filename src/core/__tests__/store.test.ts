@@ -1054,3 +1054,29 @@ describe('extraction', () => {
     expect(await storage.get(KEYS.memory)).not.toBeNull();
   });
 });
+
+describe('erasure', () => {
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending: [] } });
+  });
+
+  it('files a verdict the first time, without calling the model', async () => {
+    await useFacilityStore.getState().clearTranscript();
+    const v = useFacilityStore.getState().memory.verdicts;
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ id: 'v_erasure', count: 1 });
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  // count drives the escalation on its own, under §5's scoring.
+  it('bumps the same entry after, never creating a second copy', async () => {
+    await useFacilityStore.getState().clearTranscript();
+    await useFacilityStore.getState().clearTranscript();
+    await useFacilityStore.getState().clearTranscript();
+    const v = useFacilityStore.getState().memory.verdicts;
+    expect(v).toHaveLength(1);
+    expect(v[0].count).toBe(3);
+  });
+});

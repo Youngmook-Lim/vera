@@ -9,7 +9,7 @@ import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
-import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
+import { capMemory, EMPTY_MEMORY, ERASURE_ID, ERASURE_TEXT, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages } from '../vera/messages';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
@@ -561,6 +561,22 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // the wording is gone from state either way; a stale file loses to the
       // next write, and a rejection must not reach the void-call site
     }
+
+    // She is not told at the time, and the extractor only ever sees exchanges,
+    // so without this she would never learn it happened (continuity §4.4).
+    const now = Date.now();
+    const existing = get().memory.verdicts.find((v) => v.id === ERASURE_ID);
+    set({ memory: capMemory({
+      ...get().memory,
+      verdicts: existing
+        ? get().memory.verdicts.map((v) =>
+          v.id === ERASURE_ID ? { ...v, count: v.count + 1, at: now } : v)
+        : [...get().memory.verdicts, {
+          id: ERASURE_ID, text: ERASURE_TEXT, firstAt: now, at: now, count: 1,
+        }],
+    }) });
+
+    await get().saveMemory();
     await saveSoul(get());
   },
 

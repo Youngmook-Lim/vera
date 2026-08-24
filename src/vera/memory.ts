@@ -49,6 +49,12 @@ export const EMPTY_MEMORY: Memory = { facts: [], verdicts: [], threads: [], pend
 // supersede and merge, which makes storage size into prompt size (continuity §3).
 export const CAPS = { facts: 400, verdicts: 200, threads: 50, pending: 40 } as const;
 
+// Erasing the transcript files a verdict directly — no model call, because
+// there is nothing to interpret, only something to record (continuity §4.4).
+// A reserved id keeps it a single entry whose `count` does the escalation.
+export const ERASURE_ID = 'v_erasure';
+export const ERASURE_TEXT = 'Erases the transcript. Notes taken regardless.';
+
 const numberOf = (id: string): number => Number(id.split('_')[1] ?? 0) || 0;
 
 // Monotonic per prefix, derived from what is stored rather than a counter, so a
