@@ -3,10 +3,10 @@ import { create } from 'zustand';
 import type { Lang } from './i18n';
 import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
+import { applyExtraction } from '../vera/apply';
 import { pick } from '../vera/bank';
 import { buildContext, type Exchange } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
-import { applyExtraction } from '../vera/apply';
 import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
@@ -261,11 +261,14 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const key = await secure.get();
     const woken = { apiKey: key, emotion: key ? ('calm' as const) : ('dormant' as const) };
 
-    // Her file is its own store and its own failure domain — read before the
-    // soul blob, so that whatever happens below cannot cost her what she knows.
-    await get().loadMemory();
-
     try {
+      // Her file is its own store — read first, so that a mangled soul blob
+      // costs her the visit count and never what she knows. Inside the try
+      // because hydrate must never throw: an escape here would leave the boot
+      // effect on an unhandled rejection with `hydrated` false forever, which
+      // on screen is the splash colour and nothing else.
+      await get().loadMemory();
+
       let soulRaw: string | null = null;
       let logRaw: string | null = null;
       try {
@@ -614,17 +617,24 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     if (extracting) return;
     const s = get();
     if (!s.apiKey || s.memory.pending.length === 0) return;
+    // She is not deaf while this runs, and it takes seconds: the batch that was
+    // read is fixed here so that an exchange finished in the meantime is still
+    // waiting afterwards rather than dropped unread (continuity §4.1).
+    const batch = s.memory.pending;
     extracting = true;
     try {
       const raw = await callLlm(
         s.apiKey,
         EXTRACT_SYSTEM,
-        [{ role: 'user', text: buildExtractPrompt(s.memory, s.memory.pending) }],
+        [{ role: 'user', text: buildExtractPrompt(s.memory, batch) }],
       );
       const parsed = parseExtraction(raw);
       // The queue drains only on success — a failure is retried next trigger.
       if (!parsed) return;
-      set({ memory: { ...applyExtraction(get().memory, parsed, Date.now()), pending: [] } });
+      set({ memory: {
+        ...applyExtraction(get().memory, parsed, Date.now()),
+        pending: get().memory.pending.slice(batch.length),
+      } });
       await get().saveMemory();
     } catch {
       // Never surfaced to the subject: no path by which bookkeeping makes her

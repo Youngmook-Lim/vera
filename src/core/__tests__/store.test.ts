@@ -890,6 +890,26 @@ describe('extraction', () => {
     expect(m.pending).toEqual([]);
   });
 
+  // Extraction takes seconds and she is not deaf while it runs: the subject can
+  // finish another exchange before the extractor answers. Draining the whole
+  // queue would throw that one away unread, which is the exact loss the queue
+  // exists to prevent (continuity §4.1).
+  it('drains only the batch it read, keeping whatever queued while it ran', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    const later = { you: 'and again', her: 'Mm.' };
+    callLlm.mockImplementation(async () => {
+      const m = useFacilityStore.getState().memory;
+      useFacilityStore.setState({ memory: { ...m, pending: [...m.pending, later] } });
+      return '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+    });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([later]);
+  });
+
   it('keeps the queue when extraction fails, for the next trigger', async () => {
     const pending = [{ you: 'hi', her: 'Barely.' }];
     useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending } });
