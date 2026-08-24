@@ -673,8 +673,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       } });
     };
     extracting = true;
+    // Held outside the try for the same reason runSpeech holds its own: a reply
+    // that arrived and then could not be used must not be reported as one that
+    // never came. Anything after the call can still throw, and the two failures
+    // are indistinguishable on screen unless the raw survives.
+    let raw: string | null = null;
     try {
-      const raw = await callLlm(s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }]);
+      raw = await callLlm(s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }]);
       const parsed = parseExtraction(raw);
       // The queue drains only on success — a failure is retried next trigger.
       if (!parsed) {
@@ -697,8 +702,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       await get().saveMemory();
     } catch {
       // Never surfaced to the subject: no path by which bookkeeping makes her
-      // show an error (continuity §8).
-      file(null, 'failed');
+      // show an error (continuity §8). `raw` is still null when the call itself
+      // threw, and holds the reply when the throw came after it.
+      file(raw, 'failed');
     } finally {
       extracting = false;
     }

@@ -888,6 +888,27 @@ describe('the prompt record', () => {
     expect(x?.raw).toBe('the model was unwell today');
   });
 
+  // A throw after the reply landed is not a reply that never came. Discarding
+  // the raw there erases the one distinction this screen exists to preserve.
+  it('keeps a reply that arrived when the failure came after it', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue(OK);
+    // Thrown from applyExtraction's side of the call, after parseExtraction has
+    // already read the reply.
+    const capped = jest.spyOn(Date, 'now').mockImplementationOnce(() => {
+      throw new Error('the clock went out');
+    });
+
+    await useFacilityStore.getState().extractNow();
+    capped.mockRestore();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('failed');
+    expect(x?.raw).toBe(OK);
+  });
+
   // The reason the two have separate slots: extraction fires seconds after a
   // reply, and one shared field would erase the reply prompt before it could
   // be read.
@@ -901,6 +922,38 @@ describe('the prompt record', () => {
     expect(s.lastPrompt?.outcome).toBe('model');
     expect(s.lastPrompt?.turns?.[0].text).toContain('THE SUBJECT SAYS: hello');
     expect(s.lastExtract?.outcome).toBe('applied');
+  });
+
+  // The guard that matters, and the only one that can catch the regression
+  // worth catching: the records are built HERE, out of live state that has the
+  // credential sitting next to it. buildRequest puts the key in the headers and
+  // never in the prompt — if that ever stops being true, or a field is added
+  // that carries the key, the subject's key is printed on a screen they can
+  // screenshot. Serialising the whole record is the point: it covers every
+  // field a record has, including ones added after this was written.
+  it('never writes the credential into either record', async () => {
+    const SECRET = 'sk-ant-api03-SECRETSECRETSECRETSECRET';
+    useFacilityStore.setState({
+      apiKey: SECRET,
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    callLlm.mockResolvedValue(OK);
+    await useFacilityStore.getState().extractNow();
+
+    const s = useFacilityStore.getState();
+    // both records were actually written — a null record trivially contains no
+    // key, and would make this pass while guarding nothing
+    expect(s.lastPrompt?.outcome).toBe('model');
+    expect(s.lastExtract?.outcome).toBe('applied');
+
+    expect(JSON.stringify(s.lastPrompt)).not.toContain(SECRET);
+    expect(JSON.stringify(s.lastExtract)).not.toContain(SECRET);
+    // and not a fragment of it either, however it were sliced in
+    expect(JSON.stringify(s.lastPrompt)).not.toContain('SECRETSECRET');
+    expect(JSON.stringify(s.lastExtract)).not.toContain('SECRETSECRET');
   });
 });
 

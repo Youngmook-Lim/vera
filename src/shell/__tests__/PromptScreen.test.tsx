@@ -66,13 +66,12 @@ describe('the prompt inspector', () => {
 
     expect(body).toContain('are you there');
     expect(body).toContain('Regrettably.');
-    expect(body).toContain('USER');
-    expect(body).toContain('ASSISTANT');
+    // the header shape itself, not just the words it contains
+    expect(body).toContain(`--- TURN 1/3 USER (${'are you there'.length} chars) ---`);
+    expect(body).toContain(`--- TURN 2/3 ASSISTANT (${'Regrettably.'.length} chars) ---`);
     // in the order they went, not the order they were easiest to print
     expect(body.indexOf('are you there')).toBeLessThan(body.indexOf('Regrettably.'));
     expect(body.indexOf('Regrettably.')).toBeLessThan(body.indexOf('THE SUBJECT SAYS'));
-    // each turn headed in the established style, with its own length
-    expect(body).toContain(`(${'are you there'.length} chars)`);
   });
 
   // The whole point of the screen: the prompt is read, not inferred. A
@@ -158,22 +157,9 @@ describe('the credential', () => {
       view: 'prompt', lang: 'en', apiKey: KEY, lastPrompt: RECORD, lastExtract: EXTRACT,
     });
     const view = await render(<FileScreen />);
-    expect(JSON.stringify(view.toJSON())).not.toContain(KEY);
-    expect(JSON.stringify(view.toJSON())).not.toContain('SECRETSECRET');
-  });
-
-  // Both records now carry text built from live state, and either could grow a
-  // path to the key. Rendered with the key in every field a record has.
-  it('never reaches the inspector even when the record is full of it', async () => {
-    const KEY = 'sk-ant-api03-SECRETSECRETSECRET';
-    useFacilityStore.setState({
-      view: 'prompt', lang: 'en', apiKey: KEY,
-      lastPrompt: { ...RECORD, route: 'ANTHROPIC', model: 'claude-sonnet-4-5' },
-      lastExtract: EXTRACT,
-    });
-    const view = await render(<FileScreen />);
     const body = JSON.stringify(view.toJSON());
-    expect(body).not.toContain('sk-ant');
+    expect(body).not.toContain(KEY);
+    expect(body).not.toContain('SECRETSECRET');
     await view.unmount();
   });
 });
