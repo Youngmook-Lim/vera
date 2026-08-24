@@ -294,8 +294,12 @@ for no extra call.
 Composed at render time, as today. Never written to disk as text.
 
 **On screen** it shows everything she knows: all three kinds, expired facts
-marked, resolved threads marked, and the entries chosen for the last reply
-flagged. It remains the ground-truth developer view.
+marked, resolved threads marked. It remains the ground-truth developer view.
+
+It does *not* flag which entries were chosen for the last reply. An earlier
+draft asked for that; the PROMPT screen already shows the composed MEMORY.md
+exactly as it was sent, so the flag would be a second, driftable answer to a
+question already answered properly elsewhere.
 
 **In the prompt** it carries only the selection from §5.
 
@@ -347,7 +351,13 @@ builder, the migration.
 
 Guarded specifically:
 
-- the character budget is enforced on the composed document, not estimated
+- the character budget is charged against each entry's own text, not against
+  the composed document. The composition adds a bullet per line, three
+  headings, and a `(reached N times)` suffix on repeated verdicts, so a full
+  budget overruns by roughly 200-500 characters. That is accepted: the budget
+  exists to bound what a reply costs, not to satisfy a hard provider limit,
+  and charging composed cost would make selection depend on the order things
+  happen to be composed in
 - the budget is the only thing that limits facts and verdicts: given a store
   large enough to exceed it, selection fills to the budget and stops, and given
   a small store it returns everything without padding
