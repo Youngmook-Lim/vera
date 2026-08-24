@@ -988,6 +988,46 @@ describe('extraction', () => {
     expect(useFacilityStore.getState().memory.verdicts).toEqual([]);
     expect(await storage.get(KEYS.memory)).not.toBeNull();
   });
+
+  // Three situations that used to be one branch. Only the first of them —
+  // a store that genuinely is not there — may migrate and write; the other two
+  // may have a real file underneath them, and a write would destroy it (§8).
+  it('migrates and writes when the store is genuinely absent', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory.verdicts.map((v) => v.text)).toEqual(['Deflects.']);
+    expect(await storage.get(KEYS.memory)).not.toBeNull();
+  });
+
+  it('leaves an unparseable store on disk rather than migrating over it', async () => {
+    const bytes = '{"facts":[{"id":"f_1","text":"works in software"';
+    await storage.set(KEYS.memory, bytes);
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    // State alone would not prove it: the truncated file may still be
+    // recoverable by hand, and an empty store written over it is permanent.
+    expect(await storage.get(KEYS.memory)).toBe(bytes);
+  });
+
+  it('leaves the store alone when the read itself fails', async () => {
+    const bytes = JSON.stringify({
+      facts: [], verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }],
+      threads: [], pending: [],
+    });
+    await storage.set(KEYS.memory, bytes);
+    const failing = jest.spyOn(storage, 'get').mockRejectedValue(new Error('database is locked'));
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    failing.mockRestore();
+    // One locked read on one launch must cost her the session, not the file.
+    expect(await storage.get(KEYS.memory)).toBe(bytes);
+  });
 });
 
 describe('erasure', () => {

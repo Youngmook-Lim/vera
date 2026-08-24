@@ -564,24 +564,31 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
 
   loadMemory: async (): Promise<void> => {
-    let stored: Memory | null = null;
+    let raw: string | null;
     try {
-      const raw = await storage.get(KEYS.memory);
-      stored = raw ? (JSON.parse(raw) as Memory) : null;
+      raw = await storage.get(KEYS.memory);
     } catch {
-      // unreadable — she starts a stranger, and says nothing about it (§8)
-      stored = null;
+      // The read failed, which says nothing about what is on the disk — a
+      // locked database or a moment of disk pressure leaves a perfectly intact
+      // file behind it. She starts a stranger for this session and nothing is
+      // written: migrating here would put an empty store over the real one, and
+      // that is not a degraded launch, it is the file gone (§8).
+      set({ memory: EMPTY_MEMORY });
+      return;
     }
 
-    if (stored) {
+    if (raw !== null) {
       try {
-        set({ memory: capMemory({ ...EMPTY_MEMORY, ...stored }) });
+        set({ memory: capMemory({ ...EMPTY_MEMORY, ...(JSON.parse(raw) as Memory) }) });
       } catch {
-        // It parsed, but it is not the shape: a null where an array belongs
-        // spreads over EMPTY_MEMORY and capMemory slices it. She starts a
-        // stranger — and only that. Throwing here would cost hydrate the soul
-        // blob and the transcript behind it, and the next saveSoul would write
-        // an empty history over the real one, on every launch (§8).
+        // There are bytes here and they cannot be used: truncated JSON, or it
+        // parsed and is not the shape — a null where an array belongs spreads
+        // over EMPTY_MEMORY and capMemory slices it. Both degrade and neither
+        // writes, since a file that will not read today may still be readable
+        // by hand. She starts a stranger — and only that. Throwing here would
+        // cost hydrate the soul blob and the transcript behind it, and the next
+        // saveSoul would write an empty history over the real one, on every
+        // launch (§8).
         set({ memory: EMPTY_MEMORY });
       }
       return;
