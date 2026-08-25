@@ -104,10 +104,13 @@ describe('LogScreen', () => {
 
   // She reasons from MEMORY.md, so erasing changes her diction, not her verdict.
   it('leaves her conclusions standing', async () => {
-    seed({ confirmingClear: true, impressions: [{ text: 'Deflects.', at: 'JUL 30', sealed: false }] });
+    seed({
+      confirmingClear: true,
+      memory: { facts: [], verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }], threads: [], pending: [] },
+    });
     const view = await render(<LogScreen />);
     await fireEvent.press(view.getByText('ERASE ALL'));
-    expect(useFacilityStore.getState().impressions).toHaveLength(1);
+    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(2); // hers, plus the erasure verdict
   });
 
   // The count feeds MEMORY.md's `erasures: N` line and nothing else — she is

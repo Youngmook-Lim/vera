@@ -7,8 +7,6 @@ const base = (over: Partial<ContextInput> = {}): ContextInput => ({
   lastOpen: null,
   askedAt: new Date('2026-07-30T14:00:00').getTime(),
   visits: 1,
-  mem: [],
-  impressions: [],
   ...over,
 });
 
@@ -19,13 +17,6 @@ describe('buildContext', () => {
     expect(buildContext(base({ now: new Date('2026-07-30T14:00:00') })).time_of_day).toBe('afternoon');
     expect(buildContext(base({ now: new Date('2026-07-30T20:00:00') })).time_of_day).toBe('evening');
     expect(buildContext(base({ now: new Date('2026-07-30T23:30:00') })).time_of_day).toBe('near midnight');
-  });
-
-  it('carries the last six exchanges and her conclusions', () => {
-    const mem = [{ you: 'hello', her: 'You returned.' }];
-    const ctx = buildContext(base({ mem, impressions: ['Answers quickly. Suspect anxiety.'] }));
-    expect(ctx.recent_exchanges).toEqual(mem);
-    expect(ctx.what_you_have_concluded_about_them).toEqual(['Answers quickly. Suspect anxiety.']);
   });
 
   // An unremarkable number is noise she will recite, so nothing notable is
@@ -71,10 +62,8 @@ describe('buildContext', () => {
   // module owns its own hunger, and the erasure count exists only for the
   // MEMORY.md screen. The context object is the proof: it has no field for
   // either, so nothing can leak into a prompt by accident.
-  it('carries nothing about the specimen or the erasure count', () => {
-    expect(Object.keys(buildContext(base())).sort()).toEqual(
-      ['recent_exchanges', 'time_of_day', 'what_you_have_concluded_about_them'].sort(),
-    );
+  it('carries only the situational, now that the subject lives in MEMORY.md', () => {
+    expect(Object.keys(buildContext(base())).sort()).toEqual(['time_of_day'].sort());
   });
 
   it('pins the precedence order of notable: all seven combinations', () => {

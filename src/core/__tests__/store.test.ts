@@ -1,6 +1,8 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
-import { buildContext } from '../../vera/context';
+import { EXTRACT_SYSTEM } from '../../vera/extract';
+import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
+import type { Turn } from '../../vera/messages';
 
 jest.mock('expo-localization', () => ({
   getLocales: jest.fn(() => [{ languageCode: 'en' }]),
@@ -37,7 +39,7 @@ const reset = () =>
   useFacilityStore.setState({
     view: 'stage', cabinetOpen: false, keyPanelOpen: false, confirmingClear: false,
     apiKey: '', emotion: 'dormant', line: '', shown: '', thinking: false, draft: '',
-    log: [], impressions: [], cleared: 0, visits: 1, lang: 'en',
+    log: [], cleared: 0, visits: 1, lang: 'en',
   });
 
 describe('the router', () => {
@@ -120,25 +122,10 @@ describe('hydrate', () => {
     });
   });
 
-  it('restores lang, impressions and cleared from a saved soul', async () => {
-    await soul({
-      lang: 'ko',
-      imps: [{ text: 'You are late again.', at: 'MAR 02' }],
-      cleared: 3,
-      visits: 4,
-      day: today(),
-      lastOpen: Date.now() - 600_000,
-    });
-
-    await hydrate();
-
-    const s = useFacilityStore.getState();
-    expect(s.hydrated).toBe(true);
-    expect(s.lang).toBe('ko');
-    expect(s.impressions).toEqual([{ text: 'You are late again.', at: 'MAR 02' }]);
-    expect(s.cleared).toBe(3);
-    expect(s.visits).toBe(5); // same day, not a reload
-  });
+  // Deleted: this asserted the old `impressions` field, restored on hydrate
+  // straight from a saved soul's `imps`. That field is gone — lang, cleared
+  // and visits restoring from a saved soul are still covered below, and the
+  // migration of `imps` into verdicts is covered in the 'extraction' describe.
 
   it('falls back to the device locale only when nothing is saved', async () => {
     getLocales.mockReturnValue([{ languageCode: 'ko' }]);
@@ -184,6 +171,15 @@ describe('hydrate', () => {
     expect(Date.now() - useFacilityStore.getState().askedAt).toBeLessThan(5_000);
   });
 
+  // A launch is where a session begins. Stamped at store creation instead, the
+  // boundary would be whenever the module happened to load, and the turns she
+  // is sent would be filtered by luck rather than by this launch (continuity §2).
+  it('stamps the session start, so a restart returns her to zero', async () => {
+    useFacilityStore.setState({ sessionStartedAt: 1 });
+    await hydrate();
+    expect(Date.now() - useFacilityStore.getState().sessionStartedAt).toBeLessThan(5_000);
+  });
+
   it('degrades a corrupt soul blob to defaults rather than dying', async () => {
     await storage.set(KEYS.soul, '{{{not json');
     await hydrate();
@@ -191,7 +187,6 @@ describe('hydrate', () => {
     const s = useFacilityStore.getState();
     expect(s.hydrated).toBe(true);
     expect(s.lang).toBe('en');
-    expect(s.impressions).toEqual([]);
     expect(s.cleared).toBe(0);
     expect(s.visits).toBe(1);
   });
@@ -209,6 +204,37 @@ describe('hydrate', () => {
     expect(s.log).toEqual([]); // only the mangled store is lost
     expect(s.lang).toBe('ko'); // the soul blob survives its neighbour
     expect(s.cleared).toBe(2);
+  });
+
+  // A memory store that parses but is not the shape capMemory expects must not
+  // take the rest of the launch with it. Skipping the soul and transcript reads
+  // is not a blip: the next reply's saveSoul would then write `visits: 1` over
+  // the real history, and since the malformed store is never rewritten it
+  // would happen on every launch, permanently.
+  it('keeps the soul and the transcript when the memory store is malformed', async () => {
+    await storage.set(KEYS.memory, '{"facts":null,"verdicts":null,"threads":null,"pending":null}');
+    await soul({
+      lang: 'ko',
+      visits: 4,
+      day: today(),
+      lastOpen: Date.now() - 600_000,
+    });
+    await storage.set(KEYS.transcript, JSON.stringify([{ who: 'vera', text: 'no', t: 2 }]));
+
+    await hydrate();
+
+    const s = useFacilityStore.getState();
+    expect(s.hydrated).toBe(true);
+    expect(s.lang).toBe('ko');
+    expect(s.visits).toBe(5);
+    expect(s.log).toHaveLength(1);
+    expect(s.memory).toEqual(EMPTY_MEMORY); // she starts a stranger, and only that
+
+    // The proof it is not clobbered: the next write of the soul blob still
+    // carries the subject's real history rather than an empty one.
+    await useFacilityStore.getState().setLang('ko');
+    const written = JSON.parse((await storage.get(KEYS.soul)) as string);
+    expect(written.visits).toBe(5);
   });
 
   it('keeps her awake when the disk itself is unreadable', async () => {
@@ -243,40 +269,12 @@ describe('hydrate', () => {
     expect(useFacilityStore.getState().emotion).toBe('calm');
   });
 
-  // Finding 1, fix round 1: mem was persisted by speak() but never read back,
-  // so the rolling conversational memory silently reset on every cold start.
-  it('restores the rolling memory from a saved soul', async () => {
-    await soul({
-      mem: [{ you: 'hi', her: 'Noted.' }, { you: null, her: 'Hm.' }],
-      day: today(),
-    });
-    await hydrate();
-    expect(useFacilityStore.getState().mem).toEqual([
-      { you: 'hi', her: 'Noted.' },
-      { you: null, her: 'Hm.' },
-    ]);
-  });
-
-  it('degrades a missing, null, or non-array mem to [] without throwing', async () => {
-    await soul({ day: today() }); // mem missing entirely
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-
-    await soul({ mem: null, day: today() });
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-
-    await soul({ mem: 'not an array', day: today() });
-    await expect(hydrate()).resolves.toBeUndefined();
-    expect(useFacilityStore.getState().mem).toEqual([]);
-  });
-
-  it('caps a saved mem at six, keeping the newest, not the oldest', async () => {
-    const exchanges = Array.from({ length: 9 }, (_, i) => ({ you: `q${i}`, her: `a${i}` }));
-    await soul({ mem: exchanges, day: today() });
-    await hydrate();
-    expect(useFacilityStore.getState().mem).toEqual(exchanges.slice(-6));
-  });
+  // Deleted: 'restores the rolling memory from a saved soul', 'degrades a
+  // missing, null, or non-array mem to [] without throwing', and 'caps a
+  // saved mem at six, keeping the newest, not the oldest'. All three existed
+  // solely to pin the rolling `mem` field's round trip through hydrate. That
+  // field is gone — the session now reaches her as real turns, and her
+  // durable memory is the three-kind record covered under 'extraction' below.
 });
 
 describe('activate', () => {
@@ -420,7 +418,7 @@ describe('speak', () => {
     await storage.clearAll();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0,
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0,
     });
   });
 
@@ -490,8 +488,8 @@ describe('speak', () => {
   });
 
   // The cap is over the combined thread now, not her half of it.
-  it('keeps the newest sixty entries across both sides', async () => {
-    const seeded = Array.from({ length: 60 }, (_, i) => ({
+  it('keeps the newest two hundred entries across both sides', async () => {
+    const seeded = Array.from({ length: 200 }, (_, i) => ({
       who: 'vera' as const, text: `old ${i}`, t: i + 1,
     }));
     useFacilityStore.setState({ log: seeded });
@@ -500,25 +498,12 @@ describe('speak', () => {
     await useFacilityStore.getState().speak('subject_spoke', 'still here');
 
     const { log } = useFacilityStore.getState();
-    expect(log).toHaveLength(60);
+    expect(log).toHaveLength(200);
     expect(log.slice(-2).map((e) => [e.who, e.text])).toEqual([
       ['you', 'still here'],
       ['vera', 'Noted.'],
     ]);
     expect(log[0].text).toBe('old 2'); // the two oldest fell off, not one
-  });
-
-  it('appends a returned impression, capped and dated', async () => {
-    callLlm.mockResolvedValue(
-      '{"emotion":"calm","line":"Hm.","impression":"Deflects with questions","seal":true}',
-    );
-    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
-
-    const s = useFacilityStore.getState();
-    expect(s.impressions[s.impressions.length - 1]).toMatchObject({
-      text: 'Deflects with questions.',
-    });
-    expect(s.impressions[s.impressions.length - 1].at).toMatch(/^[A-Z]{3} \d{2}$/);
   });
 
   it('persists the soul blob in exactly the shape hydrate reads back', async () => {
@@ -530,13 +515,12 @@ describe('speak', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
     expect(saved.visits).toBe(3);
     expect(saved.lang).toBe('en');
     expect(saved.cleared).toBe(1);
-    expect(saved.mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
   });
 
   it('falls back to an authored line when the network is dark, without erroring', async () => {
@@ -561,15 +545,10 @@ describe('speak', () => {
     expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
   });
 
-  // The notice is not something she said, so it must not enter the memory she
-  // reasons from. She should be unaware the exchange happened at all.
-  it('keeps the notice out of her memory of the conversation', async () => {
-    useFacilityStore.setState({ mem: [{ you: 'earlier', her: 'Noted.' }] });
-    callLlm.mockRejectedValue(new AuthError());
-    await useFacilityStore.getState().speak('subject_spoke', 'hi');
-
-    expect(useFacilityStore.getState().mem).toEqual([{ you: 'earlier', her: 'Noted.' }]);
-  });
+  // Deleted: 'keeps the notice out of her memory of the conversation' pinned
+  // the old rolling `mem` field, which is gone. The equivalent guarantee for
+  // the memory that survives — a notice never reaching `memory.pending` — is
+  // covered by 'queues nothing when the credential was refused' below.
 
   it('clears the notice the moment she answers again', async () => {
     callLlm.mockRejectedValue(new AuthError());
@@ -615,30 +594,11 @@ describe('speak', () => {
     expect(useFacilityStore.getState().shown).toBe('Short.');
   });
 
-  // Finding 1, fix round 1: the regression guard. mem must not just be
-  // written to disk — it must come back out and reach the next context, or
-  // her short-term continuity resets every launch despite the persisted file.
-  it('round-trips mem through a restart into the next buildContext call', async () => {
-    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
-    await useFacilityStore.getState().speak('subject_spoke', 'where were you');
-
-    // Simulate a cold start: hydrate reads back exactly what speak persisted.
-    useFacilityStore.setState({ hydrated: false, mem: [] });
-    await useFacilityStore.getState().hydrate();
-
-    const { mem } = useFacilityStore.getState();
-    expect(mem).toEqual([{ you: 'where were you', her: 'Noted.' }]);
-
-    const ctx = buildContext({
-      now: new Date(),
-      lastOpen: null,
-      askedAt: Date.now(),
-      visits: 1,
-      mem,
-      impressions: [],
-    });
-    expect(ctx.recent_exchanges).toEqual([{ you: 'where were you', her: 'Noted.' }]);
-  });
+  // Deleted: 'round-trips mem through a restart' pinned the old rolling `mem`
+  // field's persistence, which is gone along with the field. The equivalent
+  // for what now persists her side of a session — the memory store — is
+  // covered by 'survives a kill: the queue is still there on the next
+  // launch' under 'extraction' below.
 
   // Finding 4, final review: hydrate guards every read, speak guarded neither
   // of its writes. A rejecting AsyncStorage escaped the try/finally into the
@@ -667,8 +627,8 @@ describe('speak', () => {
   it('gives up on a hung request, still speaks, and is not left deaf afterwards', async () => {
     const realCallLlm = jest.requireActual<typeof import('../../vera/llm')>('../../vera/llm').callLlm;
     const hung = () => new Promise<never>(() => {});
-    callLlm.mockImplementation((key: string, system: string, user: string) =>
-      realCallLlm(key, system, user, 300, hung));
+    callLlm.mockImplementation((key: string, system: string, turns: Turn[]) =>
+      realCallLlm(key, system, turns, 300, hung));
 
     const pending = useFacilityStore.getState().speak('subject_spoke', 'are you there');
     expect(useFacilityStore.getState().thinking).toBe(true);
@@ -710,7 +670,7 @@ describe('setLang', () => {
     await secure.remove();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
     });
   });
 
@@ -721,22 +681,18 @@ describe('setLang', () => {
 
   it('persists the soul blob in exactly the shape hydrate reads back', async () => {
     callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
-    useFacilityStore.setState({
-      visits: 5, cleared: 2,
-      impressions: [{ text: 'Deflects.', at: 'JUL 30' }],
-    });
+    useFacilityStore.setState({ visits: 5, cleared: 2 });
 
     await useFacilityStore.getState().setLang('ko');
 
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'imps', 'lang', 'lastOpen', 'mem', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
     );
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
     expect(saved.cleared).toBe(2);
-    expect(saved.imps).toEqual([{ text: 'Deflects.', at: 'JUL 30' }]);
   });
 
   // The regression this guards: a stale-shape write that hydrate cannot read
@@ -782,7 +738,7 @@ describe('the bank path', () => {
     await storage.clearAll();
     useFacilityStore.setState({
       apiKey: 'sk-ant-api03-abcdefghijklmnop',
-      mem: [], askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, authFails: 0,
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, authFails: 0,
     });
   });
 
@@ -801,15 +757,15 @@ describe('the bank path', () => {
     expect(s.thinking).toBe(false);
   });
 
-  // The transcript keeps it and her rolling memory keeps it, so the next real
-  // reply knows what she opened with. Nothing was revealed, so no impression.
-  it('logs the line and remembers it, but files nothing', async () => {
+  // The transcript keeps it, so the next real reply knows what she opened
+  // with. Nothing was revealed, so nothing is queued for extraction (the
+  // queue side is covered by 'queues nothing for a bank-answered stimulus'
+  // under 'extraction' below).
+  it('logs the line, but files nothing', async () => {
     await useFacilityStore.getState().speak('open');
 
     const s = useFacilityStore.getState();
     expect(s.log.map((e) => e.who)).toEqual(['vera']);
-    expect(s.mem).toEqual([{ you: null, her: s.line }]);
-    expect(s.impressions).toEqual([]);
 
     const raw = await storage.get(KEYS.transcript);
     expect(JSON.parse(raw as string)).toEqual(s.log);
@@ -841,5 +797,419 @@ describe('the bank path', () => {
     await live;
 
     expect(useFacilityStore.getState().line).toBe('Noted.');
+  });
+});
+
+// The inspector is only worth having if it shows the whole request. Both calls
+// go out; both must be readable, and neither may stand on the other.
+describe('the prompt record', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
+  const OK = '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    callLlm.mockReset();
+    useFacilityStore.setState({
+      apiKey: KEY, memory: EMPTY_MEMORY,
+      lastPrompt: null, lastExtract: null,
+      sessionStartedAt: 1, askedAt: Date.now(),
+    });
+  });
+
+  it('carries every turn that went to the provider, not only the composed last one', async () => {
+    useFacilityStore.setState({
+      log: [
+        { who: 'you', text: 'are you there', t: 10 },
+        { who: 'vera', text: 'Regrettably.', t: 11 },
+      ],
+    });
+    callLlm.mockResolvedValue('{"emotion":"amused","line":"Barely."}');
+
+    await useFacilityStore.getState().speak('subject_spoke', 'did you miss me');
+
+    const sent: Turn[] = callLlm.mock.calls[0][2];
+    const record = useFacilityStore.getState().lastPrompt;
+    expect(record?.turns).toEqual(sent);
+    expect(record?.turns?.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
+    expect(record?.turns?.[0].text).toBe('are you there');
+    expect(record?.turns?.[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+  });
+
+  it('records no turns at all for a stimulus answered from the bank', async () => {
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().lastPrompt)
+      .toMatchObject({ outcome: 'bank', system: null, turns: null });
+  });
+
+  // The call that writes her file is the one hardest to debug by watching her,
+  // so it is recorded on every path it can take.
+  it('records the extraction call when it lands', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue(OK);
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('applied');
+    expect(x?.system).toBe(EXTRACT_SYSTEM);
+    expect(x?.user).toContain('hi');
+    expect(x?.raw).toBe(OK);
+    expect(x?.route).toBe('ANTHROPIC');
+    expect(x?.model).toBe('claude-sonnet-4-5');
+  });
+
+  it('records the extraction call when the request never answered', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('failed');
+    expect(x?.raw).toBeNull();
+    expect(x?.user).toContain('hi');
+  });
+
+  it('records the extraction call when the reply cannot be read', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue('the model was unwell today');
+
+    await useFacilityStore.getState().extractNow();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('unparseable');
+    expect(x?.raw).toBe('the model was unwell today');
+  });
+
+  // A throw after the reply landed is not a reply that never came. Discarding
+  // the raw there erases the one distinction this screen exists to preserve.
+  it('keeps a reply that arrived when the failure came after it', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue(OK);
+    // Thrown from applyExtraction's side of the call, after parseExtraction has
+    // already read the reply.
+    const capped = jest.spyOn(Date, 'now').mockImplementationOnce(() => {
+      throw new Error('the clock went out');
+    });
+
+    await useFacilityStore.getState().extractNow();
+    capped.mockRestore();
+
+    const x = useFacilityStore.getState().lastExtract;
+    expect(x?.outcome).toBe('failed');
+    expect(x?.raw).toBe(OK);
+  });
+
+  // The reason the two have separate slots: extraction fires seconds after a
+  // reply, and one shared field would erase the reply prompt before it could
+  // be read.
+  it('keeps her reply prompt readable alongside the extraction that followed it', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    callLlm.mockResolvedValue(OK);
+    await useFacilityStore.getState().extractNow();
+
+    const s = useFacilityStore.getState();
+    expect(s.lastPrompt?.outcome).toBe('model');
+    expect(s.lastPrompt?.turns?.[0].text).toContain('THE SUBJECT SAYS: hello');
+    expect(s.lastExtract?.outcome).toBe('applied');
+  });
+
+  // The guard that matters, and the only one that can catch the regression
+  // worth catching: the records are built HERE, out of live state that has the
+  // credential sitting next to it. buildRequest puts the key in the headers and
+  // never in the prompt — if that ever stops being true, or a field is added
+  // that carries the key, the subject's key is printed on a screen they can
+  // screenshot. Serialising the whole record is the point: it covers every
+  // field a record has, including ones added after this was written.
+  it('never writes the credential into either record', async () => {
+    const SECRET = 'sk-ant-api03-SECRETSECRETSECRETSECRET';
+    useFacilityStore.setState({
+      apiKey: SECRET,
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    callLlm.mockResolvedValue(OK);
+    await useFacilityStore.getState().extractNow();
+
+    const s = useFacilityStore.getState();
+    // both records were actually written — a null record trivially contains no
+    // key, and would make this pass while guarding nothing
+    expect(s.lastPrompt?.outcome).toBe('model');
+    expect(s.lastExtract?.outcome).toBe('applied');
+
+    expect(JSON.stringify(s.lastPrompt)).not.toContain(SECRET);
+    expect(JSON.stringify(s.lastExtract)).not.toContain(SECRET);
+    // and not a fragment of it either, however it were sliced in
+    expect(JSON.stringify(s.lastPrompt)).not.toContain('SECRETSECRET');
+    expect(JSON.stringify(s.lastExtract)).not.toContain('SECRETSECRET');
+  });
+});
+
+describe('extraction', () => {
+  const KEY = 'sk-ant-api03-abcdefghijklmnop';
+
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    callLlm.mockReset();
+    useFacilityStore.setState({
+      apiKey: KEY, memory: { facts: [], verdicts: [], threads: [], pending: [] },
+    });
+  });
+
+  it('queues a finished exchange without calling the model', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'hello', her: 'Noted.' }]);
+    expect(callLlm).toHaveBeenCalledTimes(1);
+  });
+
+  // Nothing was revealed by a line she had already written, and a refusal is
+  // not an exchange at all — neither is material for the file (continuity §4.1).
+  it('queues nothing for a bank-answered stimulus', async () => {
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().memory.pending).toEqual([]);
+  });
+
+  it('queues nothing when the credential was refused', async () => {
+    callLlm.mockRejectedValue(new AuthError());
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    expect(useFacilityStore.getState().memory.pending).toEqual([]);
+  });
+
+  // The queue is not a view of the transcript: the log rolls at its own cap and
+  // must not take unread exchanges with it (continuity §4.1).
+  it('queues the exchange even with the transcript already at its cap', async () => {
+    useFacilityStore.setState({
+      log: Array.from({ length: 200 }, (_, i) => ({
+        who: 'vera' as const, text: `old ${i}`, t: i + 1,
+      })),
+    });
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'still here');
+
+    expect(useFacilityStore.getState().log).toHaveLength(200);
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'still here', her: 'Noted.' }]);
+  });
+
+  it('drains the queue and writes memory', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue('{"facts":[{"text":"works in software","keys":["work"],"durable":true}],"verdicts":[],"threads":[],"resolve":[],"retire":[]}');
+
+    await useFacilityStore.getState().extractNow();
+
+    const m = useFacilityStore.getState().memory;
+    expect(m.facts[0].text).toBe('works in software');
+    expect(m.pending).toEqual([]);
+  });
+
+  // Extraction takes seconds and she is not deaf while it runs: the subject can
+  // finish another exchange before the extractor answers. Draining the whole
+  // queue would throw that one away unread, which is the exact loss the queue
+  // exists to prevent (continuity §4.1).
+  it('drains only the batch it read, keeping whatever queued while it ran', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    const later = { you: 'and again', her: 'Mm.' };
+    callLlm.mockImplementation(async () => {
+      const m = useFacilityStore.getState().memory;
+      useFacilityStore.setState({ memory: { ...m, pending: [...m.pending, later] } });
+      return '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+    });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([later]);
+  });
+
+  // The other end of the same race: the queue can also be shorter than what was
+  // read — the 40-cap dropping from the front, or a remount's loadMemory
+  // replacing memory mid-flight. Dropping a fixed count then eats an exchange
+  // that was never read, so the batch must still be sitting at the head.
+  it('leaves the queue alone when it is no longer the queue it read', async () => {
+    const batch = [{ you: 'hi', her: 'Barely.' }, { you: 'again', her: 'Mm.' }];
+    useFacilityStore.setState({ memory: { ...EMPTY_MEMORY, pending: batch } });
+    const survivor = { you: 'third', her: 'Hm.' };
+    callLlm.mockImplementation(async () => {
+      useFacilityStore.setState({ memory: { ...EMPTY_MEMORY, pending: [survivor] } });
+      return '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}';
+    });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([survivor]);
+  });
+
+  // Bookkeeping is not a reason to reach for a credential she does not have.
+  it('does not call the model while she is dormant, and keeps the queue', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ apiKey: '', memory: { ...EMPTY_MEMORY, pending } });
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(callLlm).not.toHaveBeenCalled();
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
+  });
+
+  it('keeps the queue when extraction fails, for the next trigger', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending } });
+    callLlm.mockRejectedValue(new Error('Network request failed'));
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
+  });
+
+  it('keeps the queue when extraction returns junk', async () => {
+    const pending = [{ you: 'hi', her: 'Barely.' }];
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending } });
+    callLlm.mockResolvedValue('the model was unwell today');
+
+    await useFacilityStore.getState().extractNow();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual(pending);
+  });
+
+  it('does nothing at all with an empty queue', async () => {
+    await useFacilityStore.getState().extractNow();
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  // The queue is independent of display and of erasure (continuity §4.1).
+  it('survives a transcript erasure', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    await useFacilityStore.getState().clearTranscript();
+    expect(useFacilityStore.getState().memory.pending).toHaveLength(1);
+  });
+
+  it('survives a kill: the queue is still there on the next launch', async () => {
+    useFacilityStore.setState({
+      memory: { facts: [], verdicts: [], threads: [], pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    await useFacilityStore.getState().saveMemory();
+
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending: [] } });
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory.pending).toEqual([{ you: 'hi', her: 'Barely.' }]);
+  });
+
+  it('migrates saved impressions into verdicts on first load, and not twice', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(1);
+
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(1);
+  });
+
+  // The case above cannot fail on its own — the same one impression migrates to
+  // the same one verdict however often it runs. This is the one that bites:
+  // migration mints v_1.. of its own accord, so a second run over a live store
+  // would collide with, and overwrite, everything filed since (continuity §7).
+  it('never migrates over a store that already exists', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+    await useFacilityStore.getState().loadMemory();
+
+    const migrated = useFacilityStore.getState().memory;
+    const filed: Verdict = { id: 'v_2', text: 'Evasive.', firstAt: 1, at: 1, count: 1 };
+    useFacilityStore.setState({ memory: { ...migrated, verdicts: [...migrated.verdicts, filed] } });
+    await useFacilityStore.getState().saveMemory();
+
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts.map((v) => v.text))
+      .toEqual(['Deflects.', 'Evasive.']);
+  });
+
+  // A subject with nothing on file still gets a store written, or every launch
+  // would re-enter the migration path forever.
+  it('writes the store even when there was nothing to migrate', async () => {
+    await useFacilityStore.getState().loadMemory();
+    expect(useFacilityStore.getState().memory.verdicts).toEqual([]);
+    expect(await storage.get(KEYS.memory)).not.toBeNull();
+  });
+
+  // Three situations that used to be one branch. Only the first of them —
+  // a store that genuinely is not there — may migrate and write; the other two
+  // may have a real file underneath them, and a write would destroy it (§8).
+  it('migrates and writes when the store is genuinely absent', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ imps: [{ text: 'Deflects.', at: 'JUL 30' }] }));
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory.verdicts.map((v) => v.text)).toEqual(['Deflects.']);
+    expect(await storage.get(KEYS.memory)).not.toBeNull();
+  });
+
+  it('leaves an unparseable store on disk rather than migrating over it', async () => {
+    const bytes = '{"facts":[{"id":"f_1","text":"works in software"';
+    await storage.set(KEYS.memory, bytes);
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    // State alone would not prove it: the truncated file may still be
+    // recoverable by hand, and an empty store written over it is permanent.
+    expect(await storage.get(KEYS.memory)).toBe(bytes);
+  });
+
+  it('leaves the store alone when the read itself fails', async () => {
+    const bytes = JSON.stringify({
+      facts: [], verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }],
+      threads: [], pending: [],
+    });
+    await storage.set(KEYS.memory, bytes);
+    const failing = jest.spyOn(storage, 'get').mockRejectedValue(new Error('database is locked'));
+
+    await useFacilityStore.getState().loadMemory();
+
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    failing.mockRestore();
+    // One locked read on one launch must cost her the session, not the file.
+    expect(await storage.get(KEYS.memory)).toBe(bytes);
+  });
+});
+
+describe('erasure', () => {
+  beforeEach(async () => {
+    await storage.clearAll();
+    reset();
+    useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending: [] } });
+  });
+
+  it('files a verdict the first time, without calling the model', async () => {
+    await useFacilityStore.getState().clearTranscript();
+    const v = useFacilityStore.getState().memory.verdicts;
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ id: 'v_erasure', count: 1 });
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  // count drives the escalation on its own, under §5's scoring.
+  it('bumps the same entry after, never creating a second copy', async () => {
+    await useFacilityStore.getState().clearTranscript();
+    await useFacilityStore.getState().clearTranscript();
+    await useFacilityStore.getState().clearTranscript();
+    const v = useFacilityStore.getState().memory.verdicts;
+    expect(v).toHaveLength(1);
+    expect(v[0].count).toBe(3);
   });
 });

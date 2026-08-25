@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 
-// Four ordinary stores. Modules 01 and 02 each own their own — neither has
+// Five ordinary stores. Modules 01 and 02 each own their own — neither has
 // anything to do with her soul or the transcript, and she is not told what is
-// in either of them.
+// in either of them. Her memory is its own store: it outgrew the soul blob
+// when it stopped being a flat list of impressions (continuity §3).
 export const KEYS = {
   soul: 'facility.v2.soul',
   transcript: 'facility.v2.transcript',
+  memory: 'facility.v2.memory',
   organism: 'facility.mod01.organism',
   identity: 'facility.mod02.identity',
 } as const;

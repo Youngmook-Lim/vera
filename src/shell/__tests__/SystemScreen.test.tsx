@@ -32,7 +32,7 @@ const RAW_KEY = 'sk-ant-api03-abcd1234';
 beforeEach(() =>
   useFacilityStore.setState({
     view: 'sys', lang: 'en', apiKey: RAW_KEY, authFails: 0,
-    impressions: [{ text: 'Deflects.', at: 'JUL 30' }],
+    memory: { facts: [], verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }], threads: [], pending: [] },
     keyPanelOpen: false,
   }));
 

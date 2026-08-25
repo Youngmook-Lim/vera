@@ -5,6 +5,8 @@
 // door. DeepSeek stays because its keys cannot be refused — `sk-` + 32 hex
 // satisfies the openai pattern too — so without a route of its own it would
 // silently mis-route and fail at OpenAI instead.
+import type { Turn } from './messages';
+
 export type ProviderKind = 'anthropic' | 'oai' | 'gemini';
 
 export interface Provider {
@@ -84,7 +86,7 @@ export interface LlmRequest {
 export const buildRequest = (
   raw: string,
   system: string,
-  user: string,
+  turns: Turn[],
   maxTokens: number,
 ): LlmRequest => {
   const key = String(raw ?? '').trim();
@@ -103,7 +105,7 @@ export const buildRequest = (
         model: provider.model,
         max_tokens: maxTokens,
         system,
-        messages: [{ role: 'user', content: user }],
+        messages: turns.map((t) => ({ role: t.role, content: t.text })),
       },
     };
   }
@@ -114,7 +116,11 @@ export const buildRequest = (
       headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
       body: {
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
+        // Gemini names the assistant role `model`.
+        contents: turns.map((t) => ({
+          role: t.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: t.text }],
+        })),
         generationConfig: { maxOutputTokens: maxTokens },
       },
     };
@@ -128,7 +134,7 @@ export const buildRequest = (
       max_tokens: maxTokens,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: user },
+        ...turns.map((t) => ({ role: t.role, content: t.text })),
       ],
     },
   };

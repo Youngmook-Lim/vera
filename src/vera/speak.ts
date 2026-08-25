@@ -16,25 +16,27 @@ export type Trigger = BankTrigger | 'subject_spoke';
 export interface SpeechResult {
   emotion: EmotionKey;
   line: string;
-  impression: string | null;
 }
 
-export const buildSystemPrompt = (lang: Lang): string =>
+export const buildSystemPrompt = (lang: Lang, memoryMd: string): string =>
   [
     'This is your SOUL.md. It defines who you are. Follow it exactly, in every reply.',
     SOUL_MD,
-    'The context holds your MEMORY.md conclusions and, sometimes, one genuinely notable '
-      + 'circumstance. Absence of a fact means nothing worth mentioning happened; say something '
-      + 'else. Do not open a reply with a number, a count, or the time.',
-    'If this exchange revealed something worth keeping about the subject, add an "impression" '
-      + 'field: a clipped file entry in your voice, HARD MAXIMUM 9 WORDS, no compliments, no '
-      + 'second clause. Example: "Answers protocol reminders instantly. Suspect anxiety, not '
-      + 'diligence." Omit the field entirely when nothing was revealed.',
+    // After SOUL.md, always: a provider-side prompt cache only helps if the
+    // static document is the stable prefix (continuity §2).
+    'This is MEMORY.md, your file on this subject. It is what you know and what '
+      + 'you have concluded. Use it the way you would use something you remember, '
+      + 'not something you are reading aloud.',
+    memoryMd,
+    'The messages before this are the conversation you are already in. You said '
+      + 'the assistant turns. Continue it; do not greet them again.',
+    'Anything under CONTEXT describes this moment. Absence of a fact means '
+      + 'nothing worth mentioning happened; say something else. Do not open a '
+      + 'reply with a number, a count, or the time.',
     lang === 'ko'
       ? 'Reply in Korean, using formal 존댓말 with the same deadpan register.'
       : 'Reply in English.',
-    'Return ONLY minified JSON: {"emotion":"<one of your states>","line":"<your reply>",'
-      + '"impression":"<optional>"}',
+    'Return ONLY minified JSON: {"emotion":"<one of your states>","line":"<your reply>"}',
   ]
     .filter(Boolean)
     .join('\n');
@@ -48,35 +50,36 @@ export const buildUserPrompt = (said: string, ctx: SpeakContext): string =>
     `CONTEXT: ${JSON.stringify(ctx)}`,
   ].join('\n');
 
-// Nine words, one clause, no trailing punctuation pile-up. She writes file
-// entries, not sentences.
-export const clampImpression = (raw: string): string =>
-  `${String(raw).trim().split(/\s+/).slice(0, 9).join(' ').replace(/[.,;:!?]+$/, '')}.`;
-
-// A clamped impression is only worth keeping if it actually says something.
-// Unicode-aware so a Korean impression isn't nulled alongside punctuation noise.
-const HAS_CONTENT = /[\p{L}\p{N}]/u;
-
 export const parseSpeech = (raw: string): SpeechResult | null => {
-  const match = String(raw ?? '').match(/\{[\s\S]*\}/);
+  const text = String(raw ?? '');
+  const match = text.match(/\{[\s\S]*\}/);
   if (!match) return null;
 
-  let parsed: Record<string, unknown>;
+  let parsed: Record<string, unknown> | undefined;
   try {
     parsed = JSON.parse(match[0]) as Record<string, unknown>;
   } catch {
-    return null;
+    // The greedy span can run from a stray brace ahead of the real object all
+    // the way to its close; narrow to the first opening brace that parses.
+    for (const open of text.matchAll(/\{/g)) {
+      const candidate = text.slice(open.index ?? 0).match(/\{[\s\S]*\}/);
+      if (!candidate) continue;
+      try {
+        parsed = JSON.parse(candidate[0]) as Record<string, unknown>;
+        break;
+      } catch {
+        continue;
+      }
+    }
   }
+  if (!parsed) return null;
 
   const line = typeof parsed.line === 'string' ? parsed.line.trim() : '';
   if (!line) return null;
 
-  const impressionRaw = typeof parsed.impression === 'string' ? parsed.impression.trim() : '';
-  const clampedImpression = impressionRaw ? clampImpression(impressionRaw) : null;
   return {
     emotion: isEmotionKey(parsed.emotion) ? parsed.emotion : 'calm',
     line,
-    impression: clampedImpression && HAS_CONTENT.test(clampedImpression) ? clampedImpression : null,
   };
 };
 

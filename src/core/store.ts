@@ -3,11 +3,18 @@ import { create } from 'zustand';
 import type { Lang } from './i18n';
 import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
+import { applyExtraction } from '../vera/apply';
 import { pick } from '../vera/bank';
-import { buildContext, type Exchange } from '../vera/context';
+import { buildContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
+import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
+import { capMemory, EMPTY_MEMORY, ERASURE_ID, ERASURE_TEXT, type Memory } from '../vera/memory';
+import { composeMemoryMd } from '../vera/memoryDoc';
+import { buildMessages, type Turn } from '../vera/messages';
+import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
+import { selectMemories } from '../vera/select';
 import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
@@ -31,17 +38,16 @@ export interface LogEntry {
   code?: SystemCode;
 }
 
-export interface Impression {
-  text: string;
-  at: string;
-}
-
 // The last reply, as it actually happened. A developer's window onto the
 // request, in the same spirit as the MEMORY.md screen: nothing summarised,
 // nothing withheld. Never persisted — it describes this session only, and it
 // would be the largest thing on disk by an order of magnitude.
 //
-// `system` and `user` are null when she answered from the bank, which is
+// `turns` is the conversation exactly as it was sent — the whole alternating
+// array, of which the composed prompt is only the last entry. Recording that
+// entry alone hid every earlier turn that went to the provider.
+//
+// `system` and `turns` are null when she answered from the bank, which is
 // itself the answer to "why did that reply look canned".
 export interface PromptRecord {
   at: number;
@@ -49,26 +55,46 @@ export interface PromptRecord {
   route: string;
   model: string;
   system: string | null;
-  user: string | null;
+  turns: Turn[] | null;
   raw: string | null;
   outcome: 'model' | 'fallback' | 'bank';
 }
 
-const LOG_CAP = 60;
-const IMPRESSION_CAP = 24;
-const MEM_CAP = 6;
+// The other call. Extraction reads finished exchanges into her file, is never
+// visible from the stage, and fires seconds after a reply — which is why it
+// has its own slot rather than sharing lastPrompt: one field would overwrite
+// her reply prompt before it could be read. Session-only, like the other.
+//
+// `outcome` is what became of the answer: `applied` when it parsed and the
+// file was updated, `unparseable` when a reply arrived that could not be read,
+// `failed` when the call threw before answering. A failed extraction is the
+// one most worth looking at, so it is recorded rather than swallowed.
+export interface ExtractRecord {
+  at: number;
+  route: string;
+  model: string;
+  system: string;
+  user: string;
+  raw: string | null;
+  outcome: 'applied' | 'unparseable' | 'failed';
+}
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const mmmdd = (t: number): string => {
-  const d = new Date(t);
-  return `${MONTHS[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
-};
+const LOG_CAP = 200;
+// How many finished exchanges are allowed to queue before she reads them
+// (continuity §4.2). Small enough that a long session is read while it is still
+// running, large enough that most exchanges cost nothing.
+const EXTRACT_BATCH = 6;
 
 // speak()'s re-entrancy guard and the typewriter's in-flight timer both live
 // outside the store: plain module state, not React state, so an overlapping
 // call can gate and cancel synchronously without waiting on a state update.
 let speaking = false;
 let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
+
+// Guarded like speak(): only one extraction at a time (continuity §4.2). Three
+// triggers can fire it, and two of them can arrive together — a launch that
+// finds a queue, backgrounded a second later.
+let extracting = false;
 
 // The return greeting fires once per app session, and this flag is why it is
 // module state rather than a store field or React state: it survives every
@@ -79,15 +105,13 @@ let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
 let greeted = false;
 
 // The one shape written to KEYS.soul, and the one place that writes it — four
-// callers persisting seven fields by hand is how the writers drifted apart in
+// callers persisting five fields by hand is how the writers drifted apart in
 // the first place.
 interface SoulBlob {
-  mem: Exchange[];
   visits: number;
   day: string;
   lastOpen: number;
   lang: Lang;
-  imps: Impression[];
   cleared: number;
 }
 
@@ -96,12 +120,10 @@ interface SoulBlob {
 // the `void speak(...)` call sites as an unhandled rejection.
 const saveSoul = async (s: FacilityState): Promise<void> => {
   const blob: SoulBlob = {
-    mem: s.mem,
     visits: s.visits,
     day: new Date().toDateString(),
     lastOpen: Date.now(),
     lang: s.lang,
-    imps: s.impressions,
     cleared: s.cleared,
   };
   try {
@@ -125,18 +147,21 @@ interface FacilityState {
   waking: boolean;
 
   log: LogEntry[];
-  impressions: Impression[];
   // Kept only so MEMORY.md can print `erasures: N` on screen. She is never
   // told the number and never reacts to an erasure.
   cleared: number;
   visits: number;
   lastOpen: number | null;
 
-  // The rolling memory of the last six exchanges, fed to buildContext as
-  // recent_exchanges. askedAt is when she last spoke, used to tell whether
-  // the subject took their time replying.
-  mem: Exchange[];
+  // askedAt is when she last spoke, used to tell whether the subject took
+  // their time replying.
   askedAt: number;
+
+  // Her file, and the exchanges not yet read into it (continuity §3, §4.1).
+  memory: Memory;
+  // Stamped by hydrate on a cold start. Messages are the log entries at or
+  // after it, which is how restarting returns her to zero (continuity §2).
+  sessionStartedAt: number;
 
   // Consecutive refusals of the credential. Not persisted: a fresh launch
   // gives the key the benefit of the doubt, and she never goes dormant for it
@@ -145,6 +170,8 @@ interface FacilityState {
 
   // The last reply's request, for the prompt inspector. Session-only.
   lastPrompt: PromptRecord | null;
+  // The last extraction's request, kept apart from it for the reason above.
+  lastExtract: ExtractRecord | null;
 
   // Set only while the credential is being refused. The one thing the app says
   // in its own voice, because a bad key is a configuration problem the subject
@@ -169,6 +196,9 @@ interface FacilityState {
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
+  loadMemory: () => Promise<void>;
+  saveMemory: () => Promise<void>;
+  extractNow: () => Promise<void>;
 }
 
 export const useFacilityStore = create<FacilityState>((set, get) => ({
@@ -185,16 +215,18 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   waking: false,
 
   log: [],
-  impressions: [],
   cleared: 0,
   visits: 1,
   lastOpen: null,
 
-  mem: [],
   askedAt: Date.now(),
+
+  memory: EMPTY_MEMORY,
+  sessionStartedAt: Date.now(),
 
   authFails: 0,
   lastPrompt: null,
+  lastExtract: null,
   systemNotice: null,
 
   cabinetOpen: false,
@@ -239,6 +271,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const woken = { apiKey: key, emotion: key ? ('calm' as const) : ('dormant' as const) };
 
     try {
+      // Her file is its own store — read first, so that a mangled soul blob
+      // costs her the visit count and never what she knows. Inside the try
+      // because hydrate must never throw: an escape here would leave the boot
+      // effect on an unhandled rejection with `hydrated` false forever, which
+      // on screen is the splash colour and nothing else.
+      await get().loadMemory();
+
       let soulRaw: string | null = null;
       let logRaw: string | null = null;
       try {
@@ -284,11 +323,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         ...woken,
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
-        impressions: Array.isArray(saved?.imps) ? (saved.imps as Impression[]).slice(-IMPRESSION_CAP) : [],
-        // The rolling short-term memory, same guard-then-cap treatment as
-        // impressions above — a corrupt or oversized blob degrades to [] or
-        // to its newest six, never a throw.
-        mem: Array.isArray(saved?.mem) ? (saved.mem as Exchange[]).slice(-MEM_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         visits,
         lastOpen,
@@ -296,12 +330,19 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // this, a subject who takes their time typing the first line of the
         // session gets `they_took_their_time` about nothing.
         askedAt: now,
+        // A launch is where the session begins. Stamped at store creation it
+        // would fall wherever the module happened to load, and the turns she
+        // is sent would be filtered by luck rather than by this launch.
+        sessionStartedAt: now,
       });
     } catch {
       // Now unreachable — every read and every parse above is guarded — but
       // kept so hydrate can never throw. It boots her on the key regardless:
       // a bad launch may cost the saved state, never the credential.
-      set({ hydrated: true, view: 'stage', ...woken, askedAt: Date.now() });
+      set({
+        hydrated: true, view: 'stage', ...woken,
+        askedAt: Date.now(), sessionStartedAt: Date.now(),
+      });
     }
   },
 
@@ -395,30 +436,30 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           lastOpen: s.lastOpen,
           askedAt: s.askedAt,
           visits: s.visits,
-          mem: s.mem,
-          impressions: s.impressions.map((imp) => imp.text),
         });
+        const memoryMd = composeMemoryMd(selectMemories(s.memory, said ?? '', Date.now()));
 
         outcome = await runSpeech({
           key: s.apiKey,
           said: said ?? '',
+          turns: buildMessages(s.log, s.sessionStartedAt),
           lang: s.lang,
           context,
-          call: (system, user) => callLlm(get().apiKey, system, user),
+          memoryMd,
+          call: (system, turns) => callLlm(get().apiKey, system, turns),
         });
       } else {
         // Nothing was revealed by a greeting she had already written, and
         // nothing was sent, which is what the inspector reports.
         outcome = {
           ...pick(trigger, get().lang),
-          impression: null,
           authFailed: false,
           source: 'fallback',
-          debug: { system: null, user: null, raw: null },
+          debug: { system: null, turns: null, raw: null },
         };
       }
 
-      const { emotion, line, impression, authFailed } = outcome;
+      const { emotion, line, authFailed } = outcome;
 
       // The record of what actually happened, for the prompt inspector. A raw
       // reply present alongside a `fallback` source means the model answered
@@ -432,7 +473,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           route: route?.label ?? '',
           model: route?.model ?? '',
           system: outcome.debug.system,
-          user: outcome.debug.user,
+          turns: outcome.debug.turns,
           raw: outcome.debug.raw,
           outcome: live ? outcome.source : 'bank',
         },
@@ -448,14 +489,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const log = [...get().log, notice
         ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
         : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
-      const impressions = impression
-        ? [...get().impressions, { text: impression, at: mmmdd(Date.now()) }].slice(-IMPRESSION_CAP)
-        : get().impressions;
-      // A notice is not something she said, so it never enters her memory of
-      // the conversation. She is unaware the exchange happened at all.
-      const mem = notice
-        ? get().mem
-        : [...get().mem, { you: said ?? null, her: line }].slice(-MEM_CAP);
 
       // A refusal leaves the key exactly where it is — she is never sent
       // dormant for it, and the tally only tells ACCESS which row to mark
@@ -470,7 +503,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         emotion: notice ? 'dormant' : emotion,
         line: notice ? '' : line,
         systemNotice: notice,
-        log, impressions, mem, askedAt: Date.now(),
+        log, askedAt: Date.now(),
         authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
       });
       try {
@@ -493,6 +526,18 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         typewriterHandle = setTimeout(() => tick(1), 16);
       }
 
+      // Queued for extraction, independent of the transcript so an erasure or
+      // the log cap cannot destroy material that was never read (§4.1). A
+      // notice is not an exchange, and the bank path revealed nothing.
+      if (live && !notice) {
+        set({ memory: capMemory({
+          ...get().memory,
+          pending: [...get().memory.pending, { you: said ?? null, her: line }],
+        }) });
+        await get().saveMemory();
+        if (get().memory.pending.length >= EXTRACT_BATCH) void get().extractNow();
+      }
+
       await saveSoul(get());
     } finally {
       set({ thinking: false });
@@ -500,21 +545,40 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
   },
 
-  // The wording is the only thing you can burn. Her impressions live in
-  // MEMORY.md, untouched here (spec §8) — erasing the transcript changes her
-  // diction, never her verdict. She is not told it happened: the counter below
-  // exists for MEMORY.md's `erasures: N` line and nothing else.
+  // The wording is the only thing you can burn. What she's learned — her
+  // facts, verdicts and threads — lives in MEMORY.md, mostly untouched here
+  // (spec §8) — erasing the transcript changes her diction, not the verdicts
+  // already filed. The one exception is
+  // below: she files a verdict about the erasure itself, though she is never
+  // told it happened. The counter here exists for MEMORY.md's `erasures: N`
+  // line and nothing else.
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
     // open on a later visit to the log.
-    set({ log: [], mem: [], cleared, confirmingClear: false });
+    set({ log: [], cleared, confirmingClear: false });
     try {
       await storage.remove(KEYS.transcript);
     } catch {
       // the wording is gone from state either way; a stale file loses to the
       // next write, and a rejection must not reach the void-call site
     }
+
+    // She is not told at the time, and the extractor only ever sees exchanges,
+    // so without this she would never learn it happened (continuity §4.4).
+    const now = Date.now();
+    const existing = get().memory.verdicts.find((v) => v.id === ERASURE_ID);
+    set({ memory: capMemory({
+      ...get().memory,
+      verdicts: existing
+        ? get().memory.verdicts.map((v) =>
+          v.id === ERASURE_ID ? { ...v, count: v.count + 1, at: now } : v)
+        : [...get().memory.verdicts, {
+          id: ERASURE_ID, text: ERASURE_TEXT, firstAt: now, at: now, count: 1,
+        }],
+    }) });
+
+    await get().saveMemory();
     await saveSoul(get());
   },
 
@@ -523,5 +587,126 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
     await saveSoul(get());
+  },
+
+  loadMemory: async (): Promise<void> => {
+    let raw: string | null;
+    try {
+      raw = await storage.get(KEYS.memory);
+    } catch {
+      // The read failed, which says nothing about what is on the disk — a
+      // locked database or a moment of disk pressure leaves a perfectly intact
+      // file behind it. She starts a stranger for this session and nothing is
+      // written: migrating here would put an empty store over the real one, and
+      // that is not a degraded launch, it is the file gone (§8).
+      set({ memory: EMPTY_MEMORY });
+      return;
+    }
+
+    if (raw !== null) {
+      try {
+        set({ memory: capMemory({ ...EMPTY_MEMORY, ...(JSON.parse(raw) as Memory) }) });
+      } catch {
+        // There are bytes here and they cannot be used: truncated JSON, or it
+        // parsed and is not the shape — a null where an array belongs spreads
+        // over EMPTY_MEMORY and capMemory slices it. Both degrade and neither
+        // writes, since a file that will not read today may still be readable
+        // by hand. She starts a stranger — and only that. Throwing here would
+        // cost hydrate the soul blob and the transcript behind it, and the next
+        // saveSoul would write an empty history over the real one, on every
+        // launch (§8).
+        set({ memory: EMPTY_MEMORY });
+      }
+      return;
+    }
+
+    // First launch after the update: the old impressions become verdicts, once
+    // (continuity §7). Writing the store immediately is the guard against a
+    // second run — a store that exists is never migrated again, which matters
+    // because migration mints its own v_1.. independently of nextId. The write
+    // happens even when there was nothing to migrate, or a subject with no
+    // impressions would re-enter this path on every launch forever.
+    let imps: StoredImpression[] = [];
+    try {
+      const soulRaw = await storage.get(KEYS.soul);
+      const soul = soulRaw ? (JSON.parse(soulRaw) as Record<string, unknown>) : null;
+      imps = Array.isArray(soul?.imps) ? (soul.imps as StoredImpression[]) : [];
+    } catch {
+      imps = [];
+    }
+
+    set({ memory: { ...EMPTY_MEMORY, verdicts: migrateImpressions(imps, Date.now()) } });
+    await get().saveMemory();
+  },
+
+  saveMemory: async (): Promise<void> => {
+    try {
+      await storage.set(KEYS.memory, JSON.stringify(get().memory));
+    } catch {
+      // this batch is lost; the session continues (§8)
+    }
+  },
+
+  extractNow: async (): Promise<void> => {
+    if (extracting) return;
+    const s = get();
+    if (!s.apiKey || s.memory.pending.length === 0) return;
+    // She is not deaf while this runs, and it takes seconds: the batch that was
+    // read is fixed here so that an exchange finished in the meantime is still
+    // waiting afterwards rather than dropped unread (continuity §4.1).
+    const batch = s.memory.pending;
+    // Built once and held, so the record shows the prompt that actually went
+    // rather than one rebuilt from memory as it stands afterwards.
+    const prompt = buildExtractPrompt(s.memory, batch);
+    const route = providerFor(s.apiKey);
+    // Filed on every path this can take. She never shows a bookkeeping failure
+    // (continuity §8), so the inspector is the only place it can be seen at all.
+    const file = (raw: string | null, outcome: ExtractRecord['outcome']): void => {
+      set({ lastExtract: {
+        at: Date.now(),
+        route: route?.label ?? '',
+        model: route?.model ?? '',
+        system: EXTRACT_SYSTEM,
+        user: prompt,
+        raw,
+        outcome,
+      } });
+    };
+    extracting = true;
+    // Held outside the try for the same reason runSpeech holds its own: a reply
+    // that arrived and then could not be used must not be reported as one that
+    // never came. Anything after the call can still throw, and the two failures
+    // are indistinguishable on screen unless the raw survives.
+    let raw: string | null = null;
+    try {
+      raw = await callLlm(s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }]);
+      const parsed = parseExtraction(raw);
+      // The queue drains only on success — a failure is retried next trigger.
+      if (!parsed) {
+        file(raw, 'unparseable');
+        return;
+      }
+      // Only what was actually read is dropped, and only while it is still
+      // sitting at the head of the queue. The queue can have grown (she is not
+      // deaf while this runs) or shrunk (the cap dropping from the front, a
+      // remount replacing memory) — dropping a fixed count then eats an
+      // exchange nobody read, so an unrecognisable queue is left alone and
+      // re-read next trigger.
+      const queue = get().memory.pending;
+      const head = queue.length >= batch.length && batch.every((e, i) => queue[i] === e);
+      set({ memory: {
+        ...applyExtraction(get().memory, parsed, Date.now()),
+        pending: head ? queue.slice(batch.length) : queue,
+      } });
+      file(raw, 'applied');
+      await get().saveMemory();
+    } catch {
+      // Never surfaced to the subject: no path by which bookkeeping makes her
+      // show an error (continuity §8). `raw` is still null when the call itself
+      // threw, and holds the reply when the throw came after it.
+      file(raw, 'failed');
+    } finally {
+      extracting = false;
+    }
   },
 }));

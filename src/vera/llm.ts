@@ -1,4 +1,5 @@
 import { buildRequest } from './providers';
+import type { Turn } from './messages';
 
 // Distinguished from every other failure because it means something different:
 // an auth refusal is the key's fault and sends her dormant; a network failure
@@ -48,11 +49,11 @@ const textOf = (payload: unknown): string => {
 export const callLlm = async (
   key: string,
   system: string,
-  user: string,
+  turns: Turn[],
   maxTokens = 300,
   fetchImpl: FetchLike = fetch as unknown as FetchLike,
 ): Promise<string> => {
-  const { url, headers, body } = buildRequest(key, system, user, maxTokens);
+  const { url, headers, body } = buildRequest(key, system, turns, maxTokens);
 
   // The abort frees the socket; the race is what guarantees this call settles
   // even if the transport ignores the signal. A timeout rejects as an ordinary

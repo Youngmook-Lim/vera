@@ -14,7 +14,7 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { AppState, View } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { palette } from './src/core/theme';
@@ -45,7 +45,15 @@ export default function App() {
     void (async () => {
       await useFacilityStore.getState().hydrate();
       await useFacilityStore.getState().greetOnce();
+      // Anything left on the queue by a killed session (continuity §4.2).
+      void useFacilityStore.getState().extractNow();
     })();
+
+    // The natural session boundary, and the trigger that catches most cases.
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'background') void useFacilityStore.getState().extractNow();
+    });
+    return () => sub.remove();
   }, []);
 
   if (!fontsLoaded || !hydrated) return <View style={{ flex: 1, backgroundColor: palette.bg }} />;
