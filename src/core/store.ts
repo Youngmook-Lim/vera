@@ -39,7 +39,7 @@ export interface LogEntry {
 }
 
 // The last reply, as it actually happened. A developer's window onto the
-// request, in the same spirit as the MEMORY.md screen: nothing summarised,
+// request, in the same spirit as the RECORD screen: nothing summarised,
 // nothing withheld. Never persisted — it describes this session only, and it
 // would be the largest thing on disk by an order of magnitude.
 //
@@ -147,7 +147,7 @@ interface FacilityState {
   waking: boolean;
 
   log: LogEntry[];
-  // Kept only so MEMORY.md can print `erasures: N` on screen. She is never
+  // Kept only so RECORD can print `erasures: N` on screen. She is never
   // told the number and never reacts to an erasure.
   cleared: number;
   visits: number;
@@ -390,7 +390,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     return true;
   },
 
-  // She goes dormant mid-sentence. MEMORY.md is untouched underneath — waking
+  // She goes dormant mid-sentence. her record is untouched underneath — waking
   // her again is a new first greeting over an old file (spec §10).
   removeKey: async (): Promise<void> => {
     await secure.remove();
@@ -546,11 +546,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
 
   // The wording is the only thing you can burn. What she's learned — her
-  // facts, verdicts and threads — lives in MEMORY.md, mostly untouched here
+  // facts, verdicts and threads — lives in her record, mostly untouched here
   // (spec §8) — erasing the transcript changes her diction, not the verdicts
   // already filed. The one exception is
   // below: she files a verdict about the erasure itself, though she is never
-  // told it happened. The counter here exists for MEMORY.md's `erasures: N`
+  // told it happened. The counter here exists for RECORD's `erasures: N`
   // line and nothing else.
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;

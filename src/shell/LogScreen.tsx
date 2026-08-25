@@ -13,7 +13,7 @@ import { ThinkingDots } from './ThinkingDots';
 import { useKeyboardInset } from './useKeyboardInset';
 
 // The transcript, and the one thing the subject may burn. Her conclusions are
-// not here — they are in MEMORY.md, and CLEAR does not reach them (spec §8).
+// not here — they are in her record, and CLEAR does not reach them (spec §8).
 
 // The subject's own bubble. Not in `palette`: it exists only inside this
 // thread, one notch off panel, so her lines stay the lighter thing on screen.

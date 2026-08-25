@@ -6,7 +6,7 @@ export interface StoredImpression {
 }
 
 // The v2 impressions become verdicts (continuity §7). Their dates cannot be
-// recovered: `at` was a display string produced by mmmdd() for the MEMORY.md
+// recovered: `at` was a display string produced by mmmdd() for the RECORD
 // screen, with no year and no timestamp behind it. Every migrated verdict
 // therefore starts equally recent, and the original string is kept so the
 // screen can still show when she filed it. `count` still ranks them, and one

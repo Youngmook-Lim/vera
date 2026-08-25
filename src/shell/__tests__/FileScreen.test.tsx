@@ -25,7 +25,7 @@ const MEMORY = {
   pending: [],
 };
 
-describe('MEMORY.md', () => {
+describe('RECORD', () => {
   it('shows everything she knows, in all three kinds', async () => {
     useFacilityStore.setState({ view: 'mem', lang: 'en', cleared: 0, memory: MEMORY });
     const view = await render(<FileScreen />);

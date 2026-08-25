@@ -39,13 +39,13 @@ beforeEach(() =>
 describe('SystemScreen', () => {
   it('lists both her files', async () => {
     const view = await render(<SystemScreen />);
-    expect(view.getByText('MEMORY.md')).toBeTruthy();
+    expect(view.getByText('RECORD')).toBeTruthy();
     expect(view.getByText('SOUL.md')).toBeTruthy();
   });
 
   it('opens a file', async () => {
     const view = await render(<SystemScreen />);
-    await fireEvent.press(view.getByText('MEMORY.md'));
+    await fireEvent.press(view.getByText('RECORD'));
     expect(useFacilityStore.getState().view).toBe('mem');
   });
 

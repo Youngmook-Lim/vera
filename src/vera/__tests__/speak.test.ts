@@ -1,5 +1,6 @@
 // src/vera/__tests__/speak.test.ts
 import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../speak';
+import { MEMORY_HEADING } from '../memoryDoc';
 import type { SpeakContext } from '../context';
 import { isEmotionKey } from '../emotions';
 
@@ -8,42 +9,51 @@ const ctx: SpeakContext = {
 };
 
 describe('buildSystemPrompt', () => {
-  it('sends SOUL.md, then MEMORY.md', () => {
-    const sys = buildSystemPrompt('en', '# MEMORY.md\n\n## What you know about them\n- works in software');
+  it('sends SOUL.md, then what she knows about the subject', () => {
+    const sys = buildSystemPrompt('en', `${MEMORY_HEADING}\n\n## About them\n- works in software`);
     expect(sys).toContain('# SOUL.md');
     expect(sys).toContain('works in software');
     // Ordering is load-bearing: a provider-side cache keeps a stable prefix
     // only if the static document comes first (continuity §2).
-    expect(sys.indexOf('# SOUL.md')).toBeLessThan(sys.indexOf('# MEMORY.md'));
+    expect(sys.indexOf('# SOUL.md')).toBeLessThan(sys.indexOf(MEMORY_HEADING));
+  });
+
+  // SOUL.md is a real fixed document and says so. The memory section is
+  // assembled per reply and names no file, so she cannot be asked to produce
+  // one — the only `.md` in the whole prompt is SOUL.md's own heading.
+  it('names no file but SOUL.md', () => {
+    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    expect(sys.match(/\.md/g)).toEqual(['.md', '.md']);
+    expect(sys).not.toContain('MEMORY.md');
   });
 
   it('no longer asks her to write impressions', () => {
-    const sys = buildSystemPrompt('en', '# MEMORY.md');
+    const sys = buildSystemPrompt('en', MEMORY_HEADING);
     expect(sys).not.toContain('impression');
     expect(sys).not.toContain('HARD MAXIMUM 9 WORDS');
   });
 
   it('asks only for an emotion and a line', () => {
-    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
+    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
   });
 
   it('asks for korean in the same deadpan register', () => {
-    expect(buildSystemPrompt('ko', '# MEMORY.md')).toContain('존댓말');
+    expect(buildSystemPrompt('ko', MEMORY_HEADING)).toContain('존댓말');
   });
 
   // Activation is answered from the bank now, so nothing is ever generated
   // under a situation override and the prompt has no branch for one.
   it('never carries a situation override', () => {
-    expect(buildSystemPrompt('en', '# MEMORY.md')).not.toContain('SITUATION OVERRIDE');
-    expect(buildSystemPrompt('ko', '# MEMORY.md')).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('en', MEMORY_HEADING)).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('ko', MEMORY_HEADING)).not.toContain('SITUATION OVERRIDE');
   });
 
   it('replies in english when the reading language is english', () => {
-    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('Reply in English.');
+    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('Reply in English.');
   });
 
   it('asks for minified json only', () => {
-    expect(buildSystemPrompt('en', '# MEMORY.md')).toContain('Return ONLY minified JSON');
+    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('Return ONLY minified JSON');
   });
 });
 

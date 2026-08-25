@@ -1,12 +1,15 @@
 // src/vera/__tests__/memoryDoc.test.ts
-import { composeMemoryMd } from '../memoryDoc';
+import { MEMORY_HEADING, composeMemoryMd } from '../memoryDoc';
 
 const NOW = Date.parse('2026-08-23T09:00:00Z');
 const sel = (over = {}) => ({ facts: [], verdicts: [], threads: [], ...over });
 
 describe('composeMemoryMd', () => {
-  it('opens as the document she is told is hers', () => {
-    expect(composeMemoryMd(sel())).toContain('# MEMORY.md');
+  it('opens on the heading, and names no file', () => {
+    expect(composeMemoryMd(sel())).toContain(MEMORY_HEADING);
+    // Nothing on disk holds this text — a `.md` name invited her to treat it
+    // as a document she could cite or be asked to produce.
+    expect(composeMemoryMd(sel())).not.toContain('.md');
   });
 
   it('says plainly when she knows nothing, rather than sending an empty heading', () => {
@@ -19,12 +22,15 @@ describe('composeMemoryMd', () => {
       verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: NOW, at: NOW, count: 3 }],
       threads: [{ id: 't_1', text: 'Asked what he avoids.', at: NOW, resolved: false }],
     }));
-    expect(doc).toContain('## What you know about them');
+    expect(doc).toContain('## About them');
     expect(doc).toContain('works in software');
     expect(doc).toContain('## What you have concluded');
     expect(doc).toContain('Deflects.');
     expect(doc).toContain('## Unanswered');
     expect(doc).toContain('Asked what he avoids.');
+    // The facts heading must not echo the one above it, or whether her
+    // conclusions sit inside that section is anyone's guess.
+    expect(doc).not.toContain('## What you know about them');
   });
 
   // Repetition is the only signal she gets that a conclusion has hardened.

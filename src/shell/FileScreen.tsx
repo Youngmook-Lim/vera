@@ -12,8 +12,10 @@ import { T } from './strings';
 // developer's window onto her state, not a part of the fiction: nothing here is
 // withheld, dressed up or translated.
 //
-// MEMORY.md is composed here, at render time, from her memory; nothing about it
+// RECORD is composed here, at render time, from her memory; nothing about it
 // is ever written to disk as text (spec: it is built from state, not stored).
+// It shows the whole record — not the selection she is sent, which the PROMPT
+// screen carries instead.
 //
 // Only the screen furniture (header, footer, back control) reads from T[lang].
 
@@ -106,7 +108,7 @@ const buildMemoryMd = (memory: Memory, cleared: number): string => {
   const total = facts.length + verdicts.length + threads.length;
 
   const header = [
-    '# MEMORY.md',
+    '# RECORD',
     '',
     `facts: ${facts.length}`,
     `verdicts: ${verdicts.length}`,
@@ -154,7 +156,7 @@ export function FileScreen() {
         body: buildPromptMd(lastPrompt, lastExtract),
         footer: t.sessionOnly,
       }
-      : { name: 'MEMORY.md', meta: t.memSub, body: buildMemoryMd(memory, cleared), footer: t.byV };
+      : { name: 'RECORD', meta: t.memSub, body: buildMemoryMd(memory, cleared), footer: t.byV };
   const { name, meta, body, footer: rightFooter } = doc;
 
   return (

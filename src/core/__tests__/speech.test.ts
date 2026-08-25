@@ -1,6 +1,7 @@
 import { AuthError } from '../../vera/llm';
 import { runSpeech } from '../speech';
 import { buildMessages, type Turn } from '../../vera/messages';
+import { MEMORY_HEADING } from '../../vera/memoryDoc';
 
 const deps = (over = {}) => ({
   key: 'sk-ant-api03-abcdefghijklmnop',
@@ -8,7 +9,7 @@ const deps = (over = {}) => ({
   turns: [{ role: 'user' as const, text: 'did you miss me' }],
   lang: 'en' as const,
   context: { time_of_day: 'afternoon' },
-  memoryMd: '# MEMORY.md\n\n## What you know about them\n- works in software',
+  memoryMd: `${MEMORY_HEADING}\n\n## About them\n- works in software`,
   call: jest.fn().mockResolvedValue('{"emotion":"amused","line":"Barely."}'),
   ...over,
 });
@@ -27,12 +28,12 @@ describe('runSpeech', () => {
     expect(turns[turns.length - 1].text).toContain('THE SUBJECT SAYS: did you miss me');
   });
 
-  it('sends MEMORY.md in the system prompt, after SOUL.md', async () => {
+  it('sends what she knows in the system prompt, after SOUL.md', async () => {
     const d = deps();
     await runSpeech(d);
     const [system] = d.call.mock.calls[0];
     expect(system).toContain('works in software');
-    expect(system.indexOf('# SOUL.md')).toBeLessThan(system.indexOf('# MEMORY.md'));
+    expect(system.indexOf('# SOUL.md')).toBeLessThan(system.indexOf(MEMORY_HEADING));
   });
 
   // The session travels as real turns now, so the whole of it must reach the

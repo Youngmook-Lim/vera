@@ -70,7 +70,7 @@ test('every view renders its own room', async () => {
 test('sys is the SYSTEM screen now, not a placeholder', async () => {
   useFacilityStore.setState({ view: 'sys' });
   const { getByText, queryByText } = await render(<ScreenRouter />);
-  expect(getByText('MEMORY.md')).toBeTruthy();
+  expect(getByText('RECORD')).toBeTruthy();
   expect(getByText('SOUL.md')).toBeTruthy();
   expect(queryByText('DORMANT')).toBeNull();
 });
@@ -78,7 +78,7 @@ test('sys is the SYSTEM screen now, not a placeholder', async () => {
 test('both documents come out of one screen', async () => {
   useFacilityStore.setState({ view: 'mem' });
   const mem = await render(<ScreenRouter />);
-  expect(mem.getByText('MEMORY.md')).toBeTruthy();
+  expect(mem.getByText('RECORD')).toBeTruthy();
   await mem.unmount();
 
   useFacilityStore.setState({ view: 'soul' });
@@ -112,7 +112,7 @@ test('the credential panel is an overlay over SYSTEM', async () => {
   // The panel's own subtitle — 'ACCESS' alone is ambiguous, SYSTEM has a
   // section under that name underneath.
   expect(getByText('Replace her credential.')).toBeTruthy();
-  expect(getByText('MEMORY.md')).toBeTruthy();
+  expect(getByText('RECORD')).toBeTruthy();
 });
 
 test('a file steps back to SYSTEM, and SYSTEM to the stage', async () => {

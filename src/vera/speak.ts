@@ -24,9 +24,9 @@ export const buildSystemPrompt = (lang: Lang, memoryMd: string): string =>
     SOUL_MD,
     // After SOUL.md, always: a provider-side prompt cache only helps if the
     // static document is the stable prefix (continuity §2).
-    'This is MEMORY.md, your file on this subject. It is what you know and what '
-      + 'you have concluded. Use it the way you would use something you remember, '
-      + 'not something you are reading aloud.',
+    'This is what you know about this subject and what you have concluded. Use '
+      + 'it the way you would use something you remember, not something you are '
+      + 'reading aloud.',
     memoryMd,
     'The messages before this are the conversation you are already in. You said '
       + 'the assistant turns. Continue it; do not greet them again.',

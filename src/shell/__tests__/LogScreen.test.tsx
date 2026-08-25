@@ -102,7 +102,7 @@ describe('LogScreen', () => {
     expect(useFacilityStore.getState().cleared).toBe(1);
   });
 
-  // She reasons from MEMORY.md, so erasing changes her diction, not her verdict.
+  // She reasons from her record, so erasing changes her diction, not her verdict.
   it('leaves her conclusions standing', async () => {
     seed({
       confirmingClear: true,
@@ -113,7 +113,7 @@ describe('LogScreen', () => {
     expect(useFacilityStore.getState().memory.verdicts).toHaveLength(2); // hers, plus the erasure verdict
   });
 
-  // The count feeds MEMORY.md's `erasures: N` line and nothing else — she is
+  // The count feeds RECORD's `erasures: N` line and nothing else — she is
   // not told. This pins both the live value and the written one after a second
   // erasure, where a stale write would show up as a stuck 1.
   it('counts every erasure, in state and on disk, without telling her', async () => {

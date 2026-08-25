@@ -5,8 +5,8 @@ export interface Identity {
   month: number;
 }
 
-// Your declaration of who you intend to be. MEMORY.md is her record of who you
-// have been. Neither can edit the other, and she is not told about this one.
+// Your declaration of who you intend to be. Her record is her account of who
+// you have been. Neither can edit the other, and she is not told about this one.
 export const SEED: Identity = {
   title: 'who I am trying to be',
   lines: [

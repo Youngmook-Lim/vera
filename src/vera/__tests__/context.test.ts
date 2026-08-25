@@ -60,9 +60,9 @@ describe('buildContext', () => {
 
   // She is told nothing about Specimen-03 and nothing about erasures — the
   // module owns its own hunger, and the erasure count exists only for the
-  // MEMORY.md screen. The context object is the proof: it has no field for
+  // RECORD screen. The context object is the proof: it has no field for
   // either, so nothing can leak into a prompt by accident.
-  it('carries only the situational, now that the subject lives in MEMORY.md', () => {
+  it('carries only the situational, now that the subject lives in her record', () => {
     expect(Object.keys(buildContext(base())).sort()).toEqual(['time_of_day'].sort());
   });
 

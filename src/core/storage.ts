@@ -13,7 +13,7 @@ export const KEYS = {
   identity: 'facility.mod02.identity',
 } as const;
 
-// The fourth store. Device-local, in the OS keystore, never in MEMORY.md and
+// The fourth store. Device-local, in the OS keystore, never in her record and
 // never in the transcript (spec §9).
 export const SECURE_KEY = 'facility.v2.credential';
 

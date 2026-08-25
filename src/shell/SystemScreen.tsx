@@ -74,7 +74,7 @@ export function SystemScreen() {
           <Pressable style={styles.tile} onPress={() => setView('mem')}>
             <View style={styles.tileText}>
               <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
-                MEMORY.md
+                RECORD
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {`${t.memSub} · ${memory.facts.length + memory.verdicts.length + memory.threads.length} ${t.entries}`}
