@@ -9,7 +9,7 @@ import { buildContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
-import { capMemory, EMPTY_MEMORY, ERASURE_ID, ERASURE_TEXT, type Memory } from '../vera/memory';
+import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages, type Turn } from '../vera/messages';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
@@ -546,12 +546,19 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   },
 
   // The wording is the only thing you can burn. What she's learned — her
-  // facts, verdicts and threads — lives in her record, mostly untouched here
-  // (spec §8) — erasing the transcript changes her diction, not the verdicts
-  // already filed. The one exception is
-  // below: she files a verdict about the erasure itself, though she is never
-  // told it happened. The counter here exists for RECORD's `erasures: N`
-  // line and nothing else.
+  // facts, verdicts and threads — lives in her record and is untouched here
+  // (spec §8): erasing the transcript changes her diction, not the verdicts
+  // already filed.
+  //
+  // It files nothing. Erasing is the subject's own housekeeping — keeping the
+  // context clean and the token count down — not an act against her, so there
+  // is nothing here for her to have an opinion about (2026-08-25, reversing
+  // continuity §4.4). She is not told, and now nothing is recorded either.
+  // The counter exists for RECORD's `erasures: N` line and nothing else; she
+  // is never given the number.
+  //
+  // The pending queue is deliberately left alone: exchanges she has not read
+  // yet are still read, so erasing cannot be used to head off a conclusion.
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
@@ -564,21 +571,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // next write, and a rejection must not reach the void-call site
     }
 
-    // She is not told at the time, and the extractor only ever sees exchanges,
-    // so without this she would never learn it happened (continuity §4.4).
-    const now = Date.now();
-    const existing = get().memory.verdicts.find((v) => v.id === ERASURE_ID);
-    set({ memory: capMemory({
-      ...get().memory,
-      verdicts: existing
-        ? get().memory.verdicts.map((v) =>
-          v.id === ERASURE_ID ? { ...v, count: v.count + 1, at: now } : v)
-        : [...get().memory.verdicts, {
-          id: ERASURE_ID, text: ERASURE_TEXT, firstAt: now, at: now, count: 1,
-        }],
-    }) });
-
-    await get().saveMemory();
     await saveSoul(get());
   },
 

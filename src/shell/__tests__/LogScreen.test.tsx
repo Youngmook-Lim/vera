@@ -102,15 +102,18 @@ describe('LogScreen', () => {
     expect(useFacilityStore.getState().cleared).toBe(1);
   });
 
-  // She reasons from her record, so erasing changes her diction, not her verdict.
-  it('leaves her conclusions standing', async () => {
+  // She reasons from her record, so erasing changes her diction, not her
+  // verdict — and it adds nothing of its own. Erasing is the subject's
+  // housekeeping, not an act she has an opinion about.
+  it('leaves her conclusions standing, and files nothing about the erasure', async () => {
+    const verdicts = [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }];
     seed({
       confirmingClear: true,
-      memory: { facts: [], verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 1 }], threads: [], pending: [] },
+      memory: { facts: [], verdicts, threads: [], pending: [] },
     });
     const view = await render(<LogScreen />);
     await fireEvent.press(view.getByText('ERASE ALL'));
-    expect(useFacilityStore.getState().memory.verdicts).toHaveLength(2); // hers, plus the erasure verdict
+    expect(useFacilityStore.getState().memory.verdicts).toEqual(verdicts);
   });
 
   // The count feeds RECORD's `erasures: N` line and nothing else — she is

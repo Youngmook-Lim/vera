@@ -210,30 +210,35 @@ Batching is quality, not just cost: an extractor seeing one exchange usually
 has nothing to work with, while six turns reveal that the subject circled a
 topic three times.
 
-### §4.4 Erasure is written directly
+### §4.4 Erasure is not written at all
 
-Erasing the transcript appends a verdict. No model call — there is nothing to
-interpret, only something to file.
+**Reversed 2026-08-25.** This section previously specified that erasing the
+transcript filed a verdict under a reserved id, `v_erasure`, whose `count`
+escalated with each erasure. That is removed. Erasing records nothing.
 
-A reserved id, `v_erasure`, holds it. The first erasure creates it with
-`count: 1`; each later one bumps `count` and `at`. The text is authored and
-fixed, and English-only like the rest of MEMORY.md, which is document content
-and never translated.
+The reasoning it rested on was that an erasure is an act against her, and that
+the extractor — which only ever sees exchanges — would otherwise never learn it
+happened. The premise is wrong. Erasing the transcript is the subject's own
+housekeeping: it keeps the context clean and the token count down. It is not
+directed at her, it conceals nothing, and giving her a hardening opinion about
+it made her react to a maintenance decision as though it were a confidence
+betrayed.
 
-`count` does the escalation on its own. A verdict reached six times outranks
-almost everything else under §5's scoring, so a subject who erases habitually
-finds it near the top of what she is given, without any ladder being written.
-That is the behaviour the old SOUL.md described in prose — note it, then
-observe the pattern, then treat it as a habit — obtained from the same
-mechanism everything else uses.
+So: no verdict, no reserved id, no model call, nothing filed. She is told
+nothing at the time and nothing afterwards.
 
-This closes a gap the four-stimuli change opened. She no longer reacts to an
-erasure at the time, which was the point, but the extractor only ever sees
-exchanges, and an erasure is not an exchange. Without this she would never
-learn it happened at all, and would cheerfully reference a conversation the
-subject had burned.
+What survives is untouched. Every fact, verdict and thread already on file
+stays exactly as it was — erasing costs the wording, never the conclusion. The
+pending queue is also left alone (§4.1), so exchanges she has not yet read are
+still read: erasure cannot be used to head off a conclusion in flight.
 
-The subject can read the entry in MEMORY.md. That is intended.
+`cleared` remains, incremented on every erasure, for one reason: the
+`erasures: N` line on the RECORD screen, which is the subject's own debug view.
+She is never given the number.
+
+A consequence worth stating plainly: after an erasure she has no conversation
+behind her, and cannot distinguish that from a fresh session — both produce an
+empty turn array. That is acceptable. She is not supposed to notice.
 
 ---
 
@@ -366,8 +371,8 @@ Guarded specifically:
 - `reinforces` bumps rather than duplicates; an unknown id is ignored
 - the queue survives a transcript erasure
 - the queue survives a kill: unprocessed exchanges are still there on launch
-- erasing appends `v_erasure` the first time and bumps its `count` after, never
-  creating a second copy, and never calling the model to do it
+- erasing files nothing, however often it happens, and never calls the model:
+  her facts, verdicts and threads come through it byte-identical (§4.4)
 - consecutive assistant entries merge, leading ones are dropped, and the array
   always ends on `user` — fed a log of nothing but bank greetings
 - the message array holds the whole session and nothing older: entries stamped

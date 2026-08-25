@@ -1188,6 +1188,9 @@ describe('extraction', () => {
   });
 });
 
+// Erasing is the subject's own housekeeping — a clean context and a smaller
+// token count — not an act against her. She is told nothing at the time and
+// nothing is filed afterwards (2026-08-25, reversing continuity §4.4).
 describe('erasure', () => {
   beforeEach(async () => {
     await storage.clearAll();
@@ -1195,21 +1198,34 @@ describe('erasure', () => {
     useFacilityStore.setState({ memory: { facts: [], verdicts: [], threads: [], pending: [] } });
   });
 
-  it('files a verdict the first time, without calling the model', async () => {
+  it('records nothing, however many times it happens', async () => {
     await useFacilityStore.getState().clearTranscript();
-    const v = useFacilityStore.getState().memory.verdicts;
-    expect(v).toHaveLength(1);
-    expect(v[0]).toMatchObject({ id: 'v_erasure', count: 1 });
+    await useFacilityStore.getState().clearTranscript();
+    await useFacilityStore.getState().clearTranscript();
+
+    const m = useFacilityStore.getState().memory;
+    expect(m.verdicts).toEqual([]);
+    expect(m.facts).toEqual([]);
+    expect(m.threads).toEqual([]);
     expect(callLlm).not.toHaveBeenCalled();
+    // The count is the subject's own, for the RECORD screen. She is never
+    // given the number, and it is the only trace an erasure leaves.
+    expect(useFacilityStore.getState().cleared).toBe(3);
   });
 
-  // count drives the escalation on its own, under §5's scoring.
-  it('bumps the same entry after, never creating a second copy', async () => {
+  it('leaves everything she had already concluded exactly where it was', async () => {
+    const before = {
+      facts: [{ id: 'f_1', text: 'works in software', keys: ['work'], at: 1, durable: true, until: null }],
+      verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 2 }],
+      threads: [{ id: 't_1', text: 'Asked what he avoids.', at: 1, resolved: false }],
+      pending: [{ you: 'hi', her: 'Barely.' }],
+    };
+    useFacilityStore.setState({ memory: before });
+
     await useFacilityStore.getState().clearTranscript();
-    await useFacilityStore.getState().clearTranscript();
-    await useFacilityStore.getState().clearTranscript();
-    const v = useFacilityStore.getState().memory.verdicts;
-    expect(v).toHaveLength(1);
-    expect(v[0].count).toBe(3);
+
+    // Not merely equal in content — nothing was rebuilt, recounted or restamped.
+    expect(useFacilityStore.getState().memory).toEqual(before);
+    expect(useFacilityStore.getState().log).toEqual([]);
   });
 });
