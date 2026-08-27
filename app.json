@@ -24,6 +24,7 @@
     },
     "plugins": [
       "./plugins/withGradleSafeName",
+      "./plugins/withRotatingIcons",
       "expo-font",
       "expo-localization",
       [

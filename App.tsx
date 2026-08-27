@@ -18,6 +18,7 @@ import { AppState, View } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { palette } from './src/core/theme';
+import { syncLauncherIcon } from './src/core/launcher';
 import { useFacilityStore } from './src/core/store';
 import { ScreenRouter } from './src/shell/ScreenRouter';
 
@@ -51,7 +52,13 @@ export default function App() {
 
     // The natural session boundary, and the trigger that catches most cases.
     const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'background') void useFacilityStore.getState().extractNow();
+      if (next !== 'background') return;
+      void useFacilityStore.getState().extractNow();
+      // The launcher face rides the same boundary, and only this one: the
+      // swap disables the alias the app is running under, which Android is
+      // unreliable about in the foreground. Nothing is lost by waiting —
+      // the home screen is not visible from inside the app.
+      syncLauncherIcon(Boolean(useFacilityStore.getState().apiKey));
     });
     return () => sub.remove();
   }, []);

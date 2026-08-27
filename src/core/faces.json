@@ -1,0 +1,14 @@
+{
+  "comment": "The nine launcher faces. Read by src/core/appIcon.ts for the rotation and by plugins/withRotatingIcons.js for the activity-alias entries, so the two halves cannot drift. Each name needs assets/icon-fg-<lowercase>.png; the plugin fails the prebuild if one is missing.",
+  "dormant": "Dormant",
+  "order": [
+    "Calm",
+    "Amused",
+    "Pleased",
+    "Suspicious",
+    "Affectionate",
+    "Bored",
+    "Alarmed",
+    "Disappointed"
+  ]
+}

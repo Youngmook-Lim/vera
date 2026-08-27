@@ -24,3 +24,13 @@ jest.mock('@shopify/react-native-skia', () => {
     { get: (target, prop) => (prop in target ? target[prop as string] : Noop) },
   );
 });
+
+// requireNativeModule throws the moment it is imported without a native
+// runtime, so the launcher module has to be stubbed rather than guarded at the
+// call site. The rotation's decision — which face today wears — is pure and
+// tested directly in src/core/__tests__/appIcon.test.ts; what is mocked away
+// here is only the PackageManager call that puts it on the home screen.
+jest.mock('./modules/app-icon/src/AppIconModule', () => ({
+  __esModule: true,
+  default: { getIcon: () => '', setIcon: () => false },
+}));
