@@ -11,6 +11,20 @@ export class AuthError extends Error {
   }
 }
 
+// The account, not the credential. A key with no credit behind it is refused
+// with a 400 or a 402, never a 401, so without a class of its own it landed in
+// the generic failure and showed an authored line — indistinguishable from her
+// having nothing to say, and impossible to diagnose from the phone.
+//
+// Like AuthError it is a configuration problem only the subject can fix, which
+// is the test the app uses for speaking in its own voice rather than hers.
+export class QuotaError extends Error {
+  constructor(detail: string) {
+    super(detail);
+    this.name = 'QuotaError';
+  }
+}
+
 type FetchLike = (url: string, init: {
   method: string;
   headers: Record<string, string>;
@@ -45,6 +59,36 @@ const textOf = (payload: unknown): string => {
   }
   return j?.choices?.[0]?.message?.content ?? '';
 };
+
+interface ErrorShape { error?: { message?: string; code?: string; status?: string } }
+
+// Anthropic, the OpenAI-shaped routes and Gemini all nest the sentence under
+// `error.message`, so one reader covers every provider. Truncated because it
+// is stored in the prompt record and rendered on a phone screen.
+const MAX_DETAIL = 200;
+
+const reasonFor = async (res: { status: number; json: () => Promise<unknown> }): Promise<string> => {
+  let said = '';
+  let code = '';
+  try {
+    const body = (await res.json()) as ErrorShape;
+    said = typeof body?.error?.message === 'string' ? body.error.message : '';
+    code = typeof body?.error?.code === 'string' ? body.error.code : '';
+  } catch {
+    // A body that is not JSON, or no body at all. The status alone still says
+    // more than the nothing that was reported before.
+  }
+  const detail = [said, code && `(${code})`].filter(Boolean).join(' ').trim();
+  return detail ? `http ${res.status}: ${detail}`.slice(0, MAX_DETAIL) : `http ${res.status}`;
+};
+
+// 402 is unambiguous. Otherwise it is the provider's own wording, because a
+// plain 429 is a transient rate limit that the subject can do nothing about
+// and must NOT be reported as a billing problem.
+const isQuota = (status: number, detail: string): boolean =>
+  status === 402
+  || /credit balance|insufficient_quota|billing|purchase credits|exceeded your (current )?quota/i
+    .test(detail);
 
 export const callLlm = async (
   key: string,
@@ -85,7 +129,13 @@ export const callLlm = async (
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) throw new AuthError();
-    throw new Error(`http ${res.status}`);
+
+    // Every provider puts a human sentence in the body and it is the only
+    // thing that says WHY. Thrown away, a 400 for an empty credit balance
+    // reads exactly like a dead socket on the PROMPT screen.
+    const detail = await reasonFor(res);
+    if (isQuota(res.status, detail)) throw new QuotaError(detail);
+    throw new Error(detail);
   }
   return textOf(await res.json());
 };

@@ -9,6 +9,7 @@ import { T, type ChromeStrings } from './strings';
 // notice re-reads correctly the moment the subject switches language.
 export const SYSTEM_TEXT: Record<SystemCode, (t: ChromeStrings) => string> = {
   auth: (t) => t.authNotice,
+  quota: (t) => t.quotaNotice,
 };
 
 export const systemTextFor = (code: SystemCode, lang: keyof typeof T): string =>

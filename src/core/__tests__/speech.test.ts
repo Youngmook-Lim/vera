@@ -1,4 +1,4 @@
-import { AuthError } from '../../vera/llm';
+import { AuthError, QuotaError } from '../../vera/llm';
 import { runSpeech } from '../speech';
 import { buildMessages, type Turn } from '../../vera/messages';
 import { MEMORY_HEADING } from '../../vera/memoryDoc';
@@ -17,7 +17,7 @@ const deps = (over = {}) => ({
 describe('runSpeech', () => {
   it('returns her line and emotion', async () => {
     const result = await runSpeech(deps());
-    expect(result).toMatchObject({ emotion: 'amused', line: 'Barely.', authFailed: false });
+    expect(result).toMatchObject({ emotion: 'amused', line: 'Barely.', notice: null });
   });
 
   it('passes SOUL.md and the context to the model', async () => {
@@ -145,7 +145,11 @@ describe('runSpeech', () => {
     const d = deps({ call: jest.fn().mockRejectedValue(new Error('Network request failed')) });
     const result = await runSpeech(d);
     expect(result.line).toBeTruthy();
-    expect(result.authFailed).toBe(false);
+    // The facility's fault, not the subject's — nothing for the app to say.
+    expect(result.notice).toBeNull();
+    // But the reason is kept, or the inspector shows the same nothing for a
+    // dead socket as for a refused account.
+    expect(result.debug.failure).toBe('Network request failed');
   });
 
   it('falls back when the model returns something unparseable', async () => {
@@ -158,6 +162,21 @@ describe('runSpeech', () => {
   it('reports an auth failure distinctly', async () => {
     const d = deps({ call: jest.fn().mockRejectedValue(new AuthError()) });
     const result = await runSpeech(d);
-    expect(result.authFailed).toBe(true);
+    expect(result.notice).toBe('auth');
+  });
+
+  // The failure that started this: a valid key on an account with no credit.
+  // It is not the credential's fault and must not read as one, but it is still
+  // the subject's to fix — so the app says so rather than letting her cover it
+  // with an authored line.
+  it('reports an exhausted account as its own notice, not as a refusal', async () => {
+    const detail = 'http 400: Your credit balance is too low to access the Anthropic API.';
+    const d = deps({ call: jest.fn().mockRejectedValue(new QuotaError(detail)) });
+    const result = await runSpeech(d);
+
+    expect(result.notice).toBe('quota');
+    expect(result.debug.failure).toBe(detail);
+    // She still has a line behind the notice; the app speaks over it.
+    expect(result.line).toBeTruthy();
   });
 });

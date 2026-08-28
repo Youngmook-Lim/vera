@@ -21,10 +21,12 @@ import type { Trigger } from '../vera/speak';
 // library, instant swaps.
 export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | 'mod01' | 'mod02';
 
-// `system` is the app speaking, not her. It exists for exactly one situation —
-// a refused credential — and is rendered in danger red and a mono face so it
-// cannot be mistaken for a line of hers.
-export type SystemCode = 'auth';
+// `system` is the app speaking, not her, rendered in danger red and a mono
+// face so it cannot be mistaken for a line of hers. Both codes are
+// configuration problems only the subject can fix — a credential the provider
+// refuses, and an account with no credit behind an otherwise valid one — which
+// is the whole test for taking the reply out of her mouth.
+export type SystemCode = 'auth' | 'quota';
 
 // A system entry carries a `code`, not prose: the wording lives in the shell's
 // string table, and core has never imported from shell. It also means the
@@ -57,6 +59,10 @@ export interface PromptRecord {
   system: string | null;
   turns: Turn[] | null;
   raw: string | null;
+  // Why the call threw, in the provider's own words, or null. `raw` alone said
+  // only that nothing arrived — it could not tell an empty credit balance from
+  // a dead socket, which is the whole reason this field exists.
+  failure: string | null;
   outcome: 'model' | 'fallback' | 'bank';
 }
 
@@ -76,6 +82,9 @@ export interface ExtractRecord {
   system: string;
   user: string;
   raw: string | null;
+  // As above. Extraction is the call that writes her file and the one the
+  // subject can least observe, so a failure that says nothing is worst here.
+  failure: string | null;
   outcome: 'applied' | 'unparseable' | 'failed';
 }
 
@@ -453,13 +462,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // nothing was sent, which is what the inspector reports.
         outcome = {
           ...pick(trigger, get().lang),
-          authFailed: false,
+          notice: null,
           source: 'fallback',
-          debug: { system: null, turns: null, raw: null },
+          debug: { system: null, turns: null, raw: null, failure: null },
         };
       }
 
-      const { emotion, line, authFailed } = outcome;
+      const { emotion, line, notice } = outcome;
 
       // The record of what actually happened, for the prompt inspector. A raw
       // reply present alongside a `fallback` source means the model answered
@@ -475,6 +484,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           system: outcome.debug.system,
           turns: outcome.debug.turns,
           raw: outcome.debug.raw,
+          failure: outcome.debug.failure,
           outcome: live ? outcome.source : 'bank',
         },
       });
@@ -484,8 +494,6 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // subject can fix, and saying it in her voice would hide it behind a
       // line that reads like any other. So she says nothing, and the system
       // speaks instead.
-      const notice: SystemCode | null = authFailed ? 'auth' : null;
-
       const log = [...get().log, notice
         ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
         : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
@@ -504,7 +512,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         line: notice ? '' : line,
         systemNotice: notice,
         log, askedAt: Date.now(),
-        authFails: live ? (authFailed ? get().authFails + 1 : 0) : get().authFails,
+        // Only a refusal is the credential's fault. An empty account says
+        // nothing about the key, so it must not mark a row under ACCESS.
+        authFails: live ? (notice === 'auth' ? get().authFails + 1 : 0) : get().authFails,
       });
       try {
         await storage.set(KEYS.transcript, JSON.stringify(log));
@@ -653,7 +663,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     const route = providerFor(s.apiKey);
     // Filed on every path this can take. She never shows a bookkeeping failure
     // (continuity §8), so the inspector is the only place it can be seen at all.
-    const file = (raw: string | null, outcome: ExtractRecord['outcome']): void => {
+    const file = (
+      raw: string | null,
+      outcome: ExtractRecord['outcome'],
+      failure: string | null = null,
+    ): void => {
       set({ lastExtract: {
         at: Date.now(),
         route: route?.label ?? '',
@@ -661,6 +675,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         system: EXTRACT_SYSTEM,
         user: prompt,
         raw,
+        failure,
         outcome,
       } });
     };
@@ -692,11 +707,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       } });
       file(raw, 'applied');
       await get().saveMemory();
-    } catch {
+    } catch (error) {
       // Never surfaced to the subject: no path by which bookkeeping makes her
       // show an error (continuity §8). `raw` is still null when the call itself
-      // threw, and holds the reply when the throw came after it.
-      file(raw, 'failed');
+      // threw, and holds the reply when the throw came after it — and the
+      // reason is kept, because the inspector is the only place this is ever
+      // visible and a bare "it failed" is not worth showing.
+      file(raw, 'failed', error instanceof Error ? error.message : String(error));
     } finally {
       extracting = false;
     }

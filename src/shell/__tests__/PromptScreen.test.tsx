@@ -15,6 +15,7 @@ const RECORD: PromptRecord = {
     { role: 'user', text: 'THE SUBJECT SAYS: did you miss me\nCONTEXT: {"time_of_day":"afternoon"}' },
   ],
   raw: '{"emotion":"amused","line":"Barely."}',
+  failure: null,
   outcome: 'model',
 };
 
@@ -25,6 +26,7 @@ const EXTRACT: ExtractRecord = {
   system: 'You maintain a file about one person',
   user: 'CURRENT FILE\n(empty)\n\nRECENT EXCHANGES\nTHEY: hi\nYOU: Barely.',
   raw: '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}',
+  failure: null,
   outcome: 'applied',
 };
 
@@ -44,6 +46,46 @@ const bodyOf = async () => {
 };
 
 describe('the prompt inspector', () => {
+  // The regression that sent this to curl: an account with no credit returns
+  // 400, which is not a 401, so she showed an authored line and the screen said
+  // only that the request failed — the same words a dead socket produced.
+  it('prints why a call failed, in the provider\'s own words', async () => {
+    show({
+      ...RECORD,
+      raw: null,
+      failure: 'http 400: Your credit balance is too low to access the Anthropic API.',
+      outcome: 'fallback',
+    });
+    const body = await bodyOf();
+
+    expect(body).toContain('--- NO REPLY ---');
+    expect(body).toContain('credit balance is too low');
+    expect(body).toContain('http 400');
+    // The old wording said nothing and must not be what a known cause shows.
+    expect(body).not.toContain('the request failed before a reply arrived');
+  });
+
+  it('still says something when a call failed with no reason recorded', async () => {
+    show({ ...RECORD, raw: null, failure: null, outcome: 'fallback' });
+    expect(await bodyOf()).toContain('the request failed before a reply arrived');
+  });
+
+  // Extraction is the call the subject can least observe, so a failure there
+  // has to be as legible as one on the reply path.
+  it('prints why an extraction failed', async () => {
+    show(RECORD, {
+      ...EXTRACT,
+      raw: null,
+      failure: 'http 429: Rate limit reached, retry shortly',
+      outcome: 'failed',
+    });
+    const body = await bodyOf();
+
+    expect(body).toContain('# LAST EXTRACTION');
+    expect(body).toContain('outcome: failed');
+    expect(body).toContain('Rate limit reached, retry shortly');
+  });
+
   it('prints the request exactly as it went out', async () => {
     show(RECORD);
     const body = await bodyOf();

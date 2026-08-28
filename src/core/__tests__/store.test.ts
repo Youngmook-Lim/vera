@@ -9,13 +9,13 @@ jest.mock('expo-localization', () => ({
 }));
 const { getLocales } = jest.requireMock('expo-localization');
 
-// Only callLlm is faked — AuthError stays the real class, since speech.ts
-// checks `instanceof AuthError` against whatever this module exports.
+// Only callLlm is faked — AuthError and QuotaError stay the real classes,
+// since speech.ts checks `instanceof` against whatever this module exports.
 jest.mock('../../vera/llm', () => ({
   ...jest.requireActual('../../vera/llm'),
   callLlm: jest.fn(),
 }));
-const { callLlm, AuthError } = jest.requireMock('../../vera/llm');
+const { callLlm, AuthError, QuotaError } = jest.requireMock('../../vera/llm');
 
 // The OS keystore has no jsdom implementation; an in-memory vault is enough to
 // pin the one invariant that matters — a key in the keystore wakes her.
@@ -543,6 +543,35 @@ describe('speak', () => {
     expect(s.log[s.log.length - 1]).toMatchObject({ who: 'system', code: 'auth' });
     // The key stays exactly where it is — she is never sent dormant for it.
     expect(s.apiKey).toBe('sk-ant-api03-abcdefghijklmnop');
+  });
+
+  // An exhausted account is the same kind of problem — only the subject can
+  // fix it — but not the same problem, and the wording differs: the key is
+  // fine and replacing it under ACCESS would be wasted effort.
+  it('speaks as the system on an exhausted account too, under its own code', async () => {
+    callLlm.mockRejectedValue(new QuotaError('http 400: Your credit balance is too low.'));
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.systemNotice).toBe('quota');
+    expect(s.line).toBe('');
+    expect(s.log[s.log.length - 1]).toMatchObject({ who: 'system', code: 'quota' });
+    // Not the credential's fault, so it must not mark a row under ACCESS.
+    expect(s.authFails).toBe(0);
+    // And the reason survives to the one screen that can show it.
+    expect(s.lastPrompt?.failure).toContain('credit balance is too low');
+  });
+
+  // Everything else stays hers: a dead network is the facility's fault, and
+  // she covers it with an authored line rather than the app interrupting.
+  it('leaves an ordinary failure to her, with no notice', async () => {
+    callLlm.mockRejectedValue(new Error('http 500: upstream is unwell'));
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.systemNotice).toBeNull();
+    expect(s.line).toBeTruthy();
+    expect(s.lastPrompt?.failure).toBe('http 500: upstream is unwell');
   });
 
   // Deleted: 'keeps the notice out of her memory of the conversation' pinned

@@ -19,12 +19,21 @@ import { T } from './strings';
 //
 // Only the screen furniture (header, footer, back control) reads from T[lang].
 
-// A null raw means the call threw before answering. A raw that is present on a
-// `fallback` outcome means the model answered and could not be parsed.
-const rawSection = (raw: string | null): string[] => [
-  '--- RAW REPLY ---',
-  raw ?? '(the request failed before a reply arrived)',
-];
+// A raw present on a `fallback` outcome means the model answered and could not
+// be parsed; a null raw means the call threw before answering.
+//
+// A reply that arrived and a call that threw are the same blank on the stage,
+// and telling them apart is the whole reason this screen exists. When nothing
+// arrived, the provider's own sentence is the only thing that says why — an
+// exhausted account, a retired model and a dead socket all land here and used
+// to read identically.
+const rawSection = (raw: string | null, failure: string | null): string[] => {
+  if (raw !== null) return ['--- RAW REPLY ---', raw];
+  return [
+    '--- NO REPLY ---',
+    failure ?? '(the request failed before a reply arrived)',
+  ];
+};
 
 // The last reply's request, exactly as it went out. Not a document she keeps —
 // a developer's transcript of one round trip, so the prompt can be read rather
@@ -64,7 +73,7 @@ const buildReplyMd = (p: PromptRecord | null): string => {
         turn.text,
         '',
       ])),
-    ...rawSection(p.raw),
+    ...rawSection(p.raw, p.failure),
   ].join('\n');
 
   return `${head}${sent}`;
@@ -89,7 +98,7 @@ const buildExtractMd = (x: ExtractRecord | null): string => {
     `--- USER (${x.user.length} chars) ---`,
     x.user,
     '',
-    ...rawSection(x.raw),
+    ...rawSection(x.raw, x.failure),
   ].join('\n');
 };
 

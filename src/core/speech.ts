@@ -2,8 +2,9 @@
 import type { Lang } from './i18n';
 import type { SpeakContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
-import { AuthError } from '../vera/llm';
+import { AuthError, QuotaError } from '../vera/llm';
 import type { Turn } from '../vera/messages';
+import type { SystemCode } from './store';
 import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../vera/speak';
 
 export interface SpeechDeps {
@@ -27,12 +28,20 @@ export interface SpeechDebug {
   system: string | null;
   turns: Turn[] | null;
   raw: string | null;
+  // Why the call threw, in the provider's own words. Null when nothing threw.
+  // Without it `raw: null` was the whole story, and a 400 for an empty credit
+  // balance was indistinguishable from a dead socket or a 25-second timeout.
+  failure: string | null;
 }
 
 export interface SpeechOutcome {
   emotion: EmotionKey;
   line: string;
-  authFailed: boolean;
+  // The app speaking in its own voice instead of hers, or null. Both codes are
+  // configuration problems only the subject can fix — a refused credential and
+  // an account with nothing behind it — which is the whole test for taking the
+  // reply out of her mouth.
+  notice: SystemCode | null;
   // Whether the line is hers or authored. The caller cannot infer this: a
   // fallback and a real reply are the same shape, which is the point of the
   // fallback. Reported rather than deduced.
@@ -66,26 +75,25 @@ export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
   // reported — that failure and a dead network look identical on screen, and
   // this is the only thing that tells them apart.
   let raw: string | null = null;
+  // Held alongside `raw` for the same reason: the two together are what tell a
+  // reply that arrived and would not parse apart from one that never came.
+  let failure: string | null = null;
+  let notice: SystemCode | null = null;
 
   try {
     raw = await deps.call(system, turns);
     const parsed = parseSpeech(raw);
     if (parsed) {
-      return { ...parsed, authFailed: false, source: 'model', debug: { system, turns, raw } };
-    }
-  } catch (error) {
-    if (error instanceof AuthError) {
-      const spoken = fallbackFor(deps.lang);
       return {
-        ...spoken, authFailed: true,
-        source: 'fallback', debug: { system, turns, raw },
+        ...parsed, notice: null, source: 'model', debug: { system, turns, raw, failure },
       };
     }
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error);
+    if (error instanceof AuthError) notice = 'auth';
+    else if (error instanceof QuotaError) notice = 'quota';
   }
 
   const spoken = fallbackFor(deps.lang);
-  return {
-    ...spoken, authFailed: false,
-    source: 'fallback', debug: { system, turns, raw },
-  };
+  return { ...spoken, notice, source: 'fallback', debug: { system, turns, raw, failure } };
 };

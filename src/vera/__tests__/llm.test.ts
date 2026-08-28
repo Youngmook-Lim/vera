@@ -1,4 +1,4 @@
-import { AuthError, REQUEST_TIMEOUT_MS, callLlm } from '../llm';
+import { AuthError, QuotaError, REQUEST_TIMEOUT_MS, callLlm } from '../llm';
 
 const ANTHROPIC = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
 const OAI = 'sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
@@ -46,6 +46,62 @@ describe('callLlm', () => {
     const call = callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300, respond({}, false, 500));
     await expect(call).rejects.toThrow('http 500');
     await expect(call).rejects.not.toBeInstanceOf(AuthError);
+  });
+
+  // The failure that cost a debugging round trip: a valid key on an account
+  // with no credits. Anthropic says so in plain words and returns 400 — not a
+  // 401 — so it was indistinguishable from a dead socket.
+  describe('the reason a call failed', () => {
+    const errorBody = (message: string) => ({ type: 'error', error: { type: 'invalid_request_error', message } });
+
+    it('carries the status and the provider\'s own words', async () => {
+      const call = callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond(errorBody('Overloaded, try again'), false, 529));
+      await expect(call).rejects.toThrow('529');
+      await expect(call).rejects.toThrow('Overloaded, try again');
+    });
+
+    it('still reports the status when the body is unreadable', async () => {
+      const fetchImpl = jest.fn().mockResolvedValue({
+        ok: false, status: 502, json: async () => { throw new Error('not json'); },
+      });
+      await expect(callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300, fetchImpl))
+        .rejects.toThrow('http 502');
+    });
+
+    // Billing is a configuration problem only the subject can fix, exactly
+    // like a refused key — so it gets its own class rather than being lost in
+    // the generic failure that shows an authored line.
+    it('raises QuotaError for anthropic\'s credit balance 400', async () => {
+      const call = callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond(errorBody('Your credit balance is too low to access the Anthropic API.'), false, 400));
+      await expect(call).rejects.toBeInstanceOf(QuotaError);
+      await expect(call).rejects.not.toBeInstanceOf(AuthError);
+    });
+
+    it('raises QuotaError for openai insufficient_quota and a 402', async () => {
+      await expect(callLlm(OAI, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond({ error: { code: 'insufficient_quota', message: 'You exceeded your quota' } }, false, 429)))
+        .rejects.toBeInstanceOf(QuotaError);
+      await expect(callLlm(OAI, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond({ error: { message: 'Payment required' } }, false, 402)))
+        .rejects.toBeInstanceOf(QuotaError);
+    });
+
+    // A plain rate limit is transient and NOT the subject's to fix. Telling
+    // them to go and buy credits would be wrong.
+    it('leaves an ordinary rate limit as a plain failure', async () => {
+      const call = callLlm(OAI, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond({ error: { message: 'Rate limit reached, retry shortly' } }, false, 429));
+      await expect(call).rejects.not.toBeInstanceOf(QuotaError);
+      await expect(call).rejects.toThrow('429');
+    });
+
+    it('never puts the credential in the message it throws', async () => {
+      const call = callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300,
+        respond(errorBody('bad things'), false, 400));
+      await expect(call).rejects.not.toThrow(ANTHROPIC);
+    });
   });
 
   it('lets a transport failure through', async () => {
