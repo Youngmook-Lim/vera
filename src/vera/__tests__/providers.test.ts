@@ -41,6 +41,13 @@ describe('providerFor', () => {
     expect(google?.url).toContain('gemini-2.5-flash-lite:generateContent');
   });
 
+  // Same reason, the other live route. claude-sonnet-4-5 retires 29 Sep 2026
+  // and both of these reach Anthropic, so both had to move together.
+  it('points both anthropic routes at a model that still exists', () => {
+    expect(providerFor(ANTHROPIC)?.model).toBe('claude-sonnet-5');
+    expect(providerFor(OPENROUTER)?.model).toBe('anthropic/claude-sonnet-5');
+  });
+
   // A deepseek key cannot be refused — sk- + 32 hex satisfies the openai
   // pattern too — so it needs its own route or it mis-routes silently.
   it('sends a 32-hex sk- key to deepseek, not openai', () => {

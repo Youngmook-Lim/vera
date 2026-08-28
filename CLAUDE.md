@@ -58,13 +58,15 @@ Modules 01 and 02 each own their own store — neither has anything to do with h
 
 | label | pattern | model |
 |---|---|---|
-| ANTHROPIC | `^sk-ant-` | `claude-sonnet-4-5` |
-| OPENROUTER | `^sk-or-` | `anthropic/claude-sonnet-4.5` |
+| ANTHROPIC | `^sk-ant-` | `claude-sonnet-5` |
+| OPENROUTER | `^sk-or-` | `anthropic/claude-sonnet-5` |
 | DEEPSEEK | `^sk-[0-9a-f]{32}$` | `deepseek-chat` |
 | OPENAI | `^sk-(proj-)?[A-Za-z0-9_-]{20,}$` | `gpt-4o-mini` |
 | GOOGLE | `^(AIza\|AQ\.)` | `gemini-2.5-flash-lite` |
 
 Groq was dropped (2026-08-07); the spec's §9 table still lists all six and is out of date on this point and on the Gemini rows below.
+
+**Model ids are a live dependency, on every route (2026-08-28).** Both Anthropic routes moved from `claude-sonnet-4-5` to `claude-sonnet-5` ahead of the former's **29 Sep 2026** retirement; OpenRouter proxies to Anthropic, so it retires with it. A retired model **404s**, which is neither an auth refusal nor a quota failure, so she falls back to authored lines indefinitely and looks alive. Tests pin the id on all three live routes for exactly that reason — they are the only thing that catches it before a subject does.
 
 **Two Gemini gotchas, both live.** Google is migrating keys from `AIza` (standard) to `AQ.Ab…` (auth, service-account-bound): AI Studio issues **only** the new form now, and from **September 2026** the API rejects standard keys outright — so a gate matching only `^AIza` refuses every key a subject can currently create. And `gemini-2.0-flash` is **shut down**; `gemini-2.5-flash-lite` is the replacement and is the one 2.5 model with **thinking off by default**, which matters because a thinking model would spend the 300-token budget on thoughts and return no text. `llm.ts` also filters out response parts marked `thought` so reasoning is never spoken as her line. A retired model 404s rather than 401s, so it never raises `AuthError` — she just falls back to an authored line forever and looks alive. A test pins the model id for that reason.
 

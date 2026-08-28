@@ -887,7 +887,7 @@ describe('the prompt record', () => {
     expect(x?.user).toContain('hi');
     expect(x?.raw).toBe(OK);
     expect(x?.route).toBe('ANTHROPIC');
-    expect(x?.model).toBe('claude-sonnet-4-5');
+    expect(x?.model).toBe('claude-sonnet-5');
   });
 
   it('records the extraction call when the request never answered', async () => {

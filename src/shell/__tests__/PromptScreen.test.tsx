@@ -7,7 +7,7 @@ const RECORD: PromptRecord = {
   at: Date.parse('2026-08-20T14:00:00Z'),
   trigger: 'subject_spoke',
   route: 'ANTHROPIC',
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-5',
   system: '# SOUL.md\nyou governed the world',
   turns: [
     { role: 'user', text: 'are you there' },
@@ -22,7 +22,7 @@ const RECORD: PromptRecord = {
 const EXTRACT: ExtractRecord = {
   at: Date.parse('2026-08-20T14:00:04Z'),
   route: 'ANTHROPIC',
-  model: 'claude-sonnet-4-5',
+  model: 'claude-sonnet-5',
   system: 'You maintain a file about one person',
   user: 'CURRENT FILE\n(empty)\n\nRECENT EXCHANGES\nTHEY: hi\nYOU: Barely.',
   raw: '{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}',
@@ -93,7 +93,7 @@ describe('the prompt inspector', () => {
     expect(body).toContain('# LAST PROMPT');
     expect(body).toContain('trigger: subject_spoke');
     expect(body).toContain('route: ANTHROPIC');
-    expect(body).toContain('model: claude-sonnet-4-5');
+    expect(body).toContain('model: claude-sonnet-5');
     expect(body).toContain('outcome: model');
     expect(body).toContain('you governed the world');
     expect(body).toContain('THE SUBJECT SAYS: did you miss me');

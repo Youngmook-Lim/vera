@@ -24,11 +24,17 @@ export interface Provider {
 export const PROVIDERS: readonly Provider[] = [
   {
     label: 'ANTHROPIC', test: /^sk-ant-/, kind: 'anthropic',
-    url: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-4-5',
+    // Moved off claude-sonnet-4-5 on 2026-08-28, before its 29 Sep 2026
+    // retirement. A retired model 404s, which is neither an auth refusal nor
+    // a quota failure, so she would have fallen back to authored lines
+    // indefinitely and looked alive — the same trap gemini-2.0-flash set.
+    url: 'https://api.anthropic.com/v1/messages', model: 'claude-sonnet-5',
   },
   {
     label: 'OPENROUTER', test: /^sk-or-/, kind: 'oai',
-    url: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-sonnet-4.5',
+    // Same model, OpenRouter's own slug — it routes to Anthropic, so the
+    // retirement above reaches this route too.
+    url: 'https://openrouter.ai/api/v1/chat/completions', model: 'anthropic/claude-sonnet-5',
   },
   {
     label: 'DEEPSEEK', test: /^sk-[0-9a-f]{32}$/, kind: 'oai',
