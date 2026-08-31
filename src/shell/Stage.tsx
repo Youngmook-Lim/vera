@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   cancelAnimation,
@@ -10,9 +18,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { fluid } from '../core/fluid';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette, serif } from '../core/theme';
+import { font, ms, palette, serif, voice } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
 import { Optic } from './Optic';
@@ -30,6 +37,9 @@ const LOOK_MS = 420; // the design's own pupil transition
 const HOLD_MS = 2600; // how long she keeps looking where you touched
 const RELEASE_MS = 900; // and how unhurriedly she gives it up
 const DRAWER_DRAG_PX = 22; // upward travel on the handle that counts as "open" (spec: >22px)
+const HEADER_DOT_PX = 5;
+const STRIP_DOT_PX = 4;
+const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
@@ -52,10 +62,42 @@ function usePulseOpacity(duration: number, from: number, to: number, delay = 0) 
 }
 
 // fdot, whose duration applyEmotion sets to the emotion's own blink interval —
-// the header dot keeps her tempo, not a fixed one.
-function PulseDot({ color, duration }: { color: string; duration: number }) {
+// the dots keep her tempo, not a fixed one. Two of them now: the header's at
+// 5px and the status strip's at 4px, one pulse at two sizes.
+function PulseDot({
+  color,
+  duration,
+  size = HEADER_DOT_PX,
+}: {
+  color: string;
+  duration: number;
+  size?: number;
+}) {
   const style = usePulseOpacity(duration / 2, 1, 0.28);
-  return <Animated.View style={[styles.pulseDot, { backgroundColor: color }, style]} />;
+  return (
+    <Animated.View
+      style={[
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+        style,
+      ]}
+    />
+  );
+}
+
+// fcaret: a hard on/off, `steps(1)`, not a fade. It exists only while she is
+// still typing, so the interval never runs on a stage at rest.
+const CARET = '\u258c';
+const CARET_MS = 500;
+
+function useCaret(active: boolean) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    if (!active) return;
+    setOn(true);
+    const id = setInterval(() => setOn((v) => !v), CARET_MS);
+    return () => clearInterval(id);
+  }, [active]);
+  return on;
 }
 
 export function Stage() {
@@ -86,11 +128,30 @@ export function Stage() {
   const iris = EMOTIONS[emotion].iris;
   // `track:0` is disappointed and dormant — they will not follow your finger.
   const follows = EMOTIONS[emotion].track > 0;
-  // Sized from the WHOLE line, drawn from what has been typed so far. The
-  // store has the finished line before the typewriter draws its first
-  // character; sizing off `shown` instead re-ran the ladder on a word count
-  // that was still climbing, so the type stepped down under her mid-sentence.
-  const { fontSize, lineHeight } = fluid(line, lang);
+  // One size, whatever she says — see `voice` in theme.ts for why the ladder
+  // went. It varies by reading language and by nothing else.
+  const { fontSize, lineHeight } = voice(lang);
+
+  // The typewriter has the finished line before it draws the first character,
+  // so `shown` trailing `line` is exactly "still arriving" — the caret rides
+  // that, and nothing else needs storing to know it.
+  const typing = shown.length < line.length;
+  const caretOn = useCaret(typing);
+  // The strip's live word (3a). Her own transmission only: a notice is the app
+  // speaking, and reporting her line COMPLETE beside it would claim, in her
+  // colour, that she said the thing she never got to show. Blank before she has
+  // ever spoken — a third word for "nothing yet" is copy the design lacks.
+  const status = systemNotice
+    ? ''
+    : thinking || typing
+      ? t.transmitting
+      : line
+        ? t.complete
+        : '';
+  // With nothing to put in it the window is its strip and no more, so a dormant
+  // stage keeps the centred eye it has today instead of holding open an empty
+  // box above the gate.
+  const hasBody = Boolean(systemNotice || line || thinking);
 
   const gazeX = useSharedValue(0);
   const gazeY = useSharedValue(0);
@@ -249,58 +310,89 @@ export function Stage() {
         </View>
       ) : null}
 
+      {/* The eye and her words ride together, centred in what is left between
+          the header and the input — which is where the eye sat before the
+          window existed, and where it stays. */}
       <View style={styles.centre}>
-        <View ref={opticBox} onLayout={measureOptic} collapsable={false}>
-          <Optic
-            emotion={emotion}
-            size={OPTIC_PX}
-            gazeX={gazeX}
-            gazeY={gazeY}
-            // A state that refuses to follow you never hands the eye over:
-            // her gaze is clamped to nothing, so standing the drift down
-            // would buy a still eye and nothing else. Read at render, not at
-            // the touch, so turning away mid-look gives the drift straight
-            // back.
-            tracking={tracking && follows}
-            onPress={poke}
-            waking={waking}
-          />
+        <View style={styles.opticRow}>
+          <View ref={opticBox} onLayout={measureOptic} collapsable={false}>
+            <Optic
+              emotion={emotion}
+              size={OPTIC_PX}
+              gazeX={gazeX}
+              gazeY={gazeY}
+              // A state that refuses to follow you never hands the eye over:
+              // her gaze is clamped to nothing, so standing the drift down
+              // would buy a still eye and nothing else. Read at render, not at
+              // the touch, so turning away mid-look gives the drift straight
+              // back.
+              tracking={tracking && follows}
+              onPress={poke}
+              waking={waking}
+            />
+          </View>
         </View>
-        <View style={styles.speech}>
-          <View style={styles.labelRow}>
-            <View style={[styles.emotionDot, { backgroundColor: iris }]} />
+
+        {/* Her words get an instrument of their own (3a): a status strip
+            carrying her state, and a body holding nothing but what she said. */}
+        <View style={[styles.window, hasBody ? styles.windowOpen : null]}>
+          <View style={styles.strip}>
+            <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
             <Text
               style={[styles.emotionLabel, { color: iris, fontFamily: font('mono', 500, lang) }]}
             >
               {emotionLabel(emotion, lang)}
             </Text>
+            {status ? (
+              <Text
+                testID="status"
+                style={[styles.status, { fontFamily: font('mono', 500, lang) }]}
+              >
+                {status}
+              </Text>
+            ) : null}
           </View>
-          {/* The one thing the app says in its own voice. Danger red and the
-              mono face, never her serif, so a refused credential cannot be
-              read as something she said. */}
-          {systemNotice ? (
-            <Text
-              testID="system-notice"
-              style={StyleSheet.flatten([
-                styles.line,
-                styles.notice,
-                { fontFamily: font('mono', 600, lang) },
-              ])}
-            >
-              {SYSTEM_TEXT[systemNotice](t)}
-            </Text>
-          ) : (
-            <Text
-              testID="her-line"
-              style={StyleSheet.flatten([
-                styles.line,
-                { fontSize, lineHeight, fontFamily: serif(lang) },
-              ])}
-            >
-              {shown}
-            </Text>
-          )}
-          {thinking ? <ThinkingDots /> : null}
+
+          {hasBody ? (
+            <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner}>
+              {/* The one thing the app says in its own voice. Danger red and the
+                  mono face, never her serif, so a refused credential cannot be
+                  read as something she said. */}
+              {systemNotice ? (
+                <Text
+                  testID="system-notice"
+                  style={StyleSheet.flatten([
+                    styles.notice,
+                    { fontFamily: font('mono', 600, lang) },
+                  ])}
+                >
+                  {SYSTEM_TEXT[systemNotice](t)}
+                </Text>
+              ) : (
+                <Text
+                  testID="her-line"
+                  style={StyleSheet.flatten([
+                    styles.line,
+                    { fontSize, lineHeight, fontFamily: serif(lang) },
+                  ])}
+                >
+                  {shown}
+                  {typing ? (
+                    // Nested, so it sits after the last character she has typed
+                    // rather than at the end of the box. A nested Text takes
+                    // colour but not opacity, so the blink is amber/transparent.
+                    <Text
+                      testID="caret"
+                      style={{ color: caretOn ? palette.amber : 'transparent' }}
+                    >
+                      {CARET}
+                    </Text>
+                  ) : null}
+                </Text>
+              )}
+              {thinking ? <ThinkingDots /> : null}
+            </ScrollView>
+          ) : null}
         </View>
       </View>
 
@@ -354,11 +446,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  pulseDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
   },
   wordmark: {
     fontSize: ms(8.5),
@@ -414,38 +501,79 @@ const styles = StyleSheet.create({
     letterSpacing: ms(8) * 0.2,
     color: palette.textPill,
   },
-  // `flex:1 … gap:26px; padding:0 32px`
+  // The eye and her window as one block, centred in the space left over. The
+  // stage centred the eye and her line together like this before the window
+  // existed; the window is only what her line grew into, so the eye keeps the
+  // place it had. Not `alignItems:'center'` — the window stretches to its own
+  // margins.
   centre: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 26,
-    paddingHorizontal: 32,
     minHeight: 0,
   },
-  // the label and her line ride together under the optic, `gap:16px`
-  speech: {
+  // `padding:22px 0 22px`, the eye centred in its own row
+  opticRow: {
     alignItems: 'center',
-    gap: 16,
-    width: '100%',
+    paddingVertical: 22,
   },
-  labelRow: {
+  // `margin:0 18px 14px; background:#17161a; border:1px solid #2c2a22;
+  // border-radius:14px`
+  window: {
+    marginHorizontal: 18,
+    marginBottom: 14,
+    backgroundColor: palette.panelAlt,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  // The design gives the window `flex:1`, which on a phone is every pixel
+  // between the eye and the input — a nearly empty box the height of the
+  // screen for one sentence, with the eye shoved up out of its place to make
+  // room. It takes its height from what she actually said instead, capped at
+  // 3a's own figure. At `voice`'s size a reply under thirty words sits well
+  // inside that, so the cap is for freak lines only — which is what the
+  // ScrollView behind it is for.
+  windowOpen: {
+    maxHeight: WINDOW_MAX_PX,
+  },
+  // `padding:11px 14px; border-bottom:1px solid #221f18; background:#1a1913`
+  strip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
-  },
-  emotionDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    backgroundColor: palette.panel,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.borderSoft,
   },
   // colour comes from the iris, not a fixed grey — applyEmotion sets it.
   emotionLabel: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.24,
   },
+  // The design sets this at weight 400; the mono face is bundled at 500 and up,
+  // so it takes 500 like every other mono label on the stage. The tracking is
+  // the design's .18em, which is what separates it from the label beside it.
+  status: {
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.18,
+    color: palette.textDim,
+  },
+  // `padding:20px 18px; overflow-y:auto`. `flexShrink` rather than `flex`: a
+  // ScrollView claiming a flex share inside an auto-height parent collapses to
+  // nothing, and this one has to measure her line and then give way to the
+  // window's ceiling.
+  body: {
+    flexShrink: 1,
+  },
+  bodyInner: {
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    gap: 16,
+  },
   line: {
-    textAlign: 'center',
     color: palette.text,
   },
   // Deliberately unlike her: the danger red, small, wide-tracked and mono.

@@ -102,8 +102,11 @@ test('the cabinet is an overlay, not a view', async () => {
   const { getByText, getByTestId } = await render(<ScreenRouter />);
   // The drawer's own header, not the stage's handle label — both say CABINET.
   expect(getByText('02 / 04 · CLOSE')).toBeTruthy();
-  // The stage is still underneath it.
-  expect(getByTestId('her-line')).toBeTruthy();
+  // The stage is still underneath it. Anchored on the optic, not her line: the
+  // window holding her words collapses to its status strip when she has not
+  // said anything yet, and this stage has an empty transcript. The eye is on
+  // the stage in every state it has.
+  expect(getByTestId('optic')).toBeTruthy();
 });
 
 test('the credential panel is an overlay over SYSTEM', async () => {

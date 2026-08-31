@@ -8,6 +8,10 @@ const en = {
   send: 'SEND',
   ask: 'say something to her',
   reply: 'reply to her',
+  // The status strip's live word (design 3a): TRANSMITTING while the
+  // typewriter is still drawing her line, COMPLETE once it has all arrived.
+  transmitting: 'TRANSMITTING',
+  complete: 'COMPLETE',
   cabinet: 'CABINET',
   close: 'CLOSE',
   alloc: 'ALLOCATED',
@@ -86,6 +90,8 @@ const ko: ChromeStrings = {
   send: '전송',
   ask: '그에게 말을 건네십시오',
   reply: '답신',
+  transmitting: '전송 중',
+  complete: '완료',
   cabinet: '보관함',
   close: '닫기',
   alloc: '배정됨',

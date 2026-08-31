@@ -13,6 +13,11 @@ export const palette = {
   bg: '#14130f',
   bgDeep: '#131210',
   bgFile: '#100f0d',
+  // The adaptive icon's ground, and so the splash's — ICONS.md, and the native
+  // splash's own backgroundColor in app.json. Deliberately not `bg`: the splash
+  // is the icon enlarged, not a screen of the app, and the two must agree
+  // across the handover or the seam shows.
+  iconBg: '#131011',
   panel: '#1a1913',
   panelAlt: '#17161a',
   border: '#2c2a22',
@@ -100,6 +105,25 @@ export const font = (role: 'display' | 'mono', weight: FontWeight, lang: Lang = 
 // more unsettling than one that speaks in a UI font (design doc, turn 2).
 export const serif = (lang: Lang = 'en'): string =>
   lang === 'ko' ? 'NanumMyeongjo_400Regular' : 'InstrumentSerif_400Regular';
+
+// And the one size her voice is set at. It used to be a ladder — a short line
+// loud, a long one shrunk to fit (`fluid.ts`, now gone) — because her words sat
+// loose on the stage with nothing around them and only their own size to give
+// them weight. In 3a they live inside a bordered window, and a size that moved
+// under her fought the frame it was in.
+//
+// This is the ladder's old bottom rung: the size her longest replies were
+// already being set at. SOUL.md holds her under 30 words, which at this size is
+// about eight lines of the window's body — so a reply arrives whole and the
+// ScrollView behind it never has to move. Korean is 12% smaller with looser
+// leading, for the same reason the ladder carried two of everything: Nanum
+// Myeongjo's hangul sits optically larger than Instrument Serif's latin at the
+// same px (design doc, turn 5f).
+export const voice = (lang: Lang = 'en'): { fontSize: number; lineHeight: number } => {
+  const [size, leading] = lang === 'ko' ? [14, 1.68] : [15, 1.56];
+  const fontSize = ms(size);
+  return { fontSize, lineHeight: fontSize * leading };
+};
 
 // Module 02's title ink. Instrument Serif Italic carries no hangul, so a
 // Korean title set in it falls back to whatever the system offers — on the one

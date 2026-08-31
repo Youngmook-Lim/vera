@@ -32,7 +32,11 @@ const realSpeak = useFacilityStore.getState().speak;
 const awake = (over = {}) =>
   useFacilityStore.setState({
     apiKey: 'sk-ant-api03-abcdefghijklmnop', emotion: 'calm', lang: 'en',
-    line: '', shown: '', thinking: false, log: [], cabinetOpen: false, ...over,
+    line: '', shown: '', thinking: false, log: [], cabinetOpen: false,
+    // Cleared explicitly: a notice left standing by an earlier test replaces
+    // her line with the app's, and every assertion about what she said then
+    // fails somewhere far from the cause.
+    systemNotice: null, ...over,
   });
 
 describe('Stage', () => {
@@ -46,11 +50,14 @@ describe('Stage', () => {
     expect(ko.getByText('의심스러워요')).toBeTruthy();
   });
 
-  it('sizes a short line loud and a long line small', async () => {
+  // Her line used to be sized by a ladder — loud when short, small when long.
+  // It sits in a bordered window now (3a) and takes one size whatever she says,
+  // low enough that a reply under thirty words arrives whole.
+  it('sets her line at one size however long it is', async () => {
     awake({ line: 'You returned.', shown: 'You returned.' });
     const short = await render(<Stage />);
     expect(short.getByTestId('her-line').props.style).toEqual(
-      expect.objectContaining({ fontSize: ms(30) }),
+      expect.objectContaining({ fontSize: ms(15) }),
     );
 
     const long = Array.from({ length: 34 }, () => 'word').join(' ');
@@ -61,19 +68,66 @@ describe('Stage', () => {
     );
   });
 
-  // The typewriter reveals her line a character at a time, and sizing off what
-  // is on screen steps the type down each time the growing word count crosses
-  // a rung of the ladder — mid-sentence, in front of you. The whole line is
-  // known before the first character is drawn, so the size is decided there.
-  it('sizes the type from the whole line, not the part typed so far', async () => {
-    const long = Array.from({ length: 34 }, () => 'word').join(' ');
-    awake({ line: long, shown: 'word word' });
-    const midStream = await render(<Stage />);
-    expect(midStream.getByTestId('her-line').props.style).toEqual(
-      expect.objectContaining({ fontSize: ms(15) }),
+  it('sets her line smaller in Korean, whose hangul reads optically larger', async () => {
+    awake({ lang: 'ko', line: '돌아왔군요.', shown: '돌아왔군요.' });
+    const view = await render(<Stage />);
+    expect(view.getByTestId('her-line').props.style).toEqual(
+      expect.objectContaining({ fontSize: ms(14) }),
     );
-    // and it is still her line that is on screen, not the whole thing early
-    expect(midStream.getByTestId('her-line').props.children).toBe('word word');
+  });
+
+  // The strip's live word. It is her transmission and only hers: a notice is
+  // the app speaking, and there is no third word for "she has not spoken yet".
+  describe('the status strip', () => {
+    it('says TRANSMITTING while her line is still arriving', async () => {
+      awake({ line: 'You slept four hours.', shown: 'You slept' });
+      const view = await render(<Stage />);
+      expect(view.getByTestId('status').props.children).toBe('TRANSMITTING');
+    });
+
+    it('says TRANSMITTING while she is still thinking', async () => {
+      awake({ line: '', shown: '', thinking: true });
+      const view = await render(<Stage />);
+      expect(view.getByTestId('status').props.children).toBe('TRANSMITTING');
+    });
+
+    it('says COMPLETE once the whole line has landed', async () => {
+      awake({ line: 'You returned.', shown: 'You returned.' });
+      const view = await render(<Stage />);
+      expect(view.getByTestId('status').props.children).toBe('COMPLETE');
+    });
+
+    it('says nothing before she has ever spoken', async () => {
+      awake({ line: '', shown: '', thinking: false });
+      const view = await render(<Stage />);
+      expect(view.queryByTestId('status')).toBeNull();
+    });
+
+    // A notice is the app taking the turn. Reporting her line COMPLETE beside
+    // it would claim, in her own colour, that she said the thing she never got
+    // to show.
+    it('says nothing under a system notice', async () => {
+      awake({ line: 'You returned.', shown: 'You returned.', systemNotice: 'auth' });
+      const view = await render(<Stage />);
+      expect(view.queryByTestId('status')).toBeNull();
+      expect(view.getByTestId('system-notice')).toBeTruthy();
+    });
+  });
+
+  // The caret rides the gap between the finished line and what has been drawn
+  // of it, so it needs nothing stored to know she is still typing.
+  it('shows a caret only while her line is still arriving', async () => {
+    awake({ line: 'You slept four hours.', shown: 'You slept' });
+    const midStream = await render(<Stage />);
+    expect(midStream.getByTestId('caret')).toBeTruthy();
+    // and it is still only what she has typed that is on screen
+    expect(midStream.getByTestId('her-line').props.children).toEqual(
+      expect.arrayContaining(['You slept']),
+    );
+
+    awake({ line: 'You returned.', shown: 'You returned.' });
+    const done = await render(<Stage />);
+    expect(done.queryByTestId('caret')).toBeNull();
   });
 
   it('hides the conversation pill until there is a transcript', async () => {

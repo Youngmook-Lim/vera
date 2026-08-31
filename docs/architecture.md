@@ -27,7 +27,6 @@ Her stage is the whole app. Everything else is a drawer, a second view, or a roo
 ```
 src/core/
   theme.ts      v2 palette, emotion hues, serif role for her voice
-  fluid.ts      word count → { fontSize, lineHeight }, per language       ⊤
   i18n.ts       Lang, Strings<T>, tmpl()                                  ⊤
   storage.ts    the four stores; a `secure` seam over expo-secure-store
   speech.ts     the reply cycle, with the network injected                ⊤
@@ -44,7 +43,7 @@ src/vera/
 
 src/shell/
   ScreenRouter.tsx   view switch, hardware back, both overlays
-  Stage.tsx          optic, emotion label, fluid line, input, drawer handle
+  Stage.tsx          optic, her reply window, input, drawer handle
   Optic.tsx          the Skia eye
   opticGeometry.ts   emotion → pixels, extracted so it can be tested      ⊤
   Cabinet.tsx        the drawer, built from the registry
@@ -85,7 +84,7 @@ Views: `stage` · `log` · `sys` · `mem` · `soul` · `mod01` · `mod02`. Overl
 - **Nothing runs in the background.** No notifications, no scheduling, no sensors, no location. Everything is event-driven while the app is open.
 - **She speaks on a trigger, never on a timer.** `speak(trigger, said?)` builds a context object, calls the provider, and either parses her minified JSON (emotion + line + an optional nine-word impression with a `seal` flag) or falls back to an authored line. A module-level re-entrancy flag means a second call while one is in flight is dropped, not queued.
 - **She is given at most one notable circumstance** — awake in the small hours, gone three days, a fifth return today, a slow reply, a specimen above 90, repeat erasure. An unremarkable number is noise she will recite.
-- **Her line types in at 16ms per character**; a new line cancels the in-flight timer. Fluid type (`fluid.ts`) picks a size from the word count so nothing ever scrolls, on separate Latin and Korean ladders.
+- **Her line types in at 16ms per character**; a new line cancels the in-flight timer. It lands in a bordered window under the optic (design 3a) whose status strip reads TRANSMITTING while the typewriter runs and COMPLETE once it stops. `voice()` in `theme.ts` sets it at one size per language — low enough that a reply under thirty words never has to scroll.
 - **The credential never verifies at the gate.** Six shapes are accepted by pattern; a wrong key is caught when she fails to answer, which sends her dormant mid-sentence with MEMORY.md intact underneath. An auth failure leaves the key in place — repeated failures are the subject's cue to change it under ACCESS.
 - **Specimen-03's hunger is a pure function** of (stored value, last fed, now): it drifts up 2.5/hour and drops 41 per tap, floored at 8. It lives in the shell's store, not the module's, because her context object is told about it.
 - **Visit counting** increments on same-day returns, caps at 99, resets on a new day, and treats a remount within 120 seconds as a reload rather than a return — without that guard hot reload inflates it into the hundreds.
