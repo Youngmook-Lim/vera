@@ -1,6 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { useFacilityStore } from '../store';
-import { EXTRACT_SYSTEM } from '../../vera/extract';
+import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
 
@@ -953,6 +953,53 @@ describe('the prompt record', () => {
     expect(s.lastExtract?.outcome).toBe('applied');
   });
 
+  // The record has to carry the state the optic took, not the word she used —
+  // an unrecognised word becomes `calm` in parseSpeech, and the inspector is
+  // the only place that difference is visible.
+  it('records the state after the clamp, not the word she asked for', async () => {
+    callLlm.mockResolvedValue('{"emotion":"wry","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+
+    const s = useFacilityStore.getState();
+    expect(s.lastPrompt?.emotion).toBe('calm');
+    expect(s.emotion).toBe('calm');
+    expect(s.lastPrompt?.raw).toContain('"emotion":"wry"');
+  });
+
+  it('records the state she chose when it is one of hers', async () => {
+    callLlm.mockResolvedValue('{"emotion":"suspicious","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+
+    expect(useFacilityStore.getState().lastPrompt?.emotion).toBe('suspicious');
+  });
+
+  // Every other field describes the request. Without the line, the record
+  // cannot be read against the screen it produced.
+  it('records the line the subject was shown, and the round trip', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+
+    const s = useFacilityStore.getState();
+    expect(s.lastPrompt?.line).toBe('Noted.');
+    expect(s.lastPrompt?.notice).toBeNull();
+    expect(s.lastPrompt?.took).toBeGreaterThanOrEqual(0);
+    expect(s.lastPrompt?.took).toBeLessThan(5_000);
+  });
+
+  // Under a notice the app speaks and her line never reaches the screen. The
+  // record has to say that happened, or a silent stage and a refused
+  // credential are the same absence.
+  it('records that the app spoke instead of her, and what she would have said', async () => {
+    callLlm.mockRejectedValue(new QuotaError('http 400: Your credit balance is too low.'));
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const s = useFacilityStore.getState();
+    expect(s.lastPrompt?.notice).toBe('quota');
+    // She had an authored line ready; the app took the turn from her.
+    expect(s.lastPrompt?.line).toBeTruthy();
+    expect(s.line).toBe('');
+  });
+
   // The guard that matters, and the only one that can catch the regression
   // worth catching: the records are built HERE, out of live state that has the
   // credential sitting next to it. buildRequest puts the key in the headers and
@@ -996,6 +1043,21 @@ describe('extraction', () => {
     useFacilityStore.setState({
       apiKey: KEY, memory: { facts: [], verdicts: [], threads: [], pending: [] },
     });
+  });
+
+  // The budget is enforced on the request, not only stated in the prompt: a
+  // ceiling the model is told about but not actually given is the worst of the
+  // two, since it would record less for no reason.
+  it('sends the extraction call under its own token budget', async () => {
+    useFacilityStore.setState({
+      memory: { ...EMPTY_MEMORY, pending: [{ you: 'hi', her: 'Barely.' }] },
+    });
+    callLlm.mockResolvedValue('{"facts":[],"verdicts":[],"threads":[],"resolve":[],"retire":[]}');
+    await useFacilityStore.getState().extractNow();
+
+    expect(callLlm).toHaveBeenCalledWith(
+      expect.any(String), EXTRACT_SYSTEM, expect.any(Array), EXTRACT_MAX_TOKENS,
+    );
   });
 
   it('queues a finished exchange without calling the model', async () => {

@@ -1,5 +1,16 @@
 import type { Exchange, Memory } from './memory';
 
+// Extraction's own ceiling, well above the reply's 300. The two calls used to
+// share that default, and they are not the same shape of job: a reply is under
+// thirty words, while this one rewrites a file covering a whole batch of
+// exchanges. The batch is the entire pending queue (capped at 40), so a budget
+// that is merely tight becomes impossible as the queue grows — every failure
+// leaves more to write up on the next attempt, against the same ceiling, and
+// the loop cannot escape on its own.
+//
+// Named here rather than at the call site because the prompt below states it.
+export const EXTRACT_MAX_TOKENS = 1000;
+
 // Bookkeeping, not her speaking — so this is NOT SOUL.md (continuity §4.3).
 export const EXTRACT_SYSTEM = [
   'You maintain a file about one person, on behalf of someone who talks to them.',
@@ -16,6 +27,15 @@ export const EXTRACT_SYSTEM = [
   'Use "retire" for facts that have stopped being true.',
   '',
   'Record nothing you were not told. Most exchanges yield nothing; return empty arrays then.',
+  '',
+  // The ceiling, stated. A reply cut off part-way through an object cannot be
+  // parsed and is thrown away entire — every entry in it lost, not just the
+  // one that was interrupted — so the instruction is to record less rather
+  // than to risk the cut.
+  `Your whole reply must fit within ${EXTRACT_MAX_TOKENS} tokens. A reply that runs `
+    + 'past that is cut off mid-object and discarded in full, losing every entry '
+    + 'in it. If there is more than will fit, keep the most important entries and '
+    + 'leave the rest; they will be offered to you again.',
   '',
   'Return ONLY minified JSON:',
   '{"facts":[{"text":"","keys":[""],"durable":true,"until":null}],',

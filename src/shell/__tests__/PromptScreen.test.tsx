@@ -16,6 +16,10 @@ const RECORD: PromptRecord = {
   ],
   raw: '{"emotion":"amused","line":"Barely."}',
   failure: null,
+  emotion: 'amused',
+  line: 'Barely.',
+  notice: null,
+  took: 1840,
   outcome: 'model',
 };
 
@@ -98,6 +102,80 @@ describe('the prompt inspector', () => {
     expect(body).toContain('you governed the world');
     expect(body).toContain('THE SUBJECT SAYS: did you miss me');
     expect(body).toContain('{"emotion":"amused","line":"Barely."}');
+  });
+
+  // The clamp made visible. parseSpeech turns any word that is not one of her
+  // states into `calm`, and on the stage that is indistinguishable from her
+  // having chosen calm. The two lines together are the only place it shows.
+  it('prints the state the optic took, beside the one she asked for', async () => {
+    show({ ...RECORD, raw: '{"emotion":"wry","line":"Barely."}', emotion: 'calm' });
+    const body = await bodyOf();
+
+    expect(body).toContain('emotion: calm');
+    expect(body).toContain('"emotion":"wry"');
+  });
+
+  // A bank line never reaches the model, so its raw reply is null — the header
+  // is the only thing that can say what the eye did.
+  it('prints the state of a line that came from the bank', async () => {
+    show({ ...RECORD, trigger: 'open', system: null, turns: null, raw: null, emotion: 'bored', outcome: 'bank' });
+    expect(await bodyOf()).toContain('emotion: bored');
+  });
+
+  // The one thing the screen could not show: the output. Everything else here
+  // describes the request, and a screenshot of it could not be read against the
+  // stage it came from without knowing which line it produced.
+  it('prints the line the subject actually saw', async () => {
+    show(RECORD);
+    expect(await bodyOf()).toContain('spoke: Barely.');
+  });
+
+  // Under a notice the app speaks in its own voice and her line is discarded on
+  // the way to the screen. From the transcript alone that is indistinguishable
+  // from her having had nothing to say.
+  it('says when the app spoke instead of her, and what she would have said', async () => {
+    show({ ...RECORD, outcome: 'fallback', notice: 'quota', emotion: 'dormant', line: 'Something has failed.' });
+    const body = await bodyOf();
+
+    expect(body).toContain('the app showed its own quota notice instead');
+    expect(body).toContain('her unshown line: Something has failed.');
+  });
+
+  // A hung socket sits at the 25s cap, a refusal returns instantly, and a slow
+  // provider is neither. All three used to read the same.
+  it('prints how long the round trip took', async () => {
+    show(RECORD);
+    expect(await bodyOf()).toContain('took: 1840ms');
+  });
+
+  // The verdict in the header, rather than left to be inferred from an outcome
+  // printed several lines above it.
+  it('says in the header when a reply arrived and could not be read', async () => {
+    show({ ...RECORD, raw: 'V.E.R.A. Not an assistant.', outcome: 'fallback', emotion: 'dormant' });
+    const body = await bodyOf();
+
+    expect(body).toContain('COULD NOT BE READ');
+    expect(body).toContain(`(${'V.E.R.A. Not an assistant.'.length} chars`);
+  });
+
+  // A reply that parsed must not be labelled, or the label means nothing.
+  it('does not label a reply that was read', async () => {
+    show(RECORD);
+    expect(await bodyOf()).not.toContain('COULD NOT BE READ');
+  });
+
+  // The failure the length is the only clue to: a reply cut off by the token
+  // budget is valid text that stops mid-object, and reads as an ordinary
+  // parse failure without a count to weigh it against.
+  it('prints the length of the raw reply, so a truncated one shows', async () => {
+    const cut = `{"emotion":"calm","line":"${'a'.repeat(400)}`;
+    show({ ...RECORD, raw: cut, outcome: 'fallback', emotion: 'dormant' });
+    expect(await bodyOf()).toContain(`(${cut.length} chars, COULD NOT BE READ)`);
+  });
+
+  it('labels an extraction that arrived and could not be read', async () => {
+    show(RECORD, { ...EXTRACT, raw: 'not json at all', outcome: 'unparseable' });
+    expect(await bodyOf()).toContain('COULD NOT BE READ');
   });
 
   // The regression this screen was rebuilt for: the whole session goes to the

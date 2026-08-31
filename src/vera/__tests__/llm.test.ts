@@ -109,8 +109,41 @@ describe('callLlm', () => {
     await expect(callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300, fetchImpl)).rejects.toThrow('Network request failed');
   });
 
-  it('returns an empty string when the response carries no text', async () => {
-    await expect(callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300, respond({}))).resolves.toBe('');
+  // A 200 with nothing in it used to come back as a successful empty reply, so
+  // the caller read it as a model that had answered unreadably. On the PROMPT
+  // screen that was `RAW REPLY (0 chars)` and no way at all to go further.
+  describe('a 200 that carries no text', () => {
+    const empty = (body: unknown) =>
+      callLlm(ANTHROPIC, 'S', [{ role: 'user', text: 'u' }], 300, respond(body));
+
+    it('is a failure, not an empty reply', async () => {
+      await expect(empty({})).rejects.toThrow('carried no text');
+    });
+
+    // OpenRouter returns some upstream failures as HTTP 200 with an error
+    // object and no choices at all. The sentence is right there in the body.
+    it('reports an error the provider returned under a 200', async () => {
+      await expect(empty({ error: { message: 'upstream provider is overloaded' } }))
+        .rejects.toThrow('upstream provider is overloaded');
+    });
+
+    // The discrimination that matters: a budget that ran out before any content
+    // was emitted, against a reply that was never generated.
+    it('names the finish reason when the provider gave one', async () => {
+      await expect(empty({ choices: [{ finish_reason: 'length', message: { content: '' } }] }))
+        .rejects.toThrow('finish reason: length');
+      await expect(empty({ content: [], stop_reason: 'max_tokens' }))
+        .rejects.toThrow('finish reason: max_tokens');
+    });
+
+    it('says so plainly when the provider gave no reason either', async () => {
+      await expect(empty({})).rejects.toThrow('no reason was given');
+    });
+
+    // It is a failure of the call, not of the credential: the key was accepted.
+    it('never blames the credential', async () => {
+      await expect(empty({})).rejects.not.toThrow(AuthError);
+    });
   });
 
   // Finding 3, final review: RN's fetch has no timeout of its own, and a socket

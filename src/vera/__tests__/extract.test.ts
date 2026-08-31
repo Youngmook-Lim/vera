@@ -1,4 +1,4 @@
-import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../extract';
+import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../extract';
 import { EMPTY_MEMORY } from '../memory';
 
 describe('the extraction prompt', () => {
@@ -6,6 +6,21 @@ describe('the extraction prompt', () => {
     expect(EXTRACT_SYSTEM).not.toContain('# SOUL.md');
     expect(EXTRACT_SYSTEM).toContain('"facts"');
     expect(EXTRACT_SYSTEM).toContain('"reinforces"');
+  });
+
+  // The two calls shared the reply's 300-token default, and this one rewrites a
+  // file covering the whole pending queue rather than saying one line under
+  // thirty words. Too small, it returns nothing and the queue grows, which
+  // makes the next attempt larger against the same ceiling.
+  it('has its own budget, well above a reply\'s', () => {
+    expect(EXTRACT_MAX_TOKENS).toBeGreaterThan(300);
+  });
+
+  // Stated in the prompt, from the same constant that is sent to the provider —
+  // a number told to the model that does not match the one enforced on the
+  // request is worse than not telling it at all.
+  it('tells the model the ceiling it is actually given', () => {
+    expect(EXTRACT_SYSTEM).toContain(`${EXTRACT_MAX_TOKENS} tokens`);
   });
 
   it('shows the extractor the ids it may act on', () => {

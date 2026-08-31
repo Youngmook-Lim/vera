@@ -1,5 +1,5 @@
 // src/vera/__tests__/speak.test.ts
-import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../speak';
+import { SPEAKABLE_EMOTIONS, buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../speak';
 import { MEMORY_HEADING } from '../memoryDoc';
 import type { SpeakContext } from '../context';
 import { isEmotionKey } from '../emotions';
@@ -35,6 +35,31 @@ describe('buildSystemPrompt', () => {
 
   it('asks only for an emotion and a line', () => {
     expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
+  });
+
+  // The regression this list closes, and the reason it is worth a test: the
+  // prompt asked for "one of your states" and no part of it — not here, not
+  // SOUL.md — ever said what they were. She invented a word every reply,
+  // parseSpeech recognised none of them, and every one became `calm`.
+  it('names every state she is allowed to choose', () => {
+    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    expect(SPEAKABLE_EMOTIONS).toHaveLength(8);
+    for (const key of SPEAKABLE_EMOTIONS) {
+      expect(sys).toContain(key);
+      expect(isEmotionKey(key)).toBe(true);
+    }
+  });
+
+  // `dormant` is the app's state, not hers: the dead grey shown when the model
+  // could not be reached at all. Offering it would let her play dead.
+  it('does not offer her the dormant state', () => {
+    expect(SPEAKABLE_EMOTIONS).not.toContain('dormant');
+  });
+
+  // SOUL.md forbids her reciting her own machinery. Naming the states to her
+  // is exactly the sort of thing that leaks into a line if it is not said.
+  it('tells her the state is for the record and not for the line', () => {
+    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('never say it');
   });
 
   it('asks for korean in the same deadpan register', () => {

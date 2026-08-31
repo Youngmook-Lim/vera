@@ -67,19 +67,60 @@ interface ErrorShape { error?: { message?: string; code?: string; status?: strin
 // is stored in the prompt record and rendered on a phone screen.
 const MAX_DETAIL = 200;
 
+const detailOf = (body: unknown): string => {
+  const j = body as ErrorShape;
+  const said = typeof j?.error?.message === 'string' ? j.error.message : '';
+  const code = typeof j?.error?.code === 'string' ? j.error.code : '';
+  return [said, code && `(${code})`].filter(Boolean).join(' ').trim();
+};
+
 const reasonFor = async (res: { status: number; json: () => Promise<unknown> }): Promise<string> => {
-  let said = '';
-  let code = '';
+  let detail = '';
   try {
-    const body = (await res.json()) as ErrorShape;
-    said = typeof body?.error?.message === 'string' ? body.error.message : '';
-    code = typeof body?.error?.code === 'string' ? body.error.code : '';
+    detail = detailOf(await res.json());
   } catch {
     // A body that is not JSON, or no body at all. The status alone still says
     // more than the nothing that was reported before.
   }
-  const detail = [said, code && `(${code})`].filter(Boolean).join(' ').trim();
   return detail ? `http ${res.status}: ${detail}`.slice(0, MAX_DETAIL) : `http ${res.status}`;
+};
+
+// Why the model stopped, under each provider's own name for it. Never spoken
+// and never stored on its own — it goes into the message thrown for an empty
+// 200, where it is the difference between a budget that ran out and a reply
+// that was never generated.
+interface FinishShape {
+  stop_reason?: string;
+  choices?: { finish_reason?: string; native_finish_reason?: string }[];
+  candidates?: { finishReason?: string }[];
+}
+
+const finishOf = (payload: unknown): string => {
+  const j = payload as FinishShape;
+  const c = j?.choices?.[0];
+  return j?.stop_reason
+    ?? c?.finish_reason
+    ?? c?.native_finish_reason
+    ?? j?.candidates?.[0]?.finishReason
+    ?? '';
+};
+
+// A 200 carrying no text is not a reply, and returning it as one was a dead
+// end: the caller could not parse an empty string, so it read as a model that
+// answered unreadably, and the PROMPT screen printed `0 chars` with nothing
+// else to go on. Two real failures land here and neither is a parse problem.
+// OpenRouter returns some upstream failures as HTTP 200 with an `error` object
+// and no `choices` at all — a sentence saying exactly what went wrong, thrown
+// away by a reader looking only for text. And a response that spends its whole
+// token budget before emitting content stops with a finish reason and an empty
+// string. Both are reported now, in the provider's own words where it gave any.
+const emptyReplyReason = (payload: unknown): string => {
+  const detail = detailOf(payload);
+  if (detail) return `http 200: ${detail}`.slice(0, MAX_DETAIL);
+  const finish = finishOf(payload);
+  return finish
+    ? `http 200: the reply carried no text (finish reason: ${finish})`
+    : 'http 200: the reply carried no text, and no reason was given';
 };
 
 // 402 is unambiguous. Otherwise it is the provider's own wording, because a
@@ -137,5 +178,9 @@ export const callLlm = async (
     if (isQuota(res.status, detail)) throw new QuotaError(detail);
     throw new Error(detail);
   }
-  return textOf(await res.json());
+
+  const payload = await res.json();
+  const text = textOf(payload);
+  if (!text) throw new Error(emptyReplyReason(payload));
+  return text;
 };

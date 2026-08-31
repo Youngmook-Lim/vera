@@ -27,11 +27,35 @@ import { T } from './strings';
 // arrived, the provider's own sentence is the only thing that says why — an
 // exhausted account, a retired model and a dead socket all land here and used
 // to read identically.
-const rawSection = (raw: string | null, failure: string | null): string[] => {
-  if (raw !== null) return ['--- RAW REPLY ---', raw];
+//
+// `unreadable` says so in the header rather than leaving it to be worked out
+// from the outcome three lines above. The length is there for the failure it
+// is the only clue to: a reply cut off by the token budget is valid text that
+// stops mid-object, and a count against a 300-token cap is what shows it.
+const rawSection = (
+  raw: string | null,
+  failure: string | null,
+  unreadable: boolean,
+): string[] => {
+  if (raw !== null) {
+    const note = unreadable ? ', COULD NOT BE READ' : '';
+    return [`--- RAW REPLY (${raw.length} chars${note}) ---`, raw];
+  }
   return [
     '--- NO REPLY ---',
     failure ?? '(the request failed before a reply arrived)',
+  ];
+};
+
+// What the subject actually saw, which is not always what came back. Under a
+// notice the app speaks in its own voice and her line — authored, already
+// chosen — is discarded on the way to the screen, so both are printed: what
+// was shown, and what she would have said.
+const spokenLine = (p: PromptRecord): string[] => {
+  if (!p.notice) return [`spoke: ${p.line}`];
+  return [
+    `spoke: (nothing — the app showed its own ${p.notice} notice instead)`,
+    `her unshown line: ${p.line}`,
   ];
 };
 
@@ -50,10 +74,20 @@ const buildReplyMd = (p: PromptRecord | null): string => {
     '# LAST PROMPT',
     '',
     `at: ${new Date(p.at).toISOString()}`,
+    // A hung socket, a slow provider and an instant refusal are three different
+    // problems, and the first is capped at REQUEST_TIMEOUT_MS — a `took` near
+    // 25000 with no reply is the timeout, not the provider.
+    `took: ${p.took}ms`,
     `trigger: ${p.trigger}`,
     `route: ${p.route || 'none'}`,
     `model: ${p.model || 'none'}`,
     `outcome: ${p.outcome}`,
+    // What the optic took, after the clamp. Against the emotion in the raw
+    // reply below it, this is the only place a word of hers that is not one of
+    // her states shows itself — everywhere else it is indistinguishable from
+    // her having chosen calm.
+    `emotion: ${p.emotion}`,
+    ...spokenLine(p),
     '',
   ].join('\n');
 
@@ -73,7 +107,7 @@ const buildReplyMd = (p: PromptRecord | null): string => {
         turn.text,
         '',
       ])),
-    ...rawSection(p.raw, p.failure),
+    ...rawSection(p.raw, p.failure, p.outcome === 'fallback'),
   ].join('\n');
 
   return `${head}${sent}`;
@@ -98,7 +132,7 @@ const buildExtractMd = (x: ExtractRecord | null): string => {
     `--- USER (${x.user.length} chars) ---`,
     x.user,
     '',
-    ...rawSection(x.raw, x.failure),
+    ...rawSection(x.raw, x.failure, x.outcome === 'unparseable'),
   ].join('\n');
 };
 
@@ -187,6 +221,10 @@ export function FileScreen() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyInner}>
         <Text
           testID="file-body"
+          // A developer's window is worth nothing if what it shows cannot be
+          // taken out of the phone. Long-press selects, as anywhere else on
+          // Android; all three documents here are read-only either way.
+          selectable
           style={[styles.bodyText, { fontFamily: font('mono', 500, lang) }]}
         >
           {body}

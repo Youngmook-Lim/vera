@@ -7,7 +7,7 @@ import { applyExtraction } from '../vera/apply';
 import { pick } from '../vera/bank';
 import { buildContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
-import { EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
+import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
 import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
@@ -63,6 +63,23 @@ export interface PromptRecord {
   // only that nothing arrived — it could not tell an empty credit balance from
   // a dead socket, which is the whole reason this field exists.
   failure: string | null;
+  // The state the optic actually took, after the clamp in parseSpeech. Read it
+  // against the emotion inside `raw`: the two differing is a word she used that
+  // is not one of hers, which is silently `calm` everywhere else in the app.
+  emotion: EmotionKey;
+  // The line this call ended in — hers when it parsed, an authored fallback
+  // when it did not. Everything else here describes what was sent and what came
+  // back; without this the one thing the subject actually saw is the one thing
+  // the inspector cannot show, and a screenshot of it cannot be read against
+  // the screen it came from.
+  line: string;
+  // Whether the app took the reply out of her mouth and spoke in its own voice.
+  // A refusal leaves her silent behind a red line, which from the transcript
+  // alone is indistinguishable from her having nothing to say.
+  notice: SystemCode | null;
+  // Round trip in milliseconds. A 25s timeout, a slow provider and an instant
+  // 400 are three different problems and read identically without it.
+  took: number;
   outcome: 'model' | 'fallback' | 'bank';
 }
 
@@ -437,6 +454,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
 
     try {
+      // Started before the branch so the bank path is timed too — a bank line
+      // taking any measurable time at all would itself be the finding.
+      const startedAt = Date.now();
       let outcome: SpeechOutcome;
       if (trigger === 'subject_spoke') {
         const s = get();
@@ -468,6 +488,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         };
       }
 
+      const took = Date.now() - startedAt;
       const { emotion, line, notice } = outcome;
 
       // The record of what actually happened, for the prompt inspector. A raw
@@ -485,6 +506,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           turns: outcome.debug.turns,
           raw: outcome.debug.raw,
           failure: outcome.debug.failure,
+          emotion,
+          line,
+          notice,
+          took,
           outcome: live ? outcome.source : 'bank',
         },
       });
@@ -686,7 +711,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     // are indistinguishable on screen unless the raw survives.
     let raw: string | null = null;
     try {
-      raw = await callLlm(s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }]);
+      raw = await callLlm(
+        s.apiKey, EXTRACT_SYSTEM, [{ role: 'user', text: prompt }], EXTRACT_MAX_TOKENS,
+      );
       const parsed = parseExtraction(raw);
       // The queue drains only on success — a failure is retried next trigger.
       if (!parsed) {
