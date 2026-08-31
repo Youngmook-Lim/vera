@@ -466,7 +466,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           askedAt: s.askedAt,
           visits: s.visits,
         });
-        const memoryMd = composeMemoryMd(selectMemories(s.memory, said ?? '', Date.now()));
+        // One instant for both: the selection ages entries against it and the
+        // document stamps them against it, and two Date.now() calls could
+        // straddle a minute boundary and disagree in the same prompt.
+        const at = Date.now();
+        const memoryMd = composeMemoryMd(selectMemories(s.memory, said ?? '', at), at);
 
         outcome = await runSpeech({
           key: s.apiKey,

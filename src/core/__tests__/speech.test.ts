@@ -25,7 +25,7 @@ describe('runSpeech', () => {
     await runSpeech(d);
     const [system, turns] = d.call.mock.calls[0];
     expect(system).toContain('# SOUL.md');
-    expect(turns[turns.length - 1].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(turns[turns.length - 1].text).toContain('> did you miss me');
   });
 
   it('sends what she knows in the system prompt, after SOUL.md', async () => {
@@ -54,7 +54,7 @@ describe('runSpeech', () => {
     // turn buildMessages produced, never a real assistant turn. Asserted on
     // content, because a length check alone would pass if the wrong one went.
     expect(sent[1].text).toBe('Regrettably.');
-    expect(sent[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(sent[2].text).toContain('> did you miss me');
     expect(sent[2].text).toContain('"time_of_day":"afternoon"');
   });
 
@@ -75,7 +75,7 @@ describe('runSpeech', () => {
     // The line she said survives — under the old unconditional slice this
     // entry was 'are you there' and her reply was gone entirely.
     expect(sent[1].text).toBe('Regrettably.');
-    expect(sent[2].text).toContain('THE SUBJECT SAYS:');
+    expect(sent[2].text).toContain('WHAT THE SUBJECT SAYS');
   });
 
   // The seam between the merge and the replace. A refused credential logs a
@@ -97,7 +97,7 @@ describe('runSpeech', () => {
     const sent: Turn[] = d.call.mock.calls[0][1];
     expect(sent).toHaveLength(1);
     expect(sent[0].text).toContain('hi');
-    expect(sent[0].text).toContain('THE SUBJECT SAYS: again');
+    expect(sent[0].text).toContain('> again');
   });
 
   // An empty array is an invalid request on all three provider shapes and
@@ -111,7 +111,7 @@ describe('runSpeech', () => {
     const sent: Turn[] = d.call.mock.calls[0][1];
     expect(sent).toHaveLength(1);
     expect(sent[0].role).toBe('user');
-    expect(sent[0].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(sent[0].text).toContain('> did you miss me');
   });
 
   // The inspector exists so the request can be read rather than inferred. The
@@ -129,7 +129,7 @@ describe('runSpeech', () => {
     expect(result.debug.turns).toEqual(d.call.mock.calls[0][1]);
     expect(result.debug.turns?.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
     expect(result.debug.turns?.[0].text).toBe('are you there');
-    expect(result.debug.turns?.[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(result.debug.turns?.[2].text).toContain('> did you miss me');
   });
 
   // A request that was refused is exactly the one worth reading.

@@ -862,7 +862,7 @@ describe('the prompt record', () => {
     expect(record?.turns).toEqual(sent);
     expect(record?.turns?.map((t) => t.role)).toEqual(['user', 'assistant', 'user']);
     expect(record?.turns?.[0].text).toBe('are you there');
-    expect(record?.turns?.[2].text).toContain('THE SUBJECT SAYS: did you miss me');
+    expect(record?.turns?.[2].text).toContain('> did you miss me');
   });
 
   it('records no turns at all for a stimulus answered from the bank', async () => {
@@ -949,7 +949,7 @@ describe('the prompt record', () => {
 
     const s = useFacilityStore.getState();
     expect(s.lastPrompt?.outcome).toBe('model');
-    expect(s.lastPrompt?.turns?.[0].text).toContain('THE SUBJECT SAYS: hello');
+    expect(s.lastPrompt?.turns?.[0].text).toContain('> hello');
     expect(s.lastExtract?.outcome).toBe('applied');
   });
 
