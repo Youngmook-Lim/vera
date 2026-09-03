@@ -9,7 +9,7 @@ import { T } from './strings';
 // The one place a module's own theme is allowed to show through the shell's
 // neutral chrome (spec §4): every tile shares the same square and the same
 // 12px radius, but Module 01 is painted in the terrarium's greens and Module
-// 02 in the identity's bone paper. The two unfurnished slots stay bare
+// 02 in the advice room's cold ink. The two unfurnished slots stay bare
 // numerals on a hairline border — the shell's own colour, nothing borrowed.
 //
 // The shell supplies the geometry and nothing else: the first furnished slot

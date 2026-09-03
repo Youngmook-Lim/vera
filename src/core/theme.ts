@@ -60,16 +60,20 @@ export const palette = {
     hungry: '#ff8a4a',
   },
 
-  // module 02 — bone paper, one ink, none of her vocabulary
-  identity: {
-    paper: '#efe7d7',
-    rule: '#dbd2be',
-    ink: '#1c1a15',
-    inkSoft: '#6b6455',
-    inkFaint: '#9a917d',
-    inkPressed: '#4a4438', // hover of the line-remove glyph's #8a7f68
-    inkGhost: '#b3aa95',
-    tileBorder: '#d6cdb9',
+  // module 02 — someone else's conclusions, filed. Her shell's register, but
+  // its own ink: the exit and the fixed chrome are drawn in these. There is no
+  // accent here on purpose — the room is lit in whatever SHE is wearing, so its
+  // one live colour is `EMOTIONS[emotion].iris` and is read at render (see the
+  // note in `modules/advice/index.tsx`). These are the values that hold still.
+  advice: {
+    bg: '#0f0f11',
+    card: '#16161a',
+    cardBorder: '#24242a',
+    rule: '#1e1e23',
+    ink: '#e9e6df',
+    inkSoft: '#9a968c',
+    inkDim: '#6a675f',
+    inkGhost: '#45433d',
   },
 } as const;
 
@@ -101,8 +105,12 @@ export type FontWeight = 500 | 600 | 700;
 export const font = (role: 'display' | 'mono', weight: FontWeight, lang: Lang = 'en'): string =>
   lang === 'ko' ? hangul[weight] : role === 'display' ? display[weight] : mono[weight];
 
-// Her voice, and only her voice. A machine that speaks in typeset serif is
-// more unsettling than one that speaks in a UI font (design doc, turn 2).
+// Hers, and the book's. A machine that speaks in typeset serif is more
+// unsettling than one that speaks in a UI font (design doc, turn 2) — and a
+// page of quotations is the one other thing that earns the face, so Module 02
+// sets its cards in it too. The cards are English whatever the interface is
+// set to, so they call this with no lang and stay Instrument Serif, the same
+// rule the pure-ASCII telemetry follows above.
 export const serif = (lang: Lang = 'en'): string =>
   lang === 'ko' ? 'NanumMyeongjo_400Regular' : 'InstrumentSerif_400Regular';
 
@@ -125,9 +133,9 @@ export const voice = (lang: Lang = 'en'): { fontSize: number; lineHeight: number
   return { fontSize, lineHeight: fontSize * leading };
 };
 
-// Module 02's title ink. Instrument Serif Italic carries no hangul, so a
-// Korean title set in it falls back to whatever the system offers — on the one
-// page whose whole premise is a single deliberate ink. Nanum Myeongjo has no
-// true italic; its upright form is the correct Korean answer, not a compromise.
+// The attribution under a card, and nothing else now that the identity page is
+// gone. Instrument Serif Italic carries no hangul, so anything Korean set in it
+// falls back to whatever the system offers; Nanum Myeongjo has no true italic,
+// and its upright form is the correct Korean answer rather than a compromise.
 export const serifItalic = (lang: Lang = 'en'): string =>
   lang === 'ko' ? 'NanumMyeongjo_400Regular' : 'InstrumentSerif_400Regular_Italic';

@@ -21,10 +21,12 @@ beforeEach(async () => {
   await secure.remove();
 });
 
-test('exposes the four v2 stores', () => {
+test('exposes the five v2 stores', () => {
   expect(KEYS.soul).toBe('facility.v2.soul');
   expect(KEYS.transcript).toBe('facility.v2.transcript');
-  expect(KEYS.identity).toBe('facility.mod02.identity');
+  expect(KEYS.memory).toBe('facility.v2.memory');
+  expect(KEYS.organism).toBe('facility.mod01.organism');
+  expect(KEYS.advice).toBe('facility.mod02.advice');
   expect(SECURE_KEY).toBe('facility.v2.credential');
 });
 
@@ -35,14 +37,16 @@ test('round-trips ordinary values', async () => {
   expect(await storage.get(KEYS.soul)).toBeNull();
 });
 
-test('clearAll removes every ordinary store, module 02 included', async () => {
+test('clearAll removes every ordinary store, both modules included', async () => {
   await storage.set(KEYS.soul, 's');
   await storage.set(KEYS.transcript, 't');
-  await storage.set(KEYS.identity, 'i');
+  await storage.set(KEYS.organism, 'o');
+  await storage.set(KEYS.advice, 'a');
   await storage.clearAll();
   expect(await storage.get(KEYS.soul)).toBeNull();
   expect(await storage.get(KEYS.transcript)).toBeNull();
-  expect(await storage.get(KEYS.identity)).toBeNull();
+  expect(await storage.get(KEYS.organism)).toBeNull();
+  expect(await storage.get(KEYS.advice)).toBeNull();
 });
 
 test('the credential lives in the keystore, not in AsyncStorage', async () => {

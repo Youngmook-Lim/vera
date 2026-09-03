@@ -3,17 +3,21 @@ import * as SecureStore from 'expo-secure-store';
 
 // Five ordinary stores. Modules 01 and 02 each own their own — neither has
 // anything to do with her soul or the transcript, and she is not told what is
-// in either of them. Her memory is its own store: it outgrew the soul blob
-// when it stopped being a flat list of impressions (continuity §3).
+// in either. Module 02's holds only the cards you kept: its deck is shuffled
+// fresh every time the room is opened, and the sort is a way of looking rather
+// than a thing you own. An install upgrading from the identity page leaves one
+// orphan `facility.mod02.identity` blob that nothing reads and nothing clears.
+// Her memory is its own store: it outgrew the soul blob when it stopped being
+// a flat list of impressions (continuity §3).
 export const KEYS = {
   soul: 'facility.v2.soul',
   transcript: 'facility.v2.transcript',
   memory: 'facility.v2.memory',
   organism: 'facility.mod01.organism',
-  identity: 'facility.mod02.identity',
+  advice: 'facility.mod02.advice',
 } as const;
 
-// The fourth store. Device-local, in the OS keystore, never in her record and
+// The sixth store. Device-local, in the OS keystore, never in her record and
 // never in the transcript (spec §9).
 export const SECURE_KEY = 'facility.v2.credential';
 

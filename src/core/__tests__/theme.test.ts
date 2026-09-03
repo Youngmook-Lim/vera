@@ -34,6 +34,6 @@ test('token spot checks match the design doc 4a markup', () => {
   expect(palette.danger).toBe('#ff4a3d');
   expect(palette.organism.bg).toBe('#0c110e');
   expect(palette.organism.hungry).toBe('#ff8a4a');
-  expect(palette.identity.paper).toBe('#efe7d7');
-  expect(palette.identity.ink).toBe('#1c1a15');
+  expect(palette.advice.bg).toBe('#0f0f11');
+  expect(palette.advice.ink).toBe('#e9e6df');
 });
