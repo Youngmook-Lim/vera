@@ -12,6 +12,10 @@ const en = {
   // typewriter is still drawing her line, COMPLETE once it has all arrived.
   transmitting: 'TRANSMITTING',
   complete: 'COMPLETE',
+  // The SYSTEM screen's launcher readout: which face the home screen is
+  // actually wearing against the one today asks for.
+  launcher: 'LAUNCHER',
+  launcherUnread: 'UNREADABLE',
   cabinet: 'CABINET',
   close: 'CLOSE',
   alloc: 'ALLOCATED',
@@ -92,6 +96,8 @@ const ko: ChromeStrings = {
   reply: '답신',
   transmitting: '전송 중',
   complete: '완료',
+  launcher: '런처',
+  launcherUnread: '읽을 수 없음',
   cabinet: '보관함',
   close: '닫기',
   alloc: '배정됨',

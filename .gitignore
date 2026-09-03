@@ -43,3 +43,6 @@ yarn-error.*
 
 # Reference corpus — local only, not distributed with the project
 glados_quotes.json
+
+# Gradle build caches inside the authored native modules
+.gradle/
