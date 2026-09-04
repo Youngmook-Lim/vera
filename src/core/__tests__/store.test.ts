@@ -1353,7 +1353,7 @@ describe('erasure', () => {
     const before = {
       facts: [{ id: 'f_1', text: 'works in software', keys: ['work'], at: 1, durable: true, until: null }],
       verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 2 }],
-      threads: [{ id: 't_1', text: 'Asked what he avoids.', at: 1, resolved: false }],
+      threads: [{ id: 't_1', text: 'Asked what he avoids.', at: 1, resolved: false, askedBy: 'you' as const }],
       pending: [{ you: 'hi', her: 'Barely.' }],
     };
     useFacilityStore.setState({ memory: before });
@@ -1376,3 +1376,71 @@ describe('openQuote', () => {
     expect(s.pendingQuote).toBe(41);
   });
 });
+
+// The record is the one thing the subject could not correct. A wrong verdict
+// about them was permanent; a wrong thread rode first and uncharged in every
+// prompt until it aged out. This is the transcript's erase, for her file.
+describe('erasing the record', () => {
+  const seeded = () => ({
+    ...EMPTY_MEMORY,
+    facts: [{ id: 'f_1', text: 'works in software', keys: [], at: 1, durable: true, until: null }],
+    verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 2 }],
+    threads: [{ id: 't_1', text: 'power grids', at: 1, resolved: false, askedBy: 'they' as const }],
+    pending: [{ you: 'hi', her: 'Noted.' }],
+  });
+
+  beforeEach(async () => {
+    await storage.clearAll();
+    useFacilityStore.setState({ memory: seeded(), confirmingWipe: true });
+  });
+
+  it('empties the record in state and on disk', async () => {
+    await useFacilityStore.getState().clearMemory();
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    expect(await storage.get(KEYS.memory)).toBeNull();
+  });
+
+  // The queue goes with it, or the next extraction rebuilds part of what was
+  // just erased out of exchanges the subject thought they had destroyed.
+  it('takes the unextracted queue with it', async () => {
+    await useFacilityStore.getState().clearMemory();
+    expect(useFacilityStore.getState().memory.pending).toEqual([]);
+  });
+
+  // The window that would silently undo the erasure: extractNow reads the
+  // record, spends seconds on the network, then writes. An erase landing in
+  // between would be partly reversed by that write — out of the very queue the
+  // subject just destroyed.
+  it('drops an extraction that was in flight when the record was erased', async () => {
+    let release: (raw: string) => void = () => {};
+    (callLlm as jest.Mock).mockImplementationOnce(
+      () => new Promise<string>((resolve) => { release = resolve; }),
+    );
+    useFacilityStore.setState({ apiKey: 'sk-ant-api03-abcdefghijklmnop', memory: seeded() });
+
+    const inFlight = useFacilityStore.getState().extractNow();
+    await useFacilityStore.getState().clearMemory();
+    release(JSON.stringify({
+      facts: [{ text: 'resurrected', keys: [], durable: true, until: null }],
+      verdicts: [{ text: 'Back from the dead.', reinforces: null }],
+      threads: [], resolve: [], retire: [],
+    }));
+    await inFlight;
+
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    expect(await storage.get(KEYS.memory)).toBeNull();
+  });
+
+  // Erasing files nothing (2026-08-25). She is told about the transcript's
+  // erase in exactly no way, and this is the same.
+  it('tells her nothing', async () => {
+    useFacilityStore.setState({ line: 'You returned.', shown: 'You returned.' });
+    await useFacilityStore.getState().clearMemory();
+    const s = useFacilityStore.getState();
+    expect(s.memory.verdicts).toEqual([]);
+    expect(s.line).toBe('You returned.');
+    expect(s.systemNotice).toBeNull();
+    expect(s.confirmingWipe).toBe(false);
+  });
+});
+

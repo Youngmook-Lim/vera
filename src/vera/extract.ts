@@ -1,5 +1,5 @@
 import { quoted } from './fencing';
-import type { Exchange, Memory } from './memory';
+import { type AskedBy, type Exchange, type Memory, asAskedBy } from './memory';
 
 // Extraction's own ceiling, well above the reply's 300. The two calls used to
 // share that default, and they are not the same shape of job: a reply is under
@@ -21,7 +21,15 @@ export const EXTRACT_SYSTEM = [
   'Tag each fact with search terms someone might use to bring it up later.',
   'Mark a fact durable when it will stay true. When it will not, set durable false and give an ISO date for "until".',
   'A VERDICT is a conclusion about their character, clipped and unsentimental, under nine words.',
-  'A THREAD is a question that was asked and not answered.',
+  'A THREAD is a question that was asked and not answered. Record who asked it '
+    + 'in "askedBy": "they" when the subject asked it, "you" when the person '
+    + 'whose file this is asked it. The THEY: and YOU: labels are what tell you '
+    + 'which; never decide it from the wording of the question.',
+  // The hole underneath the directionless THREAD: every shape here is defined
+  // as being ABOUT the subject, so a notable line of HERS had nowhere to go but
+  // a shape that made it the subject's.
+  'Only the subject\'s turns are material. The other side of the conversation '
+    + 'is context for reading them, never a fact or a verdict about them.',
   '',
   'Maintain what is already there. Use "reinforces" with an existing verdict id when a new',
   'conclusion is the same as one on file. Use "resolve" for threads that have now been answered.',
@@ -49,7 +57,7 @@ export const EXTRACT_SYSTEM = [
   '',
   'Return ONLY minified JSON:',
   '{"facts":[{"text":"","keys":[""],"durable":true,"until":null}],',
-  '"verdicts":[{"text":"","reinforces":null}],"threads":[{"text":""}],',
+  '"verdicts":[{"text":"","reinforces":null}],"threads":[{"text":"","askedBy":"they"}],',
   '"resolve":[""],"retire":[""]}',
 ].join('\n');
 
@@ -68,7 +76,7 @@ export interface ExtractedVerdict {
 export interface Extraction {
   facts: ExtractedFact[];
   verdicts: ExtractedVerdict[];
-  threads: { text: string }[];
+  threads: { text: string; askedBy: AskedBy }[];
   resolve: string[];
   retire: string[];
 }
@@ -154,10 +162,12 @@ export const parseExtraction = (raw: string): Extraction | null => {
     .filter((v) => str(v.text).length > 0)
     .map((v) => ({ text: str(v.text), reinforces: str(v.reinforces) || null }));
 
+  // Anything unreadable becomes the direction that makes her DODGE rather than
+  // interrogate — wrong-but-quiet beats wrong-and-demanding.
   const threads = (Array.isArray(parsed.threads) ? parsed.threads : [])
     .map((t) => t as Record<string, unknown>)
     .filter((t) => str(t.text).length > 0)
-    .map((t) => ({ text: str(t.text) }));
+    .map((t) => ({ text: str(t.text), askedBy: asAskedBy(t.askedBy) }));
 
   return { facts, verdicts, threads, resolve: ids(parsed.resolve), retire: ids(parsed.retire) };
 };

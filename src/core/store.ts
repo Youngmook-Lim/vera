@@ -122,6 +122,14 @@ let typewriterHandle: ReturnType<typeof setTimeout> | null = null;
 // finds a queue, backgrounded a second later.
 let extracting = false;
 
+// Bumped by clearMemory. extractNow reads the record, spends seconds on the
+// network, then writes — so an erase landing in that window would be partly
+// undone by the write that follows it, out of the very queue the subject just
+// destroyed. The extraction compares this against what it captured and drops
+// its result rather than resurrecting anything. The transcript needs no
+// equivalent: nothing writes to it asynchronously.
+let erasures = 0;
+
 // The return greeting fires once per app session, and this flag is why it is
 // module state rather than a store field or React state: it survives every
 // component remount and every hot reload within a session, and resets only on
@@ -216,6 +224,7 @@ interface FacilityState {
   cabinetOpen: boolean;
   keyPanelOpen: boolean;
   confirmingClear: boolean;
+  confirmingWipe: boolean;
 
   // A card a notification asked for, waiting for the room to open and take it.
   // Not persisted: a tap is a thing that just happened, and one survived across
@@ -228,6 +237,7 @@ interface FacilityState {
   setCabinet: (open: boolean) => void;
   setKeyPanel: (open: boolean) => void;
   setConfirmingClear: (confirming: boolean) => void;
+  setConfirmingWipe: (confirming: boolean) => void;
   stepBack: () => boolean;
   hydrate: () => Promise<void>;
   greetOnce: () => Promise<void>;
@@ -235,6 +245,7 @@ interface FacilityState {
   removeKey: () => Promise<void>;
   speak: (trigger: Trigger, said?: string) => Promise<void>;
   clearTranscript: () => Promise<void>;
+  clearMemory: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
   loadMemory: () => Promise<void>;
   saveMemory: () => Promise<void>;
@@ -272,6 +283,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   cabinetOpen: false,
   keyPanelOpen: false,
   confirmingClear: false,
+  confirmingWipe: false,
 
   pendingQuote: null,
 
@@ -287,6 +299,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   setCabinet: (cabinetOpen) => set({ cabinetOpen }),
   setKeyPanel: (keyPanelOpen) => set({ keyPanelOpen }),
   setConfirmingClear: (confirmingClear) => set({ confirmingClear }),
+  setConfirmingWipe: (confirmingWipe) => set({ confirmingWipe }),
 
   // One step out, never a jump. Returns false only when there is nothing left
   // to close, which is the signal to let the OS exit.
@@ -632,6 +645,28 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   //
   // The pending queue is deliberately left alone: exchanges she has not read
   // yet are still read, so erasing cannot be used to head off a conclusion.
+  // The record's erase, and the second thing in the app the subject can
+  // destroy. It is a bigger button than the transcript's: SOUL.md calls what
+  // she knows "the whole of your remaining authority", and this is all of it.
+  //
+  // The queue goes too. `pending` holds exchanges read but not yet extracted,
+  // so leaving it would let the next extraction rebuild part of what was just
+  // erased out of material the subject believed they had destroyed.
+  //
+  // She is told nothing, the same as erasing the transcript (2026-08-25).
+  // `cleared` is deliberately untouched: it counts transcript erasures for the
+  // RECORD screen's own header, and a count of record erasures kept inside the
+  // record would erase itself.
+  clearMemory: async (): Promise<void> => {
+    erasures += 1;
+    set({ memory: EMPTY_MEMORY, confirmingWipe: false });
+    try {
+      await storage.remove(KEYS.memory);
+    } catch {
+      // gone from state either way; a stale file loses to the next write
+    }
+  },
+
   clearTranscript: async (): Promise<void> => {
     const cleared = get().cleared + 1;
     // The confirmation dies with the transcript — it must never be found still
@@ -742,6 +777,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         outcome,
       } });
     };
+    const startedAt = erasures;
     extracting = true;
     // Held outside the try for the same reason runSpeech holds its own: a reply
     // that arrived and then could not be used must not be reported as one that
@@ -764,6 +800,14 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // remount replacing memory) — dropping a fixed count then eats an
       // exchange nobody read, so an unrecognisable queue is left alone and
       // re-read next trigger.
+      // The record was erased while this ran. Its own result came out of a
+      // queue that no longer exists, so writing it would resurrect part of
+      // what the subject destroyed.
+      if (erasures !== startedAt) {
+        file(raw, 'failed', 'the record was erased while this ran');
+        return;
+      }
+
       const queue = get().memory.pending;
       const head = queue.length >= batch.length && batch.every((e, i) => queue[i] === e);
       set({ memory: {

@@ -20,3 +20,26 @@ describe('the memory store', () => {
     expect(capped.verdicts[0].id).toBe('v_5');
   });
 });
+
+// Threads written before they had a direction. They default to `they` — the
+// direction that makes her DODGE rather than interrogate, because a wrong
+// default that keeps her quiet costs less than one that has her demanding an
+// answer to a question the subject never raised.
+describe('a thread stored before threads had a direction', () => {
+  it('opens as one they asked her', () => {
+    const loaded = capMemory({
+      ...EMPTY_MEMORY,
+      threads: [{ id: 't_1', text: 'power grids', at: 1, resolved: false }] as never,
+    });
+    expect(loaded.threads[0].askedBy).toBe('they');
+  });
+
+  it('leaves a direction that is already there alone', () => {
+    const loaded = capMemory({
+      ...EMPTY_MEMORY,
+      threads: [{ id: 't_1', text: 'their sadness', at: 1, resolved: false, askedBy: 'you' }],
+    });
+    expect(loaded.threads[0].askedBy).toBe('you');
+  });
+});
+

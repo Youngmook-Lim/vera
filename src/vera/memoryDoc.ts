@@ -61,8 +61,27 @@ export const composeMemoryMd = (selection: Selection, now: number): string => {
         : `- ${v.text} (${stamp(v.at)})`));
   }
 
+  // The two directions mean opposite things — one is a debt she is owed, the
+  // other one she is dodging (SOUL.md: "They will keep asking. That is what
+  // they are for."). Filed under a single heading she read every thread as the
+  // first kind and chased it. Hers come first, because those are the ones she
+  // is entitled to raise.
   if (threads.length > 0) {
-    parts.push('', '## Unanswered', ...threads.map((t) => `- ${t.text} (asked ${stamp(t.at)})`));
+    // The split is TOTAL, not two equality tests: a thread whose direction is
+    // missing or unreadable must land somewhere rather than vanish from her
+    // record entirely. Everything that is not hers is theirs, which is the same
+    // conservative default `asAskedBy` applies on load.
+    const hers = threads.filter((t) => t.askedBy === 'you');
+    const theirs = threads.filter((t) => t.askedBy !== 'you');
+    parts.push('', '## Unanswered');
+    if (hers.length > 0) {
+      parts.push('You asked them, and did not get an answer:',
+        ...hers.map((t) => `- ${t.text} (asked ${stamp(t.at)})`));
+    }
+    if (theirs.length > 0) {
+      parts.push('They asked you, and you did not answer:',
+        ...theirs.map((t) => `- ${t.text} (asked ${stamp(t.at)})`));
+    }
   }
 
   return parts.join('\n');

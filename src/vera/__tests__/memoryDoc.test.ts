@@ -103,3 +103,45 @@ describe('composeMemoryMd', () => {
     expect(doc).not.toContain('## Unanswered');
   });
 });
+
+// Both directions are real and they mean opposite things: one is a debt she is
+// owed, the other is one she is dodging. Filed under a single heading she read
+// every thread as the first kind.
+describe('the two directions of an unanswered question', () => {
+  const thread = (text: string, askedBy: 'they' | 'you', id: string) =>
+    ({ id, text, at: Date.now(), resolved: false, askedBy });
+
+  it('separates what she asked from what she was asked', () => {
+    const md = composeMemoryMd({
+      facts: [], verdicts: [],
+      threads: [
+        thread('what caused their sadness', 'you', 't_1'),
+        thread('what caused the reassignment', 'they', 't_2'),
+      ],
+    }, Date.now());
+
+    expect(md).toContain('You asked them');
+    expect(md).toContain('They asked you');
+    // Order matters: what she is owed comes before what she is dodging.
+    expect(md.indexOf('what caused their sadness'))
+      .toBeLessThan(md.indexOf('what caused the reassignment'));
+  });
+
+  it('names neither direction when only one is present', () => {
+    const onlyHers = composeMemoryMd({
+      facts: [], verdicts: [], threads: [thread('what caused their sadness', 'you', 't_1')],
+    }, Date.now());
+    expect(onlyHers).toContain('You asked them');
+    expect(onlyHers).not.toContain('They asked you');
+  });
+});
+
+  it('shows a thread whose direction is missing rather than dropping it', () => {
+    const md = composeMemoryMd({
+      facts: [], verdicts: [],
+      threads: [{ id: 't_1', text: 'power grids', at: Date.now(), resolved: false }] as never,
+    }, Date.now());
+    expect(md).toContain('power grids');
+    expect(md).toContain('They asked you');
+  });
+

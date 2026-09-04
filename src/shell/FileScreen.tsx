@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExtractRecord, PromptRecord } from '../core/store';
@@ -171,7 +171,9 @@ const buildMemoryMd = (memory: Memory, cleared: number): string => {
     }),
     ...verdicts.map((v) =>
       `[${v.id}] ${v.wasAt ? `${v.wasAt} ` : ''}×${v.count}  ${v.text}`),
-    ...threads.map((t) => `[${t.id}] ${t.resolved ? 'RESOLVED ' : ''}${t.text}`),
+    ...threads.map((t) =>
+      `[${t.id}] ${t.resolved ? 'RESOLVED ' : ''}`
+      + `${t.askedBy === 'you' ? 'HER QUESTION' : 'YOUR QUESTION'} ${t.text}`),
   ].join('\n');
 
   return `${header}${body}`;
@@ -182,6 +184,13 @@ export function FileScreen() {
   const view = useFacilityStore((s) => s.view);
   const lang = useFacilityStore((s) => s.lang);
   const memory = useFacilityStore((s) => s.memory);
+  const confirmingWipe = useFacilityStore((s) => s.confirmingWipe);
+  const setConfirmingWipe = useFacilityStore((s) => s.setConfirmingWipe);
+  const clearMemory = useFacilityStore((s) => s.clearMemory);
+
+  // A confirmation found still open on a later visit would be one press from
+  // destroying the file, so it dies with the screen exactly as the log's does.
+  useEffect(() => () => setConfirmingWipe(false), [setConfirmingWipe]);
   const cleared = useFacilityStore((s) => s.cleared);
   const lastPrompt = useFacilityStore((s) => s.lastPrompt);
   const lastExtract = useFacilityStore((s) => s.lastExtract);
@@ -232,9 +241,38 @@ export function FileScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Text style={[styles.footerLeft, { fontFamily: font('mono', 500, lang) }]}>
-          {t.readOnly}
-        </Text>
+        {/* The record is the one document here the subject can destroy. SOUL.md
+            is read-only and the PROMPT screen is a debugging surface, so the
+            READ ONLY note stands in for this everywhere else. The two-step is
+            the transcript's, verbatim: nothing this final happens on one
+            press, and the confirmation dies with the screen. */}
+        {view === 'mem' ? (
+          confirmingWipe ? (
+            <View style={styles.confirmRow}>
+              <Pressable testID="record-keep" onPress={() => setConfirmingWipe(false)} hitSlop={10}>
+                <Text style={[styles.keep, { fontFamily: font('mono', 500, lang) }]}>{t.keep}</Text>
+              </Pressable>
+              <Pressable
+                testID="record-erase"
+                onPress={() => void clearMemory()}
+                hitSlop={10}
+                style={styles.eraseChip}
+              >
+                <Text style={[styles.erase, { fontFamily: font('mono', 500, lang) }]}>
+                  {t.erase}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable testID="record-clear" onPress={() => setConfirmingWipe(true)} hitSlop={10}>
+              <Text style={[styles.clear, { fontFamily: font('mono', 500, lang) }]}>{t.clear}</Text>
+            </Pressable>
+          )
+        ) : (
+          <Text style={[styles.footerLeft, { fontFamily: font('mono', 500, lang) }]}>
+            {t.readOnly}
+          </Text>
+        )}
         <Text style={[styles.footerRight, { fontFamily: font('mono', 500, lang) }]}>
           {rightFooter}
         </Text>
@@ -308,6 +346,37 @@ const styles = StyleSheet.create({
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.22,
     color: palette.sealed,
+  },
+  // The transcript's own CLEAR chrome, verbatim from LogScreen: one delete
+  // should not look like two different controls depending on which file it is
+  // destroying.
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clear: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.18,
+    color: palette.danger,
+  },
+  keep: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.16,
+    color: palette.textFaint,
+  },
+  eraseChip: {
+    borderWidth: 1,
+    borderColor: '#ff4a3d55',
+    backgroundColor: '#ff4a3d10',
+    borderRadius: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+  },
+  erase: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.16,
+    color: palette.danger,
   },
   footerRight: {
     fontSize: ms(7.5),

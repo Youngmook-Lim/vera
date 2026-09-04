@@ -1,6 +1,7 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
+import { EMPTY_MEMORY } from '../../vera/memory';
 import { FileScreen } from '../FileScreen';
 
 describe('FileScreen', () => {
@@ -19,8 +20,8 @@ const MEMORY = {
   ],
   verdicts: [{ id: 'v_1', text: 'Deflects.', firstAt: 1, at: 1, count: 3, wasAt: 'JUL 30' }],
   threads: [
-    { id: 't_1', text: 'Asked what he avoids.', at: 1, resolved: false },
-    { id: 't_2', text: 'Asked about sleep.', at: 1, resolved: true },
+    { id: 't_1', text: 'Asked what he avoids.', at: 1, resolved: false, askedBy: 'you' as const },
+    { id: 't_2', text: 'Asked about sleep.', at: 1, resolved: true, askedBy: 'they' as const },
   ],
   pending: [],
 };
@@ -57,3 +58,61 @@ describe('RECORD', () => {
     await view.unmount();
   });
 });
+
+// The record's own erase. SOUL.md is read-only and the PROMPT screen is a
+// debugging surface — only the subject's file offers this.
+describe('erasing the record', () => {
+  const openRecord = () => useFacilityStore.setState({
+    view: 'mem', lang: 'en', cleared: 0, memory: MEMORY, confirmingWipe: false,
+  });
+
+  it('offers CLEAR on the record and nowhere else', async () => {
+    openRecord();
+    const record = await render(<FileScreen />);
+    expect(record.getByTestId('record-clear')).toBeTruthy();
+    await record.unmount();
+
+    useFacilityStore.setState({ view: 'soul' });
+    const soul = await render(<FileScreen />);
+    expect(soul.queryByTestId('record-clear')).toBeNull();
+    await soul.unmount();
+  });
+
+  // The same two-step the transcript uses: nothing this final happens on one
+  // press.
+  it('asks before it erases, and keeps the record when told to', async () => {
+    openRecord();
+    const view = await render(<FileScreen />);
+    await fireEvent.press(view.getByTestId('record-clear'));
+    expect(view.getByTestId('record-erase')).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId('record-keep'));
+    expect(view.queryByTestId('record-erase')).toBeNull();
+    expect(useFacilityStore.getState().memory.facts).toHaveLength(2);
+    await view.unmount();
+  });
+
+  it('erases on the second press', async () => {
+    openRecord();
+    const view = await render(<FileScreen />);
+    await fireEvent.press(view.getByTestId('record-clear'));
+    await fireEvent.press(view.getByTestId('record-erase'));
+    expect(useFacilityStore.getState().memory).toEqual(EMPTY_MEMORY);
+    await view.unmount();
+  });
+
+  // A confirmation found still open on a later visit would be one press from
+  // destroying the file.
+  it('does not leave the confirmation standing behind it', async () => {
+    openRecord();
+    const first = await render(<FileScreen />);
+    await fireEvent.press(first.getByTestId('record-clear'));
+    await first.unmount();
+
+    useFacilityStore.setState({ memory: MEMORY });
+    const second = await render(<FileScreen />);
+    expect(second.queryByTestId('record-erase')).toBeNull();
+    await second.unmount();
+  });
+});
+

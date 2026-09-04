@@ -10,7 +10,7 @@ describe('applyExtraction', () => {
     const out = applyExtraction(EMPTY_MEMORY, {
       ...empty,
       facts: [{ text: 'works in software', keys: ['work'], durable: true, until: null }],
-      threads: [{ text: 'Asked what he avoids.' }],
+      threads: [{ text: 'Asked what he avoids.', askedBy: 'you' as const }],
     }, NOW);
     expect(out.facts[0]).toMatchObject({ id: 'f_1', text: 'works in software', at: NOW });
     expect(out.threads[0]).toMatchObject({ id: 't_1', resolved: false });
@@ -56,7 +56,7 @@ describe('applyExtraction', () => {
   it('resolves a thread without removing it from the record', () => {
     const memory: Memory = {
       ...EMPTY_MEMORY,
-      threads: [{ id: 't_2', text: 'Asked.', at: 1, resolved: false }],
+      threads: [{ id: 't_2', text: 'Asked.', at: 1, resolved: false, askedBy: 'you' as const }],
     };
     const out = applyExtraction(memory, { ...empty, resolve: ['t_2'] }, NOW);
     expect(out.threads).toHaveLength(1);
@@ -78,4 +78,13 @@ describe('applyExtraction', () => {
     const memory: Memory = { ...EMPTY_MEMORY, verdicts: [{ id: 'v_1', text: 'x', firstAt: 1, at: 1, count: 1 }] };
     expect(applyExtraction(memory, empty, NOW)).toEqual(memory);
   });
+});
+
+it('stores which way a thread was asked', () => {
+  const next = applyExtraction(EMPTY_MEMORY, {
+    facts: [], verdicts: [],
+    threads: [{ text: 'what caused the reassignment', askedBy: 'they' as const }],
+    resolve: [], retire: [],
+  }, Date.now());
+  expect(next.threads[0].askedBy).toBe('they');
 });

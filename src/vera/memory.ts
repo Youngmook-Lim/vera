@@ -21,12 +21,20 @@ export interface Verdict {
   wasAt?: string;
 }
 
+// `askedBy` uses the same two words the extractor reads in the transcript
+// (THEY: / YOU:), and they still read correctly in her own document, where she
+// is "you". Without it a thread was directionless: her own line about running
+// continental power grids came back as a question about what the SUBJECT meant,
+// and threads ride first and uncharged in every prompt until they age out.
 export interface Thread {
   id: string;
   text: string;
   at: number;
   resolved: boolean;
+  askedBy: AskedBy;
 }
+
+export type AskedBy = 'they' | 'you';
 
 export interface Exchange {
   you: string | null;
@@ -59,9 +67,17 @@ export const nextId = (prefix: 'f' | 'v' | 't', memory: Memory): string => {
   return `${prefix}_${highest + 1}`;
 };
 
+// The one funnel every loaded record passes through, so it is where a thread
+// written before threads had a direction picks one up. The default is `they`
+// deliberately: a wrong direction that has her DODGE costs less than one that
+// has her demanding an answer to a question the subject never raised.
+export const asAskedBy = (value: unknown): AskedBy => (value === 'you' ? 'you' : 'they');
+
 export const capMemory = (memory: Memory): Memory => ({
   facts: memory.facts.slice(-CAPS.facts),
   verdicts: memory.verdicts.slice(-CAPS.verdicts),
-  threads: memory.threads.slice(-CAPS.threads),
+  threads: memory.threads
+    .slice(-CAPS.threads)
+    .map((t) => ({ ...t, askedBy: asAskedBy(t.askedBy) })),
   pending: memory.pending.slice(-CAPS.pending),
 });

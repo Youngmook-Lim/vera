@@ -9,7 +9,9 @@ const fact = (over: Partial<Memory['facts'][0]> = {}) => ({
   at: NOW, durable: true, until: null, ...over,
 });
 const verdict = (over = {}) => ({ id: 'v_1', text: 'Deflects.', firstAt: NOW, at: NOW, count: 1, ...over });
-const thread = (over = {}) => ({ id: 't_1', text: 'Asked what he avoids.', at: NOW, resolved: false, ...over });
+const thread = (over = {}) => ({
+  id: 't_1', text: 'Asked what he avoids.', at: NOW, resolved: false, askedBy: 'you' as const, ...over,
+});
 
 describe('tokens', () => {
   it('lowercases, strips punctuation and drops stopwords', () => {

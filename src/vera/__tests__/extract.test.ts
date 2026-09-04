@@ -113,3 +113,40 @@ describe('parseExtraction', () => {
     expect(parseExtraction(raw)).toEqual({ facts: [], verdicts: [], threads: [], resolve: [], retire: [] });
   });
 });
+
+// The bug this closes: a THREAD was 'a question that was asked and not
+// answered' with no asker, so her own line about running continental power
+// grids came back as a question about what the SUBJECT meant — and threads are
+// fed first, uncharged, on every reply until they age out.
+describe('who asked a thread', () => {
+  it('carries the asker through', () => {
+    const parsed = parseExtraction(JSON.stringify({
+      facts: [], verdicts: [],
+      threads: [
+        { text: 'what caused their sadness', askedBy: 'you' },
+        { text: 'what caused the reassignment', askedBy: 'they' },
+      ],
+      resolve: [], retire: [],
+    }));
+    expect(parsed?.threads).toEqual([
+      { text: 'what caused their sadness', askedBy: 'you' },
+      { text: 'what caused the reassignment', askedBy: 'they' },
+    ]);
+  });
+
+  // Anything unreadable becomes the direction that makes her DODGE rather than
+  // interrogate. Wrong-but-quiet beats wrong-and-demanding.
+  it('falls back to they-asked-you on anything it cannot read', () => {
+    const parsed = parseExtraction(JSON.stringify({
+      facts: [], verdicts: [],
+      threads: [{ text: 'a' }, { text: 'b', askedBy: 'nonsense' }, { text: 'c', askedBy: 7 }],
+      resolve: [], retire: [],
+    }));
+    expect(parsed?.threads.map((t) => t.askedBy)).toEqual(['they', 'they', 'they']);
+  });
+
+  it('tells the extractor which label decides it', () => {
+    expect(EXTRACT_SYSTEM).toContain('THEY:');
+    expect(EXTRACT_SYSTEM).toMatch(/askedBy/);
+  });
+});

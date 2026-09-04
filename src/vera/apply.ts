@@ -40,7 +40,9 @@ export const applyExtraction = (memory: Memory, extraction: Extraction, now: num
   for (const t of extraction.threads) {
     next = {
       ...next,
-      threads: [...next.threads, { id: nextId('t', next), text: t.text, at: now, resolved: false }],
+      threads: [...next.threads, {
+        id: nextId('t', next), text: t.text, at: now, resolved: false, askedBy: t.askedBy,
+      }],
     };
   }
 
