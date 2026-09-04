@@ -265,3 +265,23 @@ describe('the cabinet tile', () => {
     await view.unmount();
   });
 });
+
+describe('the tap', () => {
+  // The tap's whole point: the card in the notification is the card on screen.
+  it('deals the card the notification carried, and forgets it', async () => {
+    useFacilityStore.setState({ pendingQuote: 41 });
+    const view = await render(<Screen />);
+    expect(view.getByTestId('advice-quote').props.children).toBe(QUOTES[41]);
+    expect(useFacilityStore.getState().pendingQuote).toBeNull();
+    await view.unmount();
+  });
+
+  // Forgotten means forgotten: walking back into the room later must not
+  // re-deal a card from a notification tapped hours ago.
+  it('deals an ordinary card when nothing was tapped', async () => {
+    useFacilityStore.setState({ pendingQuote: null });
+    const view = await render(<Screen />);
+    expect(QUOTES).toContain(view.getByTestId('advice-quote').props.children);
+    await view.unmount();
+  });
+});

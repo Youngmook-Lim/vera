@@ -6,7 +6,10 @@ import type { Lang } from '../core/i18n';
 import { launcherResult, readLauncherFace } from '../core/launcher';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
+import { registry } from '../modules/registry';
+import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
+import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
 // The subject's own control room: her two files, the language switch, and
@@ -123,40 +126,24 @@ export function SystemScreen() {
         <View style={styles.section}>
           <SectionLabel text={t.prefs} lang={lang} />
 
-          <Pressable
-            style={styles.row}
+          <PrefRow
+            testID="pref-language"
+            label={t.lang}
+            value={lang === 'en' ? 'EN / ko' : 'en / KO'}
             onPress={() => void setLang(lang === 'en' ? 'ko' : 'en')}
-          >
-            <Text style={[styles.rowLabel, { fontFamily: font('mono', 500, lang) }]}>
-              {t.lang}
-            </Text>
-            <Text style={[styles.rowValue, { fontFamily: font('mono', 500, lang) }]}>
-              {lang === 'en' ? 'EN / ko' : 'en / KO'}
-            </Text>
-          </Pressable>
+          />
 
           {/* Not a preference — a readout, like the route under ACCESS. The
               rotation was stuck for weeks and there was no way to see it: the
               swap swallowed its own failures and `getIcon`, which exists to
               answer this exact question, was never called. Read at render, so
               opening this screen is the refresh. */}
-          <View style={styles.row}>
-            <Text style={[styles.rowLabel, { fontFamily: font('mono', 500, lang) }]}>
-              {t.launcher}
-            </Text>
-            <Text
-              testID="launcher-face"
-              style={[
-                styles.rowValue,
-                { fontFamily: font('mono', 500, lang) },
-                agrees ? null : { color: palette.danger },
-              ]}
-            >
-              {wears === null
-                ? t.launcherUnread
-                : agrees ? wears : `${wears} → ${expects}`}
-            </Text>
-          </View>
+          <PrefRow
+            testID="launcher-face"
+            label={t.launcher}
+            value={wears === null ? t.launcherUnread : agrees ? wears : `${wears} → ${expects}`}
+            valueColor={agrees ? undefined : palette.danger}
+          />
           {/* Only when the last swap had something to report. Silence here is
               the good case, and the wording is the provider's own. */}
           {swap ? (
@@ -167,6 +154,10 @@ export function SystemScreen() {
               {swap}
             </Text>
           ) : null}
+
+          {/* Rooms contribute their own rows. The shell names no module — the
+              same promise registry.ts makes about Cabinet and ScreenRouter. */}
+          {registry.filter(isModule).map((m) => (m.Settings ? <m.Settings key={m.id} /> : null))}
         </View>
 
         <View style={styles.section}>
@@ -306,11 +297,6 @@ const styles = StyleSheet.create({
     fontSize: ms(11),
     letterSpacing: ms(11) * 0.06,
     color: palette.text,
-  },
-  rowValue: {
-    fontSize: ms(9),
-    letterSpacing: ms(9) * 0.16,
-    color: palette.amber,
   },
   changeText: {
     fontSize: ms(8),

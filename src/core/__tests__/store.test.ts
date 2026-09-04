@@ -1365,3 +1365,14 @@ describe('erasure', () => {
     expect(useFacilityStore.getState().log).toEqual([]);
   });
 });
+
+describe('openQuote', () => {
+  it('opens the room on a card, and closes the drawer on the way', async () => {
+    useFacilityStore.setState({ view: 'stage', cabinetOpen: true, pendingQuote: null });
+    useFacilityStore.getState().openQuote(41);
+    const s = useFacilityStore.getState();
+    expect(s.view).toBe('mod02');
+    expect(s.cabinetOpen).toBe(false);
+    expect(s.pendingQuote).toBe(41);
+  });
+});

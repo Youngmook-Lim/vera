@@ -6,6 +6,8 @@ import { faceFor } from '../../core/appIcon';
 import { syncLauncherIcon } from '../../core/launcher';
 import { useFacilityStore } from '../../core/store';
 import { palette } from '../../core/theme';
+import { registry } from '../../modules/registry';
+import { isModule } from '../../modules/types';
 import { providerFor } from '../../vera/providers';
 import { SystemScreen } from '../SystemScreen';
 
@@ -103,6 +105,35 @@ describe('SystemScreen', () => {
     const view = await render(<SystemScreen />);
     const serialized = JSON.stringify(view.toJSON());
     expect(serialized).not.toContain(RAW_KEY);
+  });
+});
+
+describe('preferences row', () => {
+  // The shell owns the tile, the bleed, the exit and her dot — and names no
+  // module. A preferences row belonging to a room is contributed by that room,
+  // so this asserts the shell renders whatever the registry offers rather than
+  // asserting on any particular room's row.
+  it('renders whatever preferences rows the registry offers', async () => {
+    const seen = jest.fn();
+    const target = registry.filter(isModule)[0];
+    const previous = target.Settings;
+    target.Settings = () => {
+      seen();
+      return null;
+    };
+    try {
+      const view = await render(<SystemScreen />);
+      expect(seen).toHaveBeenCalled();
+      await view.unmount();
+    } finally {
+      target.Settings = previous;
+    }
+  });
+
+  it('still shows the language row after the row extraction', async () => {
+    const view = await render(<SystemScreen />);
+    expect(view.getByTestId('pref-language')).toBeTruthy();
+    await view.unmount();
   });
 });
 

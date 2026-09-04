@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { displayOrder } from './favorites';
 import { QUOTES, SOURCE } from './quotes';
 import { useFavorites } from './store';
 import { T } from './strings';
+import { AdviceSettings } from './Settings';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 
@@ -113,6 +114,18 @@ export function AdviceScreen() {
   // the store and it starts off every time the room does — like the reshuffle.
   const [favoritesFirst, setFavoritesFirst] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
+
+  const pendingQuote = useFacilityStore((s) => s.pendingQuote);
+
+  // A card a notification asked for. Taken once and cleared, so walking back
+  // into the room later deals an ordinary card. goTo moves the position within
+  // this pass rather than starting a new one, so the counter stays truthful.
+  useEffect(() => {
+    if (pendingQuote == null) return;
+    setDeck((d) => goTo(d, pendingQuote));
+    setListing(false);
+    useFacilityStore.setState({ pendingQuote: null });
+  }, [pendingQuote]);
 
   const card = current(deck);
 
@@ -303,6 +316,7 @@ export const advice: ModuleDef = {
   slot: '02',
   Tile: AdviceTile,
   Screen: AdviceScreen,
+  Settings: AdviceSettings,
 };
 
 const styles = StyleSheet.create({

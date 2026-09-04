@@ -20,6 +20,8 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { syncLauncherIcon } from './src/core/launcher';
 import { useFacilityStore } from './src/core/store';
+import { onTap, readTapTarget } from './src/modules/advice/notify';
+import { useAdviceStore } from './src/modules/advice/store';
 import { ScreenRouter } from './src/shell/ScreenRouter';
 import { Splash } from './src/shell/Splash';
 
@@ -63,9 +65,21 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       await useFacilityStore.getState().hydrate();
+
+      // The daily horizon, which does nothing on the second launch of a day.
+      // Kept off the rest of this chain deliberately: if greetOnce() ever
+      // rejects below, the IIFE rejects with it, and this must not be the
+      // thing that goes unhydrated for the rest of the session as a result.
+      await useAdviceStore.getState().hydrate();
+      void useAdviceStore.getState().syncIfDue(useFacilityStore.getState().lang);
+
       await useFacilityStore.getState().greetOnce();
       // Anything left on the queue by a killed session (continuity §4.2).
       void useFacilityStore.getState().extractNow();
+
+      // The app was not running: Android held the tap and hands it over now.
+      const tapped = await readTapTarget();
+      if (tapped != null) useFacilityStore.getState().openQuote(tapped);
     })();
 
     // The natural session boundary, and the trigger that catches most cases.
@@ -78,7 +92,14 @@ export default function App() {
       // the home screen is not visible from inside the app.
       syncLauncherIcon(Boolean(useFacilityStore.getState().apiKey));
     });
-    return () => sub.remove();
+
+    // The app was already running.
+    const offTap = onTap((index) => useFacilityStore.getState().openQuote(index));
+
+    return () => {
+      sub.remove();
+      offTap();
+    };
   }, []);
 
   // Hydration is also what settles whether she has a key, so the splash cannot
