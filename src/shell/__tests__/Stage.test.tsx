@@ -128,6 +128,28 @@ describe('Stage', () => {
       expect(view.getByTestId('thinking')).toBeTruthy();
     });
 
+    // The ellipsis and the live word are the same slot in the strip, not two
+    // places: the dots used to be pushed to the far edge on a marginLeft auto
+    // while the word sat against the label.
+    it('puts the ellipsis exactly where the status word goes', async () => {
+      const slotOf = (view: { getByTestId: (id: string) => unknown }, id: string) => {
+        const strip = view.getByTestId('status-strip') as { children: unknown[] };
+        return strip.children.indexOf(view.getByTestId(id));
+      };
+
+      awake({ line: 'You returned.', shown: 'You returned.', thinking: true });
+      const waiting = await render(<Stage />);
+      const dotsSlot = slotOf(waiting, 'thinking');
+      expect(StyleSheet.flatten(waiting.getByTestId('thinking').props.style).marginLeft)
+        .toBeUndefined();
+      await waiting.unmount();
+
+      awake({ line: 'You returned.', shown: 'You ret', thinking: false });
+      const speaking = await render(<Stage />);
+      expect(slotOf(speaking, 'status')).toBe(dotsSlot);
+      await speaking.unmount();
+    });
+
     it('shows no dots once she has stopped thinking', async () => {
       awake({ line: 'You returned.', shown: 'You returned.', thinking: false });
       const view = await render(<Stage />);
@@ -257,6 +279,9 @@ describe('Stage', () => {
       await fireEvent.press(view.getByTestId('send'));
       expect(spoken).toHaveBeenCalled();
       expect(buzzed()).toBe(1);
+      // Heavy, not Light: the light impact was confirmed on the phone as too
+      // faint to notice at all.
+      expect(Haptics.impactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Heavy);
     });
 
     it('stays silent on an empty box and on a reply already in flight', async () => {

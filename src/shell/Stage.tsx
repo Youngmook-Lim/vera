@@ -43,9 +43,14 @@ const DRAWER_DRAG_PX = 22; // upward travel on the handle that counts as "open" 
 // a quick tap is visible, short enough that it never reads as "still working".
 export const SEND_LATCH_MS = 120;
 
-// One vocabulary for both of the stage's inputs: the light impact, for a line
-// leaving and for a poke landing. Neither is an error or a confirmation, so
-// neither earns anything heavier. Module scope because it closes over nothing.
+// One vocabulary for both of the stage's inputs, for a line leaving and for a
+// poke landing. Module scope because it closes over nothing.
+//
+// HEAVY, not the light impact this started as: confirmed on the phone as too
+// faint to notice. Android scales this against the system's own haptic
+// strength setting, so the ceiling is not ours to raise past here — the only
+// step beyond is a different texture (`Rigid`, sharper rather than stronger),
+// not more force.
 //
 // Both call sites fire it on the OUTCOME, never on the touch — her eye takes a
 // press whether or not she is in any state to answer it, and SEND's guards are
@@ -53,7 +58,7 @@ export const SEND_LATCH_MS = 120;
 // The rejection is swallowed: a device with no motor must not take the stage
 // down over a missing buzz.
 const buzz = (): void => {
-  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
 };
 const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
@@ -405,6 +410,10 @@ export function Stage() {
             >
               {emotionLabel(emotion, lang)}
             </Text>
+            {/* One slot, and the two never coincide: the word is blank while
+                she is only thinking, and the dots are gone the moment the
+                typewriter starts. So the ellipsis sits exactly where
+                TRANSMITTING and COMPLETE sit rather than at the far edge. */}
             {status ? (
               <Text
                 testID="status"
@@ -412,11 +421,9 @@ export function Stage() {
               >
                 {status}
               </Text>
+            ) : thinking ? (
+              <ThinkingDots />
             ) : null}
-            {/* Pushed to the far edge of the strip, not stacked under her last
-                line where they used to squeeze the body between a reply still
-                on screen and the input row. */}
-            {thinking ? <ThinkingDots style={styles.stripDots} /> : null}
           </View>
 
           {hasBody ? (
@@ -647,11 +654,6 @@ const styles = StyleSheet.create({
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
     color: palette.textDim,
-  },
-  // The strip is a row with a 9px gap; this is what puts the dots on the right
-  // edge instead of clustered against the label with everything else.
-  stripDots: {
-    marginLeft: 'auto',
   },
   // `padding:20px 18px; overflow-y:auto`. `flexShrink` rather than `flex`: a
   // ScrollView claiming a flex share inside an auto-height parent collapses to

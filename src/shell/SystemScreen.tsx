@@ -1,9 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { faceFor } from '../core/appIcon';
 import type { Lang } from '../core/i18n';
-import { launcherResult, readLauncherFace } from '../core/launcher';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { registry } from '../modules/registry';
@@ -57,14 +55,6 @@ export function SystemScreen() {
   const t = T[lang];
   const provider = providerFor(apiKey);
   const refused = authFails >= AUTH_FAILS_BEFORE_HINT;
-
-  // What the home screen is wearing against what today asks for. Both read at
-  // render rather than stored: the swap happens on the way to the background,
-  // so by the time this screen is open the answer has already settled.
-  const wears = readLauncherFace();
-  const expects = faceFor(Date.now(), Boolean(apiKey));
-  const agrees = wears === expects;
-  const swap = launcherResult();
 
   return (
     <View
@@ -132,28 +122,6 @@ export function SystemScreen() {
             value={lang === 'en' ? 'EN / ko' : 'en / KO'}
             onPress={() => void setLang(lang === 'en' ? 'ko' : 'en')}
           />
-
-          {/* Not a preference — a readout, like the route under ACCESS. The
-              rotation was stuck for weeks and there was no way to see it: the
-              swap swallowed its own failures and `getIcon`, which exists to
-              answer this exact question, was never called. Read at render, so
-              opening this screen is the refresh. */}
-          <PrefRow
-            testID="launcher-face"
-            label={t.launcher}
-            value={wears === null ? t.launcherUnread : agrees ? wears : `${wears} → ${expects}`}
-            valueColor={agrees ? undefined : palette.danger}
-          />
-          {/* Only when the last swap had something to report. Silence here is
-              the good case, and the wording is the provider's own. */}
-          {swap ? (
-            <Text
-              testID="launcher-result"
-              style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}
-            >
-              {swap}
-            </Text>
-          ) : null}
 
           {/* Rooms contribute their own rows. The shell names no module — the
               same promise registry.ts makes about Cabinet and ScreenRouter. */}

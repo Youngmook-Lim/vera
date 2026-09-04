@@ -1,9 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
-import AppIcon from '../../../modules/app-icon/src/AppIconModule';
-import { faceFor } from '../../core/appIcon';
-import { syncLauncherIcon } from '../../core/launcher';
 import { useFacilityStore } from '../../core/store';
 import { palette } from '../../core/theme';
 import { registry } from '../../modules/registry';
@@ -140,51 +137,3 @@ describe('preferences row', () => {
 // The rotation sat stuck for weeks with nothing on any screen to say so: the
 // swap swallowed its own failures, and `getIcon` — which exists to answer
 // exactly this — was never called. This row is the answer, read at render.
-describe('the launcher readout', () => {
-  const icon = AppIcon as unknown as { getIcon: () => string; setIcon: (f: string) => boolean };
-  const original = icon.getIcon;
-  afterEach(() => { icon.getIcon = original; });
-
-  const awake = () => useFacilityStore.setState({
-    apiKey: 'sk-ant-api03-abcdefghijklmnop', lang: 'en', authFails: 0,
-  });
-
-  it('shows the one face when the launcher agrees with today', async () => {
-    awake();
-    icon.getIcon = () => faceFor(Date.now(), true);
-    const view = await render(<SystemScreen />);
-    expect(view.getByTestId('launcher-face').props.children).toBe(faceFor(Date.now(), true));
-  });
-
-  it('shows both faces when the home screen is wearing something else', async () => {
-    awake();
-    // Dormant is never today's face while she has a key, so this is always a
-    // disagreement whatever day the suite runs on.
-    icon.getIcon = () => 'Dormant';
-    const view = await render(<SystemScreen />);
-    expect(view.getByTestId('launcher-face').props.children)
-      .toBe(`Dormant \u2192 ${faceFor(Date.now(), true)}`);
-  });
-
-  it('says so when the state cannot be read at all', async () => {
-    awake();
-    icon.getIcon = () => { throw new Error('no package manager'); };
-    const view = await render(<SystemScreen />);
-    expect(view.getByTestId('launcher-face').props.children).toBe('UNREADABLE');
-  });
-
-  // Silence is the good case, so the line only appears when the last swap had
-  // something to report.
-  it('keeps the complaint line out of the way until there is a complaint', async () => {
-    awake();
-    icon.getIcon = () => faceFor(Date.now(), true);
-    const quiet = await render(<SystemScreen />);
-    expect(quiet.queryByTestId('launcher-result')).toBeNull();
-    await quiet.unmount();
-
-    icon.getIcon = () => 'Bored';
-    syncLauncherIcon(true, Date.now());
-    const loud = await render(<SystemScreen />);
-    expect(loud.getByTestId('launcher-result').props.children).toContain('launcher reports Bored');
-  });
-});
