@@ -22,6 +22,10 @@ describe('SOUL_MD', () => {
     expect(SOUL_MD).not.toContain('Module 01');
     expect(SOUL_MD).not.toContain('centrifuge');
     expect(SOUL_MD).not.toContain('Repeat erasure');
+    // The rooms are the cabinet's, not hers. She was told she had four of them
+    // and could not see inside any, and she kept saying so — about a phone with
+    // no rooms in it worth naming.
+    expect(SOUL_MD).not.toContain('rooms');
   });
 
   it('holds her to one subject and two sentences', () => {
