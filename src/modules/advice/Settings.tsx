@@ -31,7 +31,11 @@ export function AdviceSettings() {
   }, [daily]);
 
   const blocked = permission === 'blocked';
-  const value = blocked ? t.blocked : daily ? t.on : t.off;
+  // 'ask' means granted was revoked outside the app but Android will still
+  // prompt again — the row must not read ON off a store that no longer
+  // matches reality. `null` (the read hasn't landed yet) falls through to the
+  // store's own answer, so the row does not flash OFF for one frame on open.
+  const value = blocked ? t.blocked : permission === 'ask' ? t.off : daily ? t.on : t.off;
 
   return (
     <PrefRow

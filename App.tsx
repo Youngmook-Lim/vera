@@ -65,6 +65,14 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       await useFacilityStore.getState().hydrate();
+
+      // The daily horizon, which does nothing on the second launch of a day.
+      // Kept off the rest of this chain deliberately: if greetOnce() ever
+      // rejects below, the IIFE rejects with it, and this must not be the
+      // thing that goes unhydrated for the rest of the session as a result.
+      await useAdviceStore.getState().hydrate();
+      void useAdviceStore.getState().syncIfDue(useFacilityStore.getState().lang);
+
       await useFacilityStore.getState().greetOnce();
       // Anything left on the queue by a killed session (continuity §4.2).
       void useFacilityStore.getState().extractNow();
@@ -72,11 +80,6 @@ export default function App() {
       // The app was not running: Android held the tap and hands it over now.
       const tapped = await readTapTarget();
       if (tapped != null) useFacilityStore.getState().openQuote(tapped);
-
-      // And the daily horizon, which does nothing on the second launch of a day.
-      void useAdviceStore.getState().hydrate().then(() => {
-        void useAdviceStore.getState().syncIfDue(useFacilityStore.getState().lang);
-      });
     })();
 
     // The natural session boundary, and the trigger that catches most cases.

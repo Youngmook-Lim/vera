@@ -1,6 +1,10 @@
+import * as Notifications from 'expo-notifications';
 import { KEYS, storage } from '../../../core/storage';
+import { PLAN_DAYS } from '../daily';
 import { parse } from '../stored';
 import { useAdviceStore } from '../store';
+
+const notifs = Notifications as unknown as Record<string, jest.Mock>;
 
 const onDisk = async () => (await parse(await storage.get(KEYS.advice))).favorites;
 
@@ -58,12 +62,21 @@ describe('the advice store', () => {
     expect(get).toHaveBeenCalledTimes(1);
     expect([...useAdviceStore.getState().favorites]).toEqual(['a']);
   });
+
+  // SYSTEM can call setDaily before the room itself has ever mounted, so
+  // nothing has hydrated the store yet. Before this, setDaily's own `save`
+  // spread `get().favorites` — still the empty initial Set — and rewrote the
+  // disk record with the kept quotes gone for good.
+  it('does not erase favorites on disk when switched on before anything has hydrated', async () => {
+    await storage.set(
+      KEYS.advice,
+      JSON.stringify({ favorites: ['a', 'b'], daily: false, syncedOn: null }),
+    );
+    useAdviceStore.setState({ hydrated: false, favorites: new Set(), daily: false, syncedOn: null });
+    await useAdviceStore.getState().setDaily(true, 'en');
+    expect([...(await onDisk())]).toEqual(['a', 'b']);
+  });
 });
-
-import * as Notifications from 'expo-notifications';
-import { PLAN_DAYS } from '../daily';
-
-const notifs = Notifications as unknown as Record<string, jest.Mock>;
 
 describe('the daily card', () => {
   beforeEach(async () => {

@@ -75,6 +75,10 @@ export const syncDaily = async (enabled: boolean, lang: Lang, now: Date): Promis
     for (const { at, index } of planDaily(now, QUOTES.length)) {
       await N.scheduleNotificationAsync({
         content: {
+          // Baked in at scheduling time, along with everything else here —
+          // switching language in SYSTEM does not resync the queue, so a
+          // pending card keeps the title of the language it was scheduled
+          // under until the next day's syncIfDue rewrites the horizon.
           title: T[lang].label,
           // The text must be inside the notification before Android takes it:
           // nothing of ours is awake at nine to choose one.

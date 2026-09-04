@@ -50,6 +50,28 @@ describe('the daily advice row', () => {
     await view.unmount();
   });
 
+  // The scenario §6 names as the reason the row reads the permission at
+  // render at all: granted, then revoked in the OS settings. Android answers
+  // that as 'ask' (not granted, but still askable), never 'blocked' — so the
+  // row must not read ON just because the store's `daily` still says so.
+  it('reads OFF, and stays pressable, when the permission is revoked outside the app', async () => {
+    notifs.getPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: true });
+    useAdviceStore.setState({ daily: true });
+    const view = await render(<Settings />);
+    await waitFor(() => expect(view.getByTestId('pref-daily').props.children).toBe('OFF'));
+    await fireEvent.press(view.getByTestId('pref-daily'));
+    await waitFor(() => expect(useAdviceStore.getState().daily).toBe(false));
+    await view.unmount();
+  });
+
+  it('reads ON when the permission is granted and the store says on', async () => {
+    notifs.getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
+    useAdviceStore.setState({ daily: true });
+    const view = await render(<Settings />);
+    await waitFor(() => expect(view.getByTestId('pref-daily').props.children).toBe('ON'));
+    await view.unmount();
+  });
+
   it('says it in the reading language', async () => {
     useFacilityStore.setState({ lang: 'ko' });
     const view = await render(<Settings />);

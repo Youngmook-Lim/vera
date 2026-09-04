@@ -61,6 +61,7 @@ export const useAdviceStore = create<AdviceState>((set, get) => ({
   },
 
   toggleFavorite: async (quote: string): Promise<void> => {
+    await get().hydrate();
     const favorites = toggle(get().favorites, quote);
     set({ favorites });
     await save({ ...get(), favorites });
@@ -71,6 +72,11 @@ export const useAdviceStore = create<AdviceState>((set, get) => ({
   // leave the store off or the row would read ON over a phone that will never
   // show a card.
   setDaily: async (on: boolean, lang: Lang): Promise<boolean> => {
+    // SYSTEM can reach this before the room itself has ever mounted, so
+    // nothing has hydrated the store yet — and `save` below spreads whatever
+    // `get()` holds. Skipping this would rewrite the disk record with
+    // `favorites` still the empty initial Set, erasing every kept quote.
+    await get().hydrate();
     if (on && !(await requestDaily())) {
       return false;
     }
