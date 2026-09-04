@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   cancelAnimation,
@@ -37,6 +38,23 @@ const LOOK_MS = 420; // the design's own pupil transition
 const HOLD_MS = 2600; // how long she keeps looking where you touched
 const RELEASE_MS = 900; // and how unhurriedly she gives it up
 const DRAWER_DRAG_PX = 22; // upward travel on the handle that counts as "open" (spec: >22px)
+
+// How long SEND holds its lit state after your finger leaves. Long enough that
+// a quick tap is visible, short enough that it never reads as "still working".
+export const SEND_LATCH_MS = 120;
+
+// One vocabulary for both of the stage's inputs: the light impact, for a line
+// leaving and for a poke landing. Neither is an error or a confirmation, so
+// neither earns anything heavier. Module scope because it closes over nothing.
+//
+// Both call sites fire it on the OUTCOME, never on the touch — her eye takes a
+// press whether or not she is in any state to answer it, and SEND's guards are
+// reachable from the keyboard's return key even while the button is disabled.
+// The rejection is swallowed: a device with no motor must not take the stage
+// down over a missing buzz.
+const buzz = (): void => {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+};
 const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
 const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
@@ -109,6 +127,16 @@ export function Stage() {
   const systemNotice = useFacilityStore((s) => s.systemNotice);
   const thinking = useFacilityStore((s) => s.thinking);
   const draft = useFacilityStore((s) => s.draft);
+  const [latched, setLatched] = useState(false);
+  const latchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The timer outlives the screen if the drawer is opened mid-latch, and a
+  // setState on an unmounted Stage is a warning nobody would trace back here.
+  useEffect(
+    () => () => {
+      if (latchTimer.current) clearTimeout(latchTimer.current);
+    },
+    [],
+  );
   const waking = useFacilityStore((s) => s.waking);
   const log = useFacilityStore((s) => s.log);
   const cabinetOpen = useFacilityStore((s) => s.cabinetOpen);
@@ -258,12 +286,34 @@ export function Stage() {
     return true;
   };
 
-  const send = () => {
+  // The two states in which SEND would drop the press: nothing to say, and a
+  // reply already in flight. Both used to be silent early returns inside
+  // send(), so the button looked live, took the press and did nothing.
+  const sendable = draft.trim().length > 0 && !thinking;
+
+  // Returns whether the line actually left. The two guards are the same pair
+  // `sendable` reads, so a disabled button already makes them unreachable from
+  // the press — they stay because the keyboard's return key comes through here
+  // too, and because the caller needs an answer it can trust either way.
+  const send = (): boolean => {
     const text = draft.trim();
-    if (!text || thinking) return;
+    if (!text || thinking) return false;
     setDraft('');
-    if (forceEmotion(text)) return; // TEMPORARY, see above
+    if (forceEmotion(text)) return false; // TEMPORARY, see above
     void speak('subject_spoke', text);
+    return true;
+  };
+
+  // A tap is 40-60ms of contact, which a held-only pressed style can lose
+  // entirely — so the button holds its lit state past the release. Only the
+  // button latches: the keyboard's own return key reaches send() directly and
+  // has nothing on screen to light up.
+  const onSendPress = () => {
+    setLatched(true);
+    if (latchTimer.current) clearTimeout(latchTimer.current);
+    latchTimer.current = setTimeout(() => setLatched(false), SEND_LATCH_MS);
+
+    if (send()) buzz();
   };
 
   // Poking her. Refused mid-reply for the same reason SEND is: speak() has its
@@ -272,6 +322,7 @@ export function Stage() {
   const poke = () => {
     if (!awake || thinking) return;
     void speak('subject_tapped_your_optic');
+    buzz();
   };
 
   return (
@@ -406,10 +457,32 @@ export function Stage() {
               onChangeText={setDraft}
               placeholder={t.ask}
               placeholderTextColor={palette.textFaint}
-              onSubmitEditing={send}
+              onSubmitEditing={() => void send()}
             />
-            <Pressable onPress={send} hitSlop={8} style={styles.sendButton}>
-              <Text style={[styles.send, { fontFamily: font('mono', 500, lang) }]}>{t.send}</Text>
+            {/* `lit` comes last so it wins over `inert`: a successful send
+                empties the box and starts her thinking, which makes the button
+                inert on the very frame it is confirming the press. The order
+                gives you the tap, then the refusal, rather than neither. */}
+            <Pressable
+              testID="send"
+              onPress={onSendPress}
+              disabled={!sendable}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.sendButton,
+                !sendable && styles.sendButtonInert,
+                (pressed || latched) && styles.sendButtonLit,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.send,
+                  !sendable && styles.sendInert,
+                  { fontFamily: font('mono', 500, lang) },
+                ]}
+              >
+                {t.send}
+              </Text>
             </Pressable>
           </View>
 
@@ -617,10 +690,22 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 9,
   },
+  // Held, and for SEND_LATCH_MS after the release.
+  sendButtonLit: {
+    backgroundColor: palette.amberWash,
+    borderColor: palette.amberEdge,
+  },
+  // Nothing to send, or a reply already in flight.
+  sendButtonInert: {
+    borderColor: palette.border,
+  },
   send: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
     color: palette.amber,
+  },
+  sendInert: {
+    color: palette.textFaint,
   },
   // `padding:4px 0 14px; gap:8px`
   drawer: {

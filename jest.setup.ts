@@ -34,3 +34,12 @@ jest.mock('./modules/app-icon/src/AppIconModule', () => ({
   __esModule: true,
   default: { getIcon: () => '', setIcon: () => false },
 }));
+
+// Native, with no jsdom counterpart. Mocked globally rather than per-file
+// because every test that renders the Stage imports it transitively, and a
+// buzz is the one piece of feedback a test can never observe on its own.
+jest.mock('expo-haptics', () => ({
+  __esModule: true,
+  impactAsync: jest.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+}));

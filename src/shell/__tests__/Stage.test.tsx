@@ -1,10 +1,12 @@
 // src/shell/__tests__/Stage.test.tsx
 import React from 'react';
+import { StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
-import { ms } from '../../core/theme';
+import { ms, palette } from '../../core/theme';
 import * as OpticModule from '../Optic';
-import { Stage } from '../Stage';
+import { SEND_LATCH_MS, Stage } from '../Stage';
 
 // The send tests reach the store's speak(), which would otherwise reach the
 // network. Nothing in this file is allowed to leave the process.
@@ -151,10 +153,12 @@ describe('Stage', () => {
   // to reach her, and has to refuse the two cases it would silently drop.
   describe('send', () => {
     let spoken: jest.Mock;
+    const buzzed = () => (Haptics.impactAsync as jest.Mock).mock.calls.length;
 
     beforeEach(() => {
       spoken = jest.fn(async () => {});
       useFacilityStore.setState({ speak: spoken });
+      (Haptics.impactAsync as jest.Mock).mockClear();
     });
 
     // Restored after the block, not after each test: the previous render is
@@ -186,16 +190,82 @@ describe('Stage', () => {
       expect(spoken).not.toHaveBeenCalled();
       expect(useFacilityStore.getState().draft).toBe('again');
     });
+
+    // Both refusals used to be silent early returns inside send(), so the
+    // button looked live, took the press and did nothing. It now says which
+    // of the two states it is in before you touch it.
+    it('goes inert on the two cases it would refuse', async () => {
+      awake({ draft: '   ' });
+      const empty = await render(<Stage />);
+      expect(empty.getByTestId('send').props.accessibilityState.disabled).toBe(true);
+
+      awake({ draft: 'again', thinking: true });
+      const busy = await render(<Stage />);
+      expect(busy.getByTestId('send').props.accessibilityState.disabled).toBe(true);
+
+      awake({ draft: 'ready' });
+      const live = await render(<Stage />);
+      expect(live.getByTestId('send').props.accessibilityState.disabled).toBe(false);
+    });
+
+    // The buzz is for the line leaving, not for the button moving: it fires
+    // only on a press that actually reaches her.
+    it('buzzes when the line actually goes out', async () => {
+      awake({ draft: 'ready' });
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByTestId('send'));
+      expect(spoken).toHaveBeenCalled();
+      expect(buzzed()).toBe(1);
+    });
+
+    it('stays silent on an empty box and on a reply already in flight', async () => {
+      awake({ draft: '   ' });
+      const empty = await render(<Stage />);
+      await fireEvent.press(empty.getByTestId('send'));
+
+      awake({ draft: 'again', thinking: true });
+      const busy = await render(<Stage />);
+      await fireEvent.press(busy.getByTestId('send'));
+
+      expect(spoken).not.toHaveBeenCalled();
+      expect(buzzed()).toBe(0);
+    });
+
+    // A tap is 40-60ms of contact, which a held-only style can lose entirely.
+    // The button holds its lit state past the release so a quick press is
+    // still something you see.
+    it('stays lit past the release, then settles', async () => {
+      jest.useFakeTimers();
+      try {
+        awake({ draft: 'ready' });
+        const view = await render(<Stage />);
+        const lit = () =>
+          StyleSheet.flatten(view.getByTestId('send').props.style).backgroundColor;
+
+        expect(lit()).toBeUndefined();
+        await fireEvent.press(view.getByTestId('send'));
+        expect(lit()).toBe(palette.amberWash);
+
+        await act(async () => {
+          jest.advanceTimersByTime(SEND_LATCH_MS + 10);
+        });
+        expect(lit()).toBeUndefined();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   // Poking the eye is the one input on the stage that isn't typed. It refuses
   // the same two cases SEND does: nothing to say to, and already replying.
   describe('the optic', () => {
     let spoken: jest.Mock;
+    const buzzed = () => (Haptics.impactAsync as jest.Mock).mock.calls.length;
 
     beforeEach(() => {
       spoken = jest.fn(async () => {});
       useFacilityStore.setState({ speak: spoken });
+      (Haptics.impactAsync as jest.Mock).mockClear();
     });
 
     afterAll(() => {
@@ -221,6 +291,29 @@ describe('Stage', () => {
       const view = await render(<Stage />);
       await fireEvent.press(view.getByTestId('optic'));
       expect(spoken).not.toHaveBeenCalled();
+    });
+
+    // Same rule as SEND: the buzz is for the poke landing, not for the touch
+    // happening. Her eye takes a press whether or not she is in any state to
+    // answer it, so this is the one that has to be gated on the outcome.
+    it('buzzes when the poke reaches her', async () => {
+      awake();
+      const view = await render(<Stage />);
+      await fireEvent.press(view.getByTestId('optic'));
+      expect(buzzed()).toBe(1);
+    });
+
+    it('stays silent when she is dormant or already replying', async () => {
+      awake({ apiKey: '', emotion: 'dormant' });
+      const asleep = await render(<Stage />);
+      await fireEvent.press(asleep.getByTestId('optic'));
+
+      awake({ thinking: true });
+      const busy = await render(<Stage />);
+      await fireEvent.press(busy.getByTestId('optic'));
+
+      expect(spoken).not.toHaveBeenCalled();
+      expect(buzzed()).toBe(0);
     });
 
     // The eye is `waking`'s only consumer, and the bloom itself is drawn in
