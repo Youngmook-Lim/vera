@@ -217,6 +217,12 @@ interface FacilityState {
   keyPanelOpen: boolean;
   confirmingClear: boolean;
 
+  // A card a notification asked for, waiting for the room to open and take it.
+  // Not persisted: a tap is a thing that just happened, and one survived across
+  // a restart would re-deal a card from a notification tapped hours ago.
+  pendingQuote: number | null;
+  openQuote: (index: number) => void;
+
   setView: (view: View) => void;
   setDraft: (draft: string) => void;
   setCabinet: (open: boolean) => void;
@@ -266,6 +272,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   cabinetOpen: false,
   keyPanelOpen: false,
   confirmingClear: false,
+
+  pendingQuote: null,
+
+  // The notification's way in. It closes the cabinet because the tap did not
+  // come through it — and on a dormant stage there is no cabinet to come
+  // through at all, which is the one door this opens that nothing else does.
+  openQuote: (index: number): void => {
+    set({ view: 'mod02', pendingQuote: index, cabinetOpen: false });
+  },
 
   setView: (view) => set({ view, cabinetOpen: false }),
   setDraft: (draft) => set({ draft }),
