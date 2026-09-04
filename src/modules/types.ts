@@ -10,6 +10,11 @@ export interface ModuleDef {
   slot: '01' | '02';
   Tile: ComponentType<{ onPress: () => void }>;
   Screen: ComponentType;
+  // A row this room contributes to the SYSTEM screen's PREFERENCES section.
+  // Optional: most rooms have no preference to offer. It exists so the shell
+  // can carry a module's setting without naming the module — the same reason
+  // Cabinet and ScreenRouter read the registry instead of a list.
+  Settings?: ComponentType;
 }
 
 export interface EmptySlot {
