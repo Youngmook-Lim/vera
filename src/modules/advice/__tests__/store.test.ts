@@ -59,3 +59,79 @@ describe('the advice store', () => {
     expect([...useAdviceStore.getState().favorites]).toEqual(['a']);
   });
 });
+
+import * as Notifications from 'expo-notifications';
+import { PLAN_DAYS } from '../daily';
+
+const notifs = Notifications as unknown as Record<string, jest.Mock>;
+
+describe('the daily card', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    notifs.getPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
+    notifs.requestPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
+    await storage.clearAll();
+    useAdviceStore.setState({
+      hydrated: false, favorites: new Set(), daily: false, syncedOn: null,
+    });
+  });
+
+  it('is off until it is asked for', async () => {
+    await useAdviceStore.getState().hydrate();
+    expect(useAdviceStore.getState().daily).toBe(false);
+  });
+
+  it('schedules the moment it is switched on, without waiting for a launch', async () => {
+    const on = await useAdviceStore.getState().setDaily(true, 'en');
+    expect(on).toBe(true);
+    expect(useAdviceStore.getState().daily).toBe(true);
+    expect(notifs.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
+  });
+
+  // Android never re-prompts. A refusal must leave the store off, or the row
+  // would say ON over a phone that will never show a card.
+  it('stays off when the subject refuses the permission', async () => {
+    notifs.requestPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: false });
+    const on = await useAdviceStore.getState().setDaily(true, 'en');
+    expect(on).toBe(false);
+    expect(useAdviceStore.getState().daily).toBe(false);
+    expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('cancels everything when it is switched off', async () => {
+    await useAdviceStore.getState().setDaily(true, 'en');
+    jest.clearAllMocks();
+    await useAdviceStore.getState().setDaily(false, 'en');
+    expect(useAdviceStore.getState().daily).toBe(false);
+    expect(notifs.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+    expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('survives a restart, on and stamped', async () => {
+    await useAdviceStore.getState().setDaily(true, 'en');
+    useAdviceStore.setState({ hydrated: false, favorites: new Set(), daily: false, syncedOn: null });
+    await useAdviceStore.getState().hydrate();
+    expect(useAdviceStore.getState().daily).toBe(true);
+    expect(useAdviceStore.getState().syncedOn).toBe(new Date().toDateString());
+  });
+
+  // Ninety cancels and ninety native calls in the boot path, for an
+  // identically-shaped result, on every single launch.
+  it('syncs once a day, not once a launch', async () => {
+    await useAdviceStore.getState().setDaily(true, 'en');
+    jest.clearAllMocks();
+
+    await useAdviceStore.getState().syncIfDue('en');
+    expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
+
+    await useAdviceStore.getState().syncIfDue('en', new Date(Date.now() + 86_400_000));
+    expect(notifs.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
+  });
+
+  it('does no work at all while it is switched off', async () => {
+    await useAdviceStore.getState().hydrate();
+    await useAdviceStore.getState().syncIfDue('en');
+    expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(notifs.cancelAllScheduledNotificationsAsync).not.toHaveBeenCalled();
+  });
+});

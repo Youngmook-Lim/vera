@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
+import { dueForSync } from './daily';
 import { type Favorites, toggle } from './favorites';
+import { requestDaily, syncDaily } from './notify';
 import { type Stored, parse, serialize } from './stored';
 
 // The cards you kept, owned by the room that shows them. She is not told this
@@ -24,6 +27,8 @@ interface AdviceState extends Stored {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   toggleFavorite: (quote: string) => Promise<void>;
+  setDaily: (on: boolean, lang: Lang) => Promise<boolean>;
+  syncIfDue: (lang: Lang, now?: Date) => Promise<void>;
 }
 
 // Both halves of the room mount asking for the same hydration. The flag alone
@@ -59,6 +64,35 @@ export const useAdviceStore = create<AdviceState>((set, get) => ({
     const favorites = toggle(get().favorites, quote);
     set({ favorites });
     await save({ ...get(), favorites });
+  },
+
+  // Returns whether it is on afterwards, which is NOT what was asked for when
+  // the permission is refused. Android never re-prompts, so a refusal has to
+  // leave the store off or the row would read ON over a phone that will never
+  // show a card.
+  setDaily: async (on: boolean, lang: Lang): Promise<boolean> => {
+    if (on && !(await requestDaily())) {
+      return false;
+    }
+    const now = new Date();
+    const syncedOn = on ? now.toDateString() : null;
+    set({ daily: on, syncedOn });
+    await syncDaily(on, lang, now);
+    await save({ ...get(), daily: on, syncedOn });
+    return on;
+  },
+
+  // The boot path's entry point. A sync rewrites the whole horizon, so this
+  // does nothing at all on the second launch of a day.
+  syncIfDue: async (lang: Lang, now: Date = new Date()): Promise<void> => {
+    const { daily, syncedOn } = get();
+    if (!daily) return;
+    if (!dueForSync(syncedOn, now)) return;
+
+    const stamp = now.toDateString();
+    set({ syncedOn: stamp });
+    await syncDaily(true, lang, now);
+    await save({ ...get(), syncedOn: stamp });
   },
 }));
 
