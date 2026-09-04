@@ -1,8 +1,8 @@
 import { KEYS, storage } from '../../../core/storage';
-import { parse } from '../favorites';
+import { parse } from '../stored';
 import { useAdviceStore } from '../store';
 
-const onDisk = async () => parse(await storage.get(KEYS.advice));
+const onDisk = async () => (await parse(await storage.get(KEYS.advice))).favorites;
 
 // A cold start: nothing hydrated, whatever is on disk is all there is.
 const coldStart = async () => {
