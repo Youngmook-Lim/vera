@@ -141,13 +141,16 @@ describe('Stage', () => {
       awake({ line: 'You returned.', shown: 'You returned.', thinking: true });
       const waiting = await render(<Stage />);
       const dotsSlot = slotOf(waiting, 'thinking');
+      // Both are pushed to the right edge of the strip, away from the label.
       expect(StyleSheet.flatten(waiting.getByTestId('thinking').props.style).marginLeft)
-        .toBeUndefined();
+        .toBe('auto');
       await waiting.unmount();
 
       awake({ line: 'You returned.', shown: 'You ret', thinking: false });
       const speaking = await render(<Stage />);
       expect(slotOf(speaking, 'status')).toBe(dotsSlot);
+      expect(StyleSheet.flatten(speaking.getByTestId('status').props.style).marginLeft)
+        .toBe('auto');
       await speaking.unmount();
     });
 
@@ -231,17 +234,22 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    it('sits the input box against the keyboard', async () => {
+    // It sat flush on the keys for one commit. The handle is out of the tree
+    // either way, so no amount of gap here can expose it — which leaves the
+    // right gap as the one the stage already uses, rather than none.
+    it('keeps the same gap under the box whether the keyboard is up or not', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      expect(StyleSheet.flatten(typing.getByTestId('input-row').props.style).marginBottom).toBe(0);
+      const lifted = StyleSheet.flatten(typing.getByTestId('input-row').props.style).marginBottom;
       await typing.unmount();
 
       keyboard(false);
       const idle = await render(<Stage />);
-      expect(StyleSheet.flatten(idle.getByTestId('input-row').props.style).marginBottom)
-        .toBeGreaterThan(0);
+      const resting = StyleSheet.flatten(idle.getByTestId('input-row').props.style).marginBottom;
       await idle.unmount();
+
+      expect(lifted).toBe(resting);
+      expect(lifted).toBeGreaterThan(0);
     });
 
     // The box she is typed into must never be what disappears.

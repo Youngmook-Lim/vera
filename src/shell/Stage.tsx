@@ -417,17 +417,19 @@ export function Stage() {
             </Text>
             {/* One slot, and the two never coincide: the word is blank while
                 she is only thinking, and the dots are gone the moment the
-                typewriter starts. So the ellipsis sits exactly where
-                TRANSMITTING and COMPLETE sit rather than at the far edge. */}
+                typewriter starts. Both carry the same auto margin, which is
+                what holds them at the right edge of a row whose other children
+                cluster left on a 9px gap — and what keeps the ellipsis landing
+                exactly where TRANSMITTING and COMPLETE do. */}
             {status ? (
               <Text
                 testID="status"
-                style={[styles.status, { fontFamily: font('mono', 500, lang) }]}
+                style={[styles.status, styles.statusSlot, { fontFamily: font('mono', 500, lang) }]}
               >
                 {status}
               </Text>
             ) : thinking ? (
-              <ThinkingDots />
+              <ThinkingDots style={styles.statusSlot} />
             ) : null}
           </View>
 
@@ -475,10 +477,12 @@ export function Stage() {
 
       {awake ? (
         <>
-          {/* Flush to the keys while typing. The 14 below it is the gap to the
-              cabinet handle, and with the handle gone there is nothing left for
-              it to be a gap to. */}
-          <View testID="input-row" style={[styles.inputRow, keyboardUp && styles.inputRowLifted]}>
+          {/* The same gap either way. It sat flush on the keys for one commit,
+              on the reasoning that the 14 was the space under the handle — but
+              the handle is out of the tree while the keyboard is up, so no gap
+              here can expose it, and flush against the keys is tighter than
+              anything else on this screen. */}
+          <View testID="input-row" style={styles.inputRow}>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -664,6 +668,11 @@ const styles = StyleSheet.create({
   // The design sets this at weight 400; the mono face is bundled at 500 and up,
   // so it takes 500 like every other mono label on the stage. The tracking is
   // the design's .18em, which is what separates it from the label beside it.
+  // The right edge of the strip. Applied to the word AND the dots, or the two
+  // would sit in the same slot but not the same place.
+  statusSlot: {
+    marginLeft: 'auto',
+  },
   status: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
@@ -698,9 +707,6 @@ const styles = StyleSheet.create({
   },
   // A card, not a hairline rule: `margin:0 20px 14px; padding:13px 14px;
   // background:#1a1913; border:1px solid #2c2a22; border-radius:12px`
-  inputRowLifted: {
-    marginBottom: 0,
-  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
