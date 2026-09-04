@@ -28,6 +28,13 @@
       "expo-font",
       "expo-localization",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#f4b43a"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#131011",

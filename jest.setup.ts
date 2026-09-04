@@ -43,3 +43,19 @@ jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
 }));
+
+// Native, with no jsdom counterpart. Mocked globally because App and the
+// SYSTEM screen both reach it transitively, and a scheduled notification is
+// something no test can observe arriving.
+jest.mock('expo-notifications', () => ({
+  __esModule: true,
+  AndroidImportance: { DEFAULT: 3 },
+  SchedulableTriggerInputTypes: { DATE: 'date' },
+  setNotificationChannelAsync: jest.fn(async () => {}),
+  getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  scheduleNotificationAsync: jest.fn(async () => 'id'),
+  cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
