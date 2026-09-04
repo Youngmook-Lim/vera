@@ -87,10 +87,51 @@ describe('Stage', () => {
       expect(view.getByTestId('status').props.children).toBe('TRANSMITTING');
     });
 
-    it('says TRANSMITTING while she is still thinking', async () => {
+    // Reversed on 2026-09-04. TRANSMITTING while she was only THINKING claimed
+    // a transmission that had not started, and the dots moved up into this
+    // strip — so they now carry the waiting, which is the state the design
+    // never had a word for. The word means what it says again.
+    it('says nothing while she is only thinking, and lets the dots carry it', async () => {
       awake({ line: '', shown: '', thinking: true });
       const view = await render(<Stage />);
-      expect(view.getByTestId('status').props.children).toBe('TRANSMITTING');
+      expect(view.queryByTestId('status')).toBeNull();
+      expect(view.getByTestId('thinking')).toBeTruthy();
+    });
+
+    it('puts the dots in the strip, not under her last line', async () => {
+      // A previous reply still on screen is exactly when the dots used to
+      // appear beneath it and squeeze the body.
+      awake({ line: 'You returned.', shown: 'You returned.', thinking: true });
+      const view = await render(<Stage />);
+      const strip = view.getByTestId('status-strip');
+      const dots = view.getByTestId('thinking');
+      const inStrip = (node: unknown): boolean =>
+        node === dots || (Array.isArray((node as { children?: unknown[] })?.children)
+          && (node as { children: unknown[] }).children.some(inStrip));
+      expect(inStrip(strip)).toBe(true);
+    });
+
+    // `hasBody` counted `thinking` only because the dots used to live in the
+    // body. With them in the strip, the first message of a session would open
+    // an empty box and hold it there for the whole wait.
+    it('collapses to the strip while she thinks with nothing yet to show', async () => {
+      awake({ line: '', shown: '', thinking: true });
+      const view = await render(<Stage />);
+      expect(view.queryByTestId('her-line')).toBeNull();
+      expect(view.getByTestId('thinking')).toBeTruthy();
+    });
+
+    it('keeps her last line up while she thinks about the next one', async () => {
+      awake({ line: 'You returned.', shown: 'You returned.', thinking: true });
+      const view = await render(<Stage />);
+      expect(view.getByTestId('her-line')).toBeTruthy();
+      expect(view.getByTestId('thinking')).toBeTruthy();
+    });
+
+    it('shows no dots once she has stopped thinking', async () => {
+      awake({ line: 'You returned.', shown: 'You returned.', thinking: false });
+      const view = await render(<Stage />);
+      expect(view.queryByTestId('thinking')).toBeNull();
     });
 
     it('says COMPLETE once the whole line has landed', async () => {

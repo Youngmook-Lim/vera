@@ -169,17 +169,28 @@ export function Stage() {
   // speaking, and reporting her line COMPLETE beside it would claim, in her
   // colour, that she said the thing she never got to show. Blank before she has
   // ever spoken — a third word for "nothing yet" is copy the design lacks.
+  //
+  // It used to read TRANSMITTING while she was merely THINKING, for want of
+  // that third word. The dots moved into this strip on 2026-09-04 and carry the
+  // waiting themselves, so the word is free to mean what it says: nothing is
+  // being transmitted until the typewriter is actually drawing.
   const status = systemNotice
     ? ''
-    : thinking || typing
+    : typing
       ? t.transmitting
-      : line
-        ? t.complete
-        : '';
+      : thinking
+        ? ''
+        : line
+          ? t.complete
+          : '';
   // With nothing to put in it the window is its strip and no more, so a dormant
   // stage keeps the centred eye it has today instead of holding open an empty
   // box above the gate.
-  const hasBody = Boolean(systemNotice || line || thinking);
+  // `thinking` used to belong here, because the dots were the body's only
+  // content while she waited. They live in the strip now, so counting it would
+  // hold an empty box open for the length of the wait on the first message of
+  // a session. A reply already on screen keeps the body open through `line`.
+  const hasBody = Boolean(systemNotice || line);
 
   const gazeX = useSharedValue(0);
   const gazeY = useSharedValue(0);
@@ -387,7 +398,7 @@ export function Stage() {
         {/* Her words get an instrument of their own (3a): a status strip
             carrying her state, and a body holding nothing but what she said. */}
         <View style={[styles.window, hasBody ? styles.windowOpen : null]}>
-          <View style={styles.strip}>
+          <View testID="status-strip" style={styles.strip}>
             <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
             <Text
               style={[styles.emotionLabel, { color: iris, fontFamily: font('mono', 500, lang) }]}
@@ -402,6 +413,10 @@ export function Stage() {
                 {status}
               </Text>
             ) : null}
+            {/* Pushed to the far edge of the strip, not stacked under her last
+                line where they used to squeeze the body between a reply still
+                on screen and the input row. */}
+            {thinking ? <ThinkingDots style={styles.stripDots} /> : null}
           </View>
 
           {hasBody ? (
@@ -441,7 +456,6 @@ export function Stage() {
                   ) : null}
                 </Text>
               )}
-              {thinking ? <ThinkingDots /> : null}
             </ScrollView>
           ) : null}
         </View>
@@ -633,6 +647,11 @@ const styles = StyleSheet.create({
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
     color: palette.textDim,
+  },
+  // The strip is a row with a 9px gap; this is what puts the dots on the right
+  // edge instead of clustered against the label with everything else.
+  stripDots: {
+    marginLeft: 'auto',
   },
   // `padding:20px 18px; overflow-y:auto`. `flexShrink` rather than `flex`: a
   // ScrollView claiming a flex share inside an auto-height parent collapses to
