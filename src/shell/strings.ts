@@ -10,7 +10,10 @@ const en = {
   reply: 'reply to her',
   // The status strip's live word (design 3a): TRANSMITTING while the
   // typewriter is still drawing her line, COMPLETE once it has all arrived.
-  transmitting: 'TRANSMITTING',
+  // The three dots are literal text and belong to the copy, not to the
+  // animated ellipsis beside them — those are the WAITING, and they are gone
+  // by the time this word appears.
+  transmitting: 'TRANSMITTING...',
   complete: 'COMPLETE',
   cabinet: 'CABINET',
   close: 'CLOSE',
@@ -90,7 +93,7 @@ const ko: ChromeStrings = {
   send: '전송',
   ask: '그에게 말을 건네십시오',
   reply: '답신',
-  transmitting: '전송 중',
+  transmitting: '전송 중...',
   complete: '완료',
   cabinet: '보관함',
   close: '닫기',

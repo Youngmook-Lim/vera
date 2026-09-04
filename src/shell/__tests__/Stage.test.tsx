@@ -85,7 +85,10 @@ describe('Stage', () => {
     it('says TRANSMITTING while her line is still arriving', async () => {
       awake({ line: 'You slept four hours.', shown: 'You slept' });
       const view = await render(<Stage />);
-      expect(view.getByTestId('status').props.children).toBe('TRANSMITTING');
+      // Static text, not the animated ellipsis: the dots are the WAITING, and
+      // by the time this shows she has already started arriving.
+      expect(view.getByTestId('status').props.children).toBe('TRANSMITTING...');
+      expect(view.queryByTestId('thinking')).toBeNull();
     });
 
     // Reversed on 2026-09-04. TRANSMITTING while she was only THINKING claimed
