@@ -1,5 +1,5 @@
 import { KEYS, secure, storage } from '../storage';
-import { useFacilityStore } from '../store';
+import { RETURN_GAP_MS, useFacilityStore } from '../store';
 import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
@@ -110,6 +110,13 @@ describe('hydrate', () => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
   const soul = (o: Record<string, unknown>) => storage.set(KEYS.soul, JSON.stringify(o));
   const hydrate = () => useFacilityStore.getState().hydrate();
+  // A fresh JS context: a real cold launch, a Metro reload, an activity
+  // Android rebuilt. The store is new, so `hydrated` is false again — which is
+  // exactly why the re-entry guard alone cannot be the whole fix.
+  const relaunch = async () => {
+    useFacilityStore.setState({ hydrated: false });
+    await hydrate();
+  };
 
   beforeEach(async () => {
     jest.restoreAllMocks();
@@ -133,32 +140,70 @@ describe('hydrate', () => {
     expect(useFacilityStore.getState().lang).toBe('ko');
 
     await soul({ lang: 'en' });
-    await hydrate();
+    await relaunch();
     expect(useFacilityStore.getState().lang).toBe('en'); // saved beats the device
   });
 
+  const longAway = () => Date.now() - RETURN_GAP_MS - 60_000;
+
   it('counts a return on the same day, and caps the tally at 99', async () => {
-    await soul({ visits: 7, day: today(), lastOpen: Date.now() - 600_000 });
+    await soul({ visits: 7, day: today(), lastOpen: longAway() });
     await hydrate();
     expect(useFacilityStore.getState().visits).toBe(8);
 
-    await soul({ visits: 99, day: today(), lastOpen: Date.now() - 600_000 });
-    await hydrate();
+    await soul({ visits: 99, day: today(), lastOpen: longAway() });
+    await relaunch();
     expect(useFacilityStore.getState().visits).toBe(99);
   });
 
   it('starts the tally over on a new day', async () => {
-    await soul({ visits: 40, day: 'Wed Jan 07 2026', lastOpen: Date.now() - 600_000 });
+    await soul({ visits: 40, day: 'Wed Jan 07 2026', lastOpen: longAway() });
     await hydrate();
     expect(useFacilityStore.getState().visits).toBe(1);
   });
 
-  it('treats a remount inside two minutes as a reload, not a return', async () => {
-    const lastOpen = Date.now() - 1_000;
+  // A return is being AWAY and coming back, not the app starting again. The
+  // window used to be two minutes, which counted task-switching, a glance at a
+  // notification and every Metro reload as separate returns.
+  it('treats a relaunch inside the return gap as the same visit', async () => {
+    const lastOpen = Date.now() - RETURN_GAP_MS + 60_000;
     await soul({ visits: 5, day: today(), lastOpen });
     await hydrate();
     expect(useFacilityStore.getState().visits).toBe(5);
+    // State keeps the PREVIOUS open, because that is what says how long they
+    // were gone. Only the disk moves forward.
     expect(useFacilityStore.getState().lastOpen).toBe(lastOpen);
+  });
+
+  // The bug as reported: "why is she telling me it is the 7th time I have come
+  // when I opened the app once today". Two defects behind it — hydrate had no
+  // re-entry guard, and the gap was measured from `lastOpen`, which only
+  // saveSoul ever wrote, i.e. from her last LINE rather than from the open.
+  it('counts one open however many times the boot effect runs', async () => {
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(1);
+    await hydrate();
+    await hydrate();
+    expect(useFacilityStore.getState().visits).toBe(1);
+  });
+
+  it('stamps the open itself, not just the lines she says', async () => {
+    const before = Date.now();
+    await hydrate();
+    const written = JSON.parse((await storage.get(KEYS.soul)) as string);
+    expect(written.lastOpen).toBeGreaterThanOrEqual(before);
+    expect(written.day).toBe(today());
+  });
+
+  it('does not count a reload minutes after a quiet open as a return', async () => {
+    await hydrate();
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().visits).toBe(1);
+
+    const stamped = JSON.parse((await storage.get(KEYS.soul)) as string).lastOpen;
+    jest.spyOn(Date, 'now').mockReturnValue(stamped + 180_000);
+    await relaunch();
+    expect(useFacilityStore.getState().visits).toBe(1);
   });
 
   // A cold start is not a question she asked four minutes ago. Without the
@@ -217,7 +262,7 @@ describe('hydrate', () => {
       lang: 'ko',
       visits: 4,
       day: today(),
-      lastOpen: Date.now() - 600_000,
+      lastOpen: Date.now() - RETURN_GAP_MS - 60_000,
     });
     await storage.set(KEYS.transcript, JSON.stringify([{ who: 'vera', text: 'no', t: 2 }]));
 

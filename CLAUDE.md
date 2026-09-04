@@ -67,6 +67,14 @@ Three consequences taken knowingly, against a `#0f0f11` ground. On **calm** — 
 
 The room is her shell's register but its own ink (`palette.advice`) — the exit and the fixed chrome are drawn in it. The cards are set at **one fixed size with a ScrollView behind them**, not a ladder: the longest highlight runs to 513 characters, and this is the same fight `voice()` settled when `fluid.ts` was deleted. The list is the repo's **first `FlatList`** — 232 rows in a `ScrollView` would mount every one. And the cards are **English whatever the interface is set to**, so they call `serif()` with no lang and stay Instrument Serif, following the rule the pure-ASCII telemetry already follows; only the four labels in `strings.ts` are translated. A translated Kevin Kelly would be a different book.
 
+**A return means they were away (2026-09-04).** She told a subject who had opened the app once that morning that it was "return number 7 today". Two defects, and the interesting one is not the obvious one.
+
+**`lastOpen` did not mean what its name says.** It was written in exactly one place — `saveSoul`, which runs when she SPEAKS — and `hydrate` never stamped it. But the guard read it as an open time, so the window was measuring *time since her last line*. Wrong in both directions: reopening a minute after a chat ended was swallowed as a reload, while a restart long after a quiet session counted as a fresh return. `hydrate` now calls `saveSoul` itself, so the disk's `lastOpen` is the last **open**; state keeps the previous one, because that is what says how long they were gone.
+
+**And two minutes was far too short a window.** `RETURN_GAP_MS` is now 30 minutes. Task-switching, a glance at a notification, an activity Android rebuilt and — the one that actually produced the seven — every Metro reload in a working day all restart the app without the subject having gone anywhere.
+
+Worth knowing before touching this again: **`visits` is computed from the disk, not from state**, so repeated `hydrate` calls are idempotent on their own and the missing re-entry guard is *not* what inflated the count. `hydrate` still has no guard, unlike `organism/store.ts` and `advice/store.ts` which both do; what that costs is `askedAt`, `sessionStartedAt` and the memory read being redone on a double-boot, not the tally. Left alone because no failing test demanded it.
+
 **The six stores (spec §8).**
 
 | store | key | engine | contents |

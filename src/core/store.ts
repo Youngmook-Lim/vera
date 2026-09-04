@@ -130,6 +130,14 @@ let extracting = false;
 // remount inside two minutes as a reload rather than a return.
 let greeted = false;
 
+// How far apart two opens have to be before the second is a RETURN rather than
+// the same visit resuming. Deliberately long: task-switching, a glance at a
+// notification, an activity Android rebuilt and — in development — every Metro
+// reload all restart the app without the subject having gone anywhere. At the
+// two minutes this used to be, a working day of dev reloads reported itself to
+// her as seven returns.
+export const RETURN_GAP_MS = 30 * 60_000;
+
 // The one shape written to KEYS.soul, and the one place that writes it — four
 // callers persisting five fields by hand is how the writers drifted apart in
 // the first place.
@@ -337,11 +345,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const now = Date.now();
       const lastOpen = typeof saved?.lastOpen === 'number' ? saved.lastOpen : null;
       const sameDay = saved?.day === new Date().toDateString();
-      // A remount within two minutes is a reload, not a return — without this
-      // hot reload inflates the count into the hundreds.
-      const isReload = lastOpen != null && now - lastOpen < 120_000;
+      // A return is being away and coming back. Anything closer together than
+      // RETURN_GAP_MS is the same visit resuming, whatever restarted the app.
+      const sameVisit = lastOpen != null && now - lastOpen < RETURN_GAP_MS;
       const visits = sameDay
-        ? Math.min(99, (typeof saved?.visits === 'number' ? saved.visits : 0) + (isReload ? 0 : 1))
+        ? Math.min(99, (typeof saved?.visits === 'number' ? saved.visits : 0) + (sameVisit ? 0 : 1))
         : 1;
 
       set({
@@ -361,6 +369,17 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // is sent would be filtered by luck rather than by this launch.
         sessionStartedAt: now,
       });
+
+      // THE OPEN IS ITSELF AN EVENT WORTH STAMPING. `lastOpen` used to be
+      // written only by saveSoul, which runs when she SPEAKS — so the gap above
+      // was measuring the time since her last line, not since the last open,
+      // and was wrong in both directions: reopening a minute after a chat ended
+      // was swallowed as a reload, while a restart long after a quiet session
+      // counted as a fresh return.
+      //
+      // State keeps the PREVIOUS open (set above) because that is what says how
+      // long they were gone; only the disk moves forward to now.
+      await saveSoul(get());
     } catch {
       // Now unreachable — every read and every parse above is guarded — but
       // kept so hydrate can never throw. It boots her on the key regardless:
