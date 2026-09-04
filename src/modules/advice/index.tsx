@@ -12,6 +12,7 @@ import { displayOrder } from './favorites';
 import { QUOTES, SOURCE } from './quotes';
 import { useFavorites } from './store';
 import { T } from './strings';
+import { AdviceSettings } from './Settings';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 
@@ -303,6 +304,7 @@ export const advice: ModuleDef = {
   slot: '02',
   Tile: AdviceTile,
   Screen: AdviceScreen,
+  Settings: AdviceSettings,
 };
 
 const styles = StyleSheet.create({
