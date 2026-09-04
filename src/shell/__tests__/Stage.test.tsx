@@ -2,6 +2,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette } from '../../core/theme';
@@ -203,6 +204,53 @@ describe('Stage', () => {
     awake({ log: [{ who: 'vera', text: 'Hm.', t: 1, emotion: 'calm' }] });
     const withLog = await render(<Stage />);
     expect(withLog.getByText('OPEN CONVERSATION')).toBeTruthy();
+  });
+
+  // With the keyboard up the stage has three things worth the height — the
+  // eye, her window and the box being typed into — and the cabinet handle is
+  // not one of them. It cannot be reached while typing anyway.
+  describe('with the keyboard up', () => {
+    const keyboard = (isVisible: boolean) =>
+      (useKeyboardState as jest.Mock).mockImplementation((selector?: (s: unknown) => unknown) => {
+        const state = { isVisible, height: isVisible ? 300 : 0 };
+        return selector ? selector(state) : state;
+      });
+
+    beforeEach(() => awake());
+    afterEach(() => keyboard(false));
+
+    it('hides the cabinet handle, and brings it back afterwards', async () => {
+      keyboard(true);
+      const typing = await render(<Stage />);
+      expect(typing.queryByText('CABINET')).toBeNull();
+      await typing.unmount();
+
+      keyboard(false);
+      const idle = await render(<Stage />);
+      expect(idle.getByText('CABINET')).toBeTruthy();
+      await idle.unmount();
+    });
+
+    it('sits the input box against the keyboard', async () => {
+      keyboard(true);
+      const typing = await render(<Stage />);
+      expect(StyleSheet.flatten(typing.getByTestId('input-row').props.style).marginBottom).toBe(0);
+      await typing.unmount();
+
+      keyboard(false);
+      const idle = await render(<Stage />);
+      expect(StyleSheet.flatten(idle.getByTestId('input-row').props.style).marginBottom)
+        .toBeGreaterThan(0);
+      await idle.unmount();
+    });
+
+    // The box she is typed into must never be what disappears.
+    it('keeps the input itself', async () => {
+      keyboard(true);
+      const view = await render(<Stage />);
+      expect(view.getByPlaceholderText('say something to her')).toBeTruthy();
+      await view.unmount();
+    });
   });
 
   it('gives a dormant stage no input and no drawer', async () => {

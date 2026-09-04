@@ -25,6 +25,7 @@ import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
 import { Optic } from './Optic';
 import { gazeFor } from './opticGeometry';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useKeyboardInset } from './useKeyboardInset';
 import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
@@ -155,6 +156,10 @@ export function Stage() {
   // system chrome, not instead of it.
   const insets = useSafeAreaInsets();
   const keyboardInset = useKeyboardInset();
+  // The inset is a shared value on the UI thread: it can move the stage but it
+  // cannot decide what to render. This is the same library's JS-side view of
+  // the same keyboard, and it is what lets the handle come out of the tree.
+  const keyboardUp = useKeyboardState((s) => s.isVisible);
 
   const awake = Boolean(apiKey);
   const t = T[lang];
@@ -470,7 +475,10 @@ export function Stage() {
 
       {awake ? (
         <>
-          <View style={styles.inputRow}>
+          {/* Flush to the keys while typing. The 14 below it is the gap to the
+              cabinet handle, and with the handle gone there is nothing left for
+              it to be a gap to. */}
+          <View testID="input-row" style={[styles.inputRow, keyboardUp && styles.inputRowLifted]}>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -507,12 +515,18 @@ export function Stage() {
             </Pressable>
           </View>
 
-          <View style={styles.drawer} {...handlePan.panHandlers}>
-            <View style={styles.handleBar} />
-            <Text style={[styles.handleLabel, { fontFamily: font('mono', 500, lang) }]}>
-              {t.cabinet}
-            </Text>
-          </View>
+          {/* With the keyboard up the stage has three things worth the height
+              — the eye, her window, and the box being typed into — and the
+              cabinet handle is not one of them. Nothing is lost: the handle is
+              a swipe target, and it cannot be reached past the keys anyway. */}
+          {keyboardUp ? null : (
+            <View style={styles.drawer} {...handlePan.panHandlers}>
+              <View style={styles.handleBar} />
+              <Text style={[styles.handleLabel, { fontFamily: font('mono', 500, lang) }]}>
+                {t.cabinet}
+              </Text>
+            </View>
+          )}
         </>
       ) : (
         <KeyGate />
@@ -684,6 +698,9 @@ const styles = StyleSheet.create({
   },
   // A card, not a hairline rule: `margin:0 20px 14px; padding:13px 14px;
   // background:#1a1913; border:1px solid #2c2a22; border-radius:12px`
+  inputRowLifted: {
+    marginBottom: 0,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
