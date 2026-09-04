@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { PLAN_DAYS } from '../daily';
-import { permissionState, requestDaily, syncDaily } from '../notify';
+import { onTap, permissionState, readTapTarget, requestDaily, syncDaily } from '../notify';
 import { QUOTES, SOURCE } from '../quotes';
 
 const mocked = Notifications as unknown as Record<string, jest.Mock>;
@@ -54,6 +54,9 @@ describe('the executor', () => {
   it('swallows a refusal from the native side', async () => {
     mocked.scheduleNotificationAsync.mockRejectedValue(new Error('no'));
     await expect(syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBeUndefined();
+    // The resolve alone would also pass for a syncDaily that did nothing at
+    // all — this proves the loop actually ran and hit the rejection.
+    expect(mocked.scheduleNotificationAsync).toHaveBeenCalled();
   });
 });
 
@@ -74,5 +77,58 @@ describe('the permission', () => {
     mocked.requestPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: false });
     expect(await requestDaily()).toBe(false);
     expect(mocked.setNotificationChannelAsync).toHaveBeenCalled();
+  });
+});
+
+describe('the tap target', () => {
+  it('reads the index off a real notification response', async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue({
+      notification: { request: { content: { data: { quote: 41 } } } },
+    });
+    expect(await readTapTarget()).toBe(41);
+  });
+
+  it('returns null on an ordinary cold start with no tap', async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue(null);
+    expect(await readTapTarget()).toBeNull();
+  });
+
+  it('returns null when the data carries no quote', async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue({
+      notification: { request: { content: { data: {} } } },
+    });
+    expect(await readTapTarget()).toBeNull();
+  });
+
+  it('returns null when quote is not a number', async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue({
+      notification: { request: { content: { data: { quote: 'nope' } } } },
+    });
+    expect(await readTapTarget()).toBeNull();
+  });
+});
+
+describe('the tap listener', () => {
+  it('invokes the handler with the index when the listener fires', () => {
+    const handler = jest.fn();
+    onTap(handler);
+    const listener = mocked.addNotificationResponseReceivedListener.mock.calls[0][0];
+    listener({ notification: { request: { content: { data: { quote: 7 } } } } });
+    expect(handler).toHaveBeenCalledWith(7);
+  });
+
+  it('does not invoke the handler when the response carries no usable quote', () => {
+    const handler = jest.fn();
+    onTap(handler);
+    const listener = mocked.addNotificationResponseReceivedListener.mock.calls[0][0];
+    listener({ notification: { request: { content: { data: {} } } } });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('returns a callable unsubscribe that calls remove()', () => {
+    const unsubscribe = onTap(jest.fn());
+    const { remove } = mocked.addNotificationResponseReceivedListener.mock.results[0].value;
+    unsubscribe();
+    expect(remove).toHaveBeenCalled();
   });
 });
