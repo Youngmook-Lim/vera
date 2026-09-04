@@ -662,8 +662,12 @@ const styles = StyleSheet.create({
   body: {
     flexShrink: 1,
   },
+  // 4a says `padding:20px 18px`. The vertical half is 12 (2026-09-04): with the
+  // keyboard up the window is the only thing that can give, and 40px of the
+  // little height it has left was padding. The horizontal 18 is untouched —
+  // narrowing her line costs more lines than it saves height.
   bodyInner: {
-    paddingVertical: 20,
+    paddingVertical: 12,
     paddingHorizontal: 18,
     gap: 16,
   },
