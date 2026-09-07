@@ -1,5 +1,9 @@
 // The shuffle, and nothing else. No React, no storage — the deck lives for as
 // long as the room is open and is rebuilt from scratch the next time it is.
+//
+// Shared by every room that deals from a fixed corpus (2026-09-07). It is pure
+// and knows only a count, so it has no theme, no strings and nothing behind a
+// doorway — which is why promoting it out of one room does not cross §4.
 export interface Deck {
   order: number[];
   at: number;

@@ -1,4 +1,4 @@
-import type { Favorites } from './favorites';
+import type { Favorites } from '../favorites';
 
 // The whole of what module 02 keeps on disk, in one place. This used to live in
 // favorites.ts, which was right while favorites were the only thing kept; the
