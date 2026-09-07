@@ -65,6 +65,21 @@ export const palette = {
   // accent here on purpose — the room is lit in whatever SHE is wearing, so its
   // one live colour is `EMOTIONS[emotion].iris` and is read at render (see the
   // note in `modules/advice/index.tsx`). These are the values that hold still.
+  // The horror room. Warmer in the shadows than the advice room's neutral
+  // greys — the same darkness with blood left in it — and one colour the
+  // advice room has no use for: the bar that stands in for a withheld second
+  // sentence.
+  horror: {
+    bg: '#0a0909',
+    card: '#121011',
+    cardBorder: '#231e1f',
+    rule: '#1b1718',
+    ink: '#e6e0de',
+    inkSoft: '#948c8a',
+    inkDim: '#655e5d',
+    inkGhost: '#413b3a',
+    redaction: '#241f20',
+  },
   advice: {
     bg: '#0f0f11',
     card: '#16161a',

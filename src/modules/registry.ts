@@ -1,10 +1,11 @@
 import { advice } from './advice';
+import { horror } from './horror';
 import type { RegistryEntry } from './types';
 
-// Six slots, three to a row: 01 advice, 02 through 06 empty. This array is the
-// only place a module is named — the cabinet builds its tiles from it and
-// ScreenRouter builds its module screens from it, so a new room is one folder
-// exporting a ModuleDef plus one line here.
+// Six slots, three to a row: 01 advice, 02 horror, 03 through 06 empty. This
+// array is the only place a module is named — the cabinet builds its tiles
+// from it and ScreenRouter builds its module screens from it, so a new room is
+// one folder exporting a ModuleDef plus one line here.
 //
 // Specimen-03 is off the registry, not deleted (2026-09-07): the folder, its
 // store, its hunger tests and palette.organism all stay where they are, and
@@ -14,7 +15,7 @@ import type { RegistryEntry } from './types';
 // where it would land unless it is given a free slot nearer the top.
 export const registry: RegistryEntry[] = [
   advice,
-  { slot: '02' },
+  horror,
   { slot: '03' },
   { slot: '04' },
   { slot: '05' },
