@@ -21,3 +21,25 @@ export const compactScore = (score: number): string => {
   if (score < 100000) return `${(score / 1000).toFixed(1)}k`;
   return `${Math.round(score / 1000)}k`;
 };
+
+// The withheld sentence, as characters. A notification is drawn by the system
+// launcher, not by us: there is no blur, no spoiler mask and no reveal in
+// place, so the turn has to be WITHHELD rather than obscured, and something
+// has to stand where it was.
+//
+// Blocks, in the same 100% / 58% proportion as the two bars on the card, so
+// the notification and the card read as one gesture. Scaled to the turn's real
+// length — about one block per two characters — so the shape of the sentence
+// shows without a word of it. Clamped at both ends: a four-word turn still has
+// to read as a sentence being kept from you, and a long one must not wrap into
+// a wall on a lock screen.
+export const REDACTION_MIN = 8;
+export const REDACTION_MAX = 40;
+const BLOCK = '█';
+
+export const redactionFor = (turn: string): string => {
+  const total = Math.min(Math.max(Math.round(turn.length / 2), REDACTION_MIN), REDACTION_MAX);
+  // 1 : 0.58, the card's own bars — the first line takes 1/1.58 of the run.
+  const first = Math.round(total / 1.58);
+  return `${BLOCK.repeat(first)}\n${BLOCK.repeat(total - first)}`;
+};

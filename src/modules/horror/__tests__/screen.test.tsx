@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../../core/store';
 import { storage } from '../../../core/storage';
 import { HorrorScreen, horror } from '..';
@@ -20,7 +20,7 @@ jest.mock('expo-secure-store', () => {
 });
 
 beforeEach(async () => {
-  useFacilityStore.setState({ view: 'mod02', lang: 'en', emotion: 'calm' });
+  useFacilityStore.setState({ view: 'mod02', lang: 'en', emotion: 'calm', pendingStory: null });
   await storage.clearAll();
   useHorrorStore.setState({ hydrated: true, favorites: new Set(), hidden: true });
 });
@@ -156,6 +156,48 @@ describe('the cabinet tile', () => {
     const view = await render(<Tile onPress={onPress} />);
     await fireEvent.press(view.getByTestId('tile-mod02'));
     expect(onPress).toHaveBeenCalled();
+    await view.unmount();
+  });
+});
+
+describe('a tapped notification', () => {
+  // The notification withheld the turn and the tap was the asking. Making you
+  // tap the card again for the thing you already asked for would be coy.
+  it('opens the story it named, already turned over', async () => {
+    const view = await render(<HorrorScreen />);
+    expect(useHorrorStore.getState().hidden).toBe(true);
+
+    await act(async () => {
+      useFacilityStore.getState().openStory(12);
+    });
+
+    expect(view.getByTestId('horror-setup').props.children).toBe(STORIES[12].setup);
+    expect(view.getByTestId('horror-turn').props.children).toBe(STORIES[12].turn);
+    expect(view.queryByTestId('horror-redaction')).toBeNull();
+    await view.unmount();
+  });
+
+  // Taken once: walking back into the room later deals an ordinary card, and a
+  // pending index surviving would re-deal a story tapped hours ago.
+  it('clears the pending story once the room has taken it', async () => {
+    const view = await render(<HorrorScreen />);
+    await act(async () => {
+      useFacilityStore.getState().openStory(12);
+    });
+    expect(useFacilityStore.getState().pendingStory).toBeNull();
+    await view.unmount();
+  });
+
+  it('leaves the withholding preference alone for the next card', async () => {
+    const view = await render(<HorrorScreen />);
+    await act(async () => {
+      useFacilityStore.getState().openStory(12);
+    });
+    expect(useHorrorStore.getState().hidden).toBe(true);
+
+    await fireEvent.press(view.getByTestId('horror-card'));
+    expect(view.queryByTestId('horror-turn')).toBeNull();
+    expect(view.getByTestId('horror-redaction')).toBeTruthy();
     await view.unmount();
   });
 });

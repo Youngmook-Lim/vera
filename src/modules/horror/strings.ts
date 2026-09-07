@@ -15,6 +15,10 @@ export interface HorrorStrings {
   reveal: string;
   hintReveal: string;
   hintNext: string;
+  nightly: string;
+  on: string;
+  off: string;
+  blocked: string;
 }
 
 const en: HorrorStrings = {
@@ -30,6 +34,10 @@ const en: HorrorStrings = {
   reveal: 'reveal the second sentence',
   hintReveal: 'tap the card to reveal',
   hintNext: 'tap the card for another',
+  nightly: 'NIGHTLY HORROR',
+  on: 'ON',
+  off: 'OFF',
+  blocked: 'BLOCKED · SETTINGS',
 };
 
 const ko: HorrorStrings = {
@@ -43,6 +51,10 @@ const ko: HorrorStrings = {
   reveal: '두 번째 문장 보기',
   hintReveal: '카드를 누르면 뒷문장이 나옵니다',
   hintNext: '카드를 누르면 다른 이야기가 나옵니다',
+  nightly: '매일 밤의 공포',
+  on: '켬',
+  off: '끔',
+  blocked: '차단됨 · 설정',
 };
 
 export const T: Strings<HorrorStrings> = { en, ko };

@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
+import { dueForSync } from '../daily';
 import { type Favorites, toggle } from '../favorites';
+import { requestNightly, syncNightly } from './notify';
 import { type Stored, parse, serialize } from './stored';
 
 // The stories you kept and whether the turn is withheld, owned by the room
@@ -25,6 +28,8 @@ interface HorrorState extends Stored {
   hydrate: () => Promise<void>;
   toggleFavorite: (key: string) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
+  setNightly: (on: boolean, lang: Lang) => Promise<boolean>;
+  syncIfDue: (lang: Lang, now?: Date) => Promise<void>;
 }
 
 // Both halves of the room mount asking for the same hydration. The flag alone
@@ -36,6 +41,8 @@ export const useHorrorStore = create<HorrorState>((set, get) => ({
   hydrated: false,
   favorites: new Set<string>(),
   hidden: true,
+  nightly: false,
+  syncedOn: null,
 
   hydrate: async (): Promise<void> => {
     if (get().hydrated) return;
@@ -70,6 +77,40 @@ export const useHorrorStore = create<HorrorState>((set, get) => ({
     await get().hydrate();
     set({ hidden });
     await save({ ...get(), hidden });
+  },
+
+  // Returns whether it is on afterwards, which is NOT what was asked for when
+  // the permission is refused. Android never re-prompts, so a refusal has to
+  // leave the store off or the row would read ON over a phone that will never
+  // show a story.
+  setNightly: async (on: boolean, lang: Lang): Promise<boolean> => {
+    // SYSTEM can reach this before the room itself has ever mounted, so
+    // nothing has hydrated the store yet — and `save` spreads whatever `get()`
+    // holds. Skipping this would rewrite the disk record with `favorites`
+    // still the empty initial Set and erase every kept story.
+    await get().hydrate();
+    if (on && !(await requestNightly())) {
+      return false;
+    }
+    const now = new Date();
+    const syncedOn = on ? now.toDateString() : null;
+    set({ nightly: on, syncedOn });
+    await syncNightly(on, lang, now);
+    await save({ ...get(), nightly: on, syncedOn });
+    return on;
+  },
+
+  // The boot path's entry point. A sync rewrites this room's whole horizon, so
+  // this does nothing at all on the second launch of a day.
+  syncIfDue: async (lang: Lang, now: Date = new Date()): Promise<void> => {
+    const { nightly, syncedOn } = get();
+    if (!nightly) return;
+    if (!dueForSync(syncedOn, now)) return;
+
+    const stamp = now.toDateString();
+    set({ syncedOn: stamp });
+    await syncNightly(true, lang, now);
+    await save({ ...get(), syncedOn: stamp });
   },
 }));
 

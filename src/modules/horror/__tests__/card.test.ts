@@ -1,4 +1,4 @@
-import { compactScore, storyKey } from '../card';
+import { REDACTION_MAX, REDACTION_MIN, compactScore, redactionFor, storyKey } from '../card';
 import { STORIES } from '../stories';
 
 describe('the favorite key', () => {
@@ -39,5 +39,43 @@ describe('the score', () => {
     expect(compactScore(9999)).toBe('10.0k');
     expect(compactScore(100000)).toBe('100k');
     expect(compactScore(999999)).toBe('1000k');
+  });
+});
+
+describe('the redaction', () => {
+  const lines = (turn: string) => redactionFor(turn).split('\n');
+
+  it('is two lines of blocks and nothing else', () => {
+    const [a, b] = lines('x'.repeat(40));
+    expect(a).toMatch(/^█+$/);
+    expect(b).toMatch(/^█+$/);
+  });
+
+  // The card draws two bars at 100% and 58%. The notification is the same
+  // gesture, so it has to be the same shape.
+  it("runs the card's two bars, in the card's proportion", () => {
+    const [a, b] = lines('x'.repeat(60));
+    expect(b.length / a.length).toBeCloseTo(0.58, 1);
+  });
+
+  it('grows with the sentence it is standing in for', () => {
+    const short = redactionFor('x'.repeat(30)).replace('\n', '');
+    const long = redactionFor('x'.repeat(70)).replace('\n', '');
+    expect(long.length).toBeGreaterThan(short.length);
+  });
+
+  // A four-word turn still has to read as a sentence being withheld, and the
+  // longest in the corpus must not wrap into a wall on a lock screen.
+  it('is clamped at both ends', () => {
+    expect(redactionFor('!').replace('\n', '')).toHaveLength(REDACTION_MIN);
+    expect(redactionFor('x'.repeat(500)).replace('\n', '')).toHaveLength(REDACTION_MAX);
+  });
+
+  it('never gives up either line, however short the turn', () => {
+    for (const turn of ['!', 'It was.', 'x'.repeat(500)]) {
+      const [a, b] = lines(turn);
+      expect(a.length).toBeGreaterThan(0);
+      expect(b.length).toBeGreaterThan(0);
+    }
   });
 });

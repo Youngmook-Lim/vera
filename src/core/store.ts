@@ -233,6 +233,12 @@ interface FacilityState {
   pendingQuote: number | null;
   openQuote: (index: number) => void;
 
+  // The same, for the horror room. Separate from pendingQuote rather than one
+  // shared field: they index different corpora, and a stale one landing in the
+  // wrong room would deal a real card from a meaningless number.
+  pendingStory: number | null;
+  openStory: (index: number) => void;
+
   setView: (view: View) => void;
   setDraft: (draft: string) => void;
   setCabinet: (open: boolean) => void;
@@ -287,12 +293,22 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   confirmingWipe: false,
 
   pendingQuote: null,
+  pendingStory: null,
 
   // The notification's way in. It closes the cabinet because the tap did not
   // come through it — and on a dormant stage there is no cabinet to come
   // through at all, which is the one door this opens that nothing else does.
   openQuote: (index: number): void => {
     set({ view: 'mod01', pendingQuote: index, cabinetOpen: false });
+  },
+
+  // The notification withheld the second sentence, so the room it opens has to
+  // give it up — the tap IS the asking, and making you tap the card again for
+  // the thing you already asked for would be the app being coy. The room reads
+  // this as "deal it, turned over", overriding the withholding preference for
+  // this one card.
+  openStory: (index: number): void => {
+    set({ view: 'mod02', pendingStory: index, cabinetOpen: false });
   },
 
   setView: (view) => set({ view, cabinetOpen: false }),

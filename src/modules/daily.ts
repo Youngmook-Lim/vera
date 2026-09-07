@@ -1,6 +1,10 @@
 // When a card is sent and which one, decided here and nowhere else. Pure — no
 // expo, no React, no store. The impure half is notify.ts.
-export const NOTIFY_HOUR = 9;
+//
+// Shared by every room that sends one a day (2026-09-07). The HOUR is the
+// caller's — the advice room sends at nine and the horror room at ten at
+// night — and it used to be a constant here, back when one room was the only
+// room that sent anything.
 
 // Ninety days of cards handed over at once. There is no documented Android
 // ceiling on pending notifications (the 64 limit is iOS, and this app is
@@ -20,18 +24,19 @@ export interface PlannedQuote {
 export const planDaily = (
   now: Date,
   count: number,
+  hour: number,
   days: number = PLAN_DAYS,
   rand: () => number = Math.random,
 ): PlannedQuote[] => {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), NOTIFY_HOUR);
-  // Strictly after: a sync at 08:59 still gets this morning, one at 09:00 does
-  // not, because that notification has already fired or is firing.
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour);
+  // Strictly after: a sync an hour before still gets today, one exactly on the
+  // hour does not, because that notification has already fired or is firing.
   const offset = today.getTime() > now.getTime() ? 0 : 1;
 
   const plan: PlannedQuote[] = [];
   for (let i = 0; i < days; i++) {
     plan.push({
-      at: new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset + i, NOTIFY_HOUR),
+      at: new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset + i, hour),
       index: Math.floor(rand() * count),
     });
   }

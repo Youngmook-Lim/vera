@@ -20,6 +20,15 @@ export interface ModuleDef {
   // can carry a module's setting without naming the module — the same reason
   // Cabinet and ScreenRouter read the registry instead of a list.
   Settings?: ComponentType;
+  // Work this room does when the app launches: schedule what it sends, take a
+  // tap Android held while the app was dead, subscribe to taps arriving now.
+  // Returns its own teardown. Optional — most rooms have nothing to do.
+  //
+  // It exists so App.tsx can boot the rooms without naming one, the same
+  // reason `Settings` exists and the same reason Cabinet and ScreenRouter read
+  // the registry. It is called AFTER the facility store has hydrated, so the
+  // language a notification is scheduled in is the one that was settled on.
+  onBoot?: () => Promise<(() => void) | void> | (() => void) | void;
 }
 
 export interface EmptySlot {

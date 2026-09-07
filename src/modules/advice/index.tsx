@@ -13,6 +13,8 @@ import { QUOTES, SOURCE } from './quotes';
 import { useFavorites } from './store';
 import { T } from './strings';
 import { AdviceSettings } from './Settings';
+import { onTap, readTapTarget } from './notify';
+import { useAdviceStore } from './store';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 
@@ -317,6 +319,18 @@ export const advice: ModuleDef = {
   Tile: AdviceTile,
   Screen: AdviceScreen,
   Settings: AdviceSettings,
+  // Hydrate, refresh the horizon if the day has turned over, then take a tap
+  // Android held while the app was dead. The listener is for taps arriving
+  // while it is running, and its unsubscribe is what goes back to App.tsx.
+  onBoot: async () => {
+    await useAdviceStore.getState().hydrate();
+    void useAdviceStore.getState().syncIfDue(useFacilityStore.getState().lang);
+
+    const tapped = await readTapTarget();
+    if (tapped != null) useFacilityStore.getState().openQuote(tapped);
+
+    return onTap((index) => useFacilityStore.getState().openQuote(index));
+  },
 };
 
 const styles = StyleSheet.create({

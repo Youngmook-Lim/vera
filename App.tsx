@@ -20,8 +20,8 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { syncLauncherIcon } from './src/core/launcher';
 import { useFacilityStore } from './src/core/store';
-import { onTap, readTapTarget } from './src/modules/advice/notify';
-import { useAdviceStore } from './src/modules/advice/store';
+import { registry } from './src/modules/registry';
+import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
 import { Splash } from './src/shell/Splash';
 
@@ -63,23 +63,34 @@ export default function App() {
   // guard itself (store.ts) — this effect may run again on a remount and must
   // not be the thing that decides.
   useEffect(() => {
+    // The rooms boot asynchronously, so their unsubscribes arrive after this
+    // effect has returned its cleanup. `disposed` is what stops a listener
+    // subscribed by a room that finished booting after an unmount.
+    const offs: (() => void)[] = [];
+    let disposed = false;
+
     void (async () => {
       await useFacilityStore.getState().hydrate();
 
-      // The daily horizon, which does nothing on the second launch of a day.
-      // Kept off the rest of this chain deliberately: if greetOnce() ever
-      // rejects below, the IIFE rejects with it, and this must not be the
-      // thing that goes unhydrated for the rest of the session as a result.
-      await useAdviceStore.getState().hydrate();
-      void useAdviceStore.getState().syncIfDue(useFacilityStore.getState().lang);
+      // Every room's own launch work — its daily horizon, which does nothing
+      // on the second launch of a day, and any tap Android held while the app
+      // was dead. Driven off the registry so this file names no module, the
+      // same reason Cabinet and ScreenRouter read it.
+      //
+      // Kept ahead of greetOnce deliberately: if it ever rejects below, the
+      // IIFE rejects with it, and no room must go unhydrated for the rest of
+      // the session as a result. Rooms boot after the facility store has
+      // hydrated so their notifications are scheduled in the settled language.
+      for (const room of registry.filter(isModule)) {
+        const off = await room.onBoot?.();
+        if (!off) continue;
+        if (disposed) off();
+        else offs.push(off);
+      }
 
       await useFacilityStore.getState().greetOnce();
       // Anything left on the queue by a killed session (continuity §4.2).
       void useFacilityStore.getState().extractNow();
-
-      // The app was not running: Android held the tap and hands it over now.
-      const tapped = await readTapTarget();
-      if (tapped != null) useFacilityStore.getState().openQuote(tapped);
     })();
 
     // The natural session boundary, and the trigger that catches most cases.
@@ -93,12 +104,10 @@ export default function App() {
       syncLauncherIcon(Boolean(useFacilityStore.getState().apiKey));
     });
 
-    // The app was already running.
-    const offTap = onTap((index) => useFacilityStore.getState().openQuote(index));
-
     return () => {
+      disposed = true;
       sub.remove();
-      offTap();
+      for (const off of offs) off();
     };
   }, []);
 

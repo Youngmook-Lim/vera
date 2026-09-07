@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { PLAN_DAYS } from '../daily';
+import { PLAN_DAYS } from '../../daily';
 import { onTap, permissionState, readTapTarget, requestDaily, syncDaily } from '../notify';
 import { QUOTES, SOURCE } from '../quotes';
 
@@ -14,8 +14,23 @@ beforeEach(() => {
 describe('the executor', () => {
   it('hands over one card a day for the whole horizon', async () => {
     await syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0));
-    expect(mocked.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
     expect(mocked.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
+  });
+
+  // The blanket cancel is gone: it would take the horror room's horizon with
+  // it, at any hour its own toggle happened to be flipped.
+  it("cancels its own pending cards and leaves another room's alone", async () => {
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([
+      { identifier: 'a1', content: { data: { room: 'advice', index: 3 } } },
+      { identifier: 'h1', content: { data: { room: 'horror', index: 9 } } },
+      { identifier: 'legacy', content: { data: { quote: 12 } } },
+    ]);
+    await syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0));
+
+    expect(mocked.cancelAllScheduledNotificationsAsync).not.toHaveBeenCalled();
+    const cancelled = mocked.cancelScheduledNotificationAsync.mock.calls.map((c) => c[0]);
+    // 'legacy' is one of this room's own, scheduled before rooms had names.
+    expect(cancelled.sort()).toEqual(['a1', 'legacy']);
   });
 
   // The text has to be inside the notification before Android takes it:
@@ -24,8 +39,9 @@ describe('the executor', () => {
     await syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0));
     const { content } = mocked.scheduleNotificationAsync.mock.calls[0][0];
     expect(content.title).toBe('EXCELLENT ADVICE');
-    expect(typeof content.data.quote).toBe('number');
-    expect(content.body).toContain(QUOTES[content.data.quote]);
+    expect(content.data.room).toBe('advice');
+    expect(typeof content.data.index).toBe('number');
+    expect(content.body).toContain(QUOTES[content.data.index]);
     expect(content.body).toContain(SOURCE.author);
   });
 
@@ -44,8 +60,11 @@ describe('the executor', () => {
   });
 
   it('cancels and schedules nothing when it is switched off', async () => {
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([
+      { identifier: 'a1', content: { data: { room: 'advice', index: 3 } } },
+    ]);
     await syncDaily(false, 'en', new Date(2026, 8, 4, 8, 0));
-    expect(mocked.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+    expect(mocked.cancelScheduledNotificationAsync).toHaveBeenCalledWith('a1');
     expect(mocked.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
@@ -83,9 +102,26 @@ describe('the permission', () => {
 describe('the tap target', () => {
   it('reads the index off a real notification response', async () => {
     mocked.getLastNotificationResponseAsync.mockResolvedValue({
+      notification: { request: { content: { data: { room: 'advice', index: 41 } } } },
+    });
+    expect(await readTapTarget()).toBe(41);
+  });
+
+  // Ninety of these may be sitting in Android's queue from before the rename.
+  it('still reads a card scheduled before rooms had names', async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue({
       notification: { request: { content: { data: { quote: 41 } } } },
     });
     expect(await readTapTarget()).toBe(41);
+  });
+
+  // Another room's tap is not this one's to answer, and its index means
+  // nothing against this corpus.
+  it("returns null on another room's notification", async () => {
+    mocked.getLastNotificationResponseAsync.mockResolvedValue({
+      notification: { request: { content: { data: { room: 'horror', index: 41 } } } },
+    });
+    expect(await readTapTarget()).toBeNull();
   });
 
   it('returns null on an ordinary cold start with no tap', async () => {
@@ -100,9 +136,9 @@ describe('the tap target', () => {
     expect(await readTapTarget()).toBeNull();
   });
 
-  it('returns null when quote is not a number', async () => {
+  it('returns null when the index is not a number', async () => {
     mocked.getLastNotificationResponseAsync.mockResolvedValue({
-      notification: { request: { content: { data: { quote: 'nope' } } } },
+      notification: { request: { content: { data: { room: 'advice', index: 'nope' } } } },
     });
     expect(await readTapTarget()).toBeNull();
   });
@@ -113,11 +149,19 @@ describe('the tap listener', () => {
     const handler = jest.fn();
     onTap(handler);
     const listener = mocked.addNotificationResponseReceivedListener.mock.calls[0][0];
-    listener({ notification: { request: { content: { data: { quote: 7 } } } } });
+    listener({ notification: { request: { content: { data: { room: 'advice', index: 7 } } } } });
     expect(handler).toHaveBeenCalledWith(7);
   });
 
-  it('does not invoke the handler when the response carries no usable quote', () => {
+  it("ignores another room's notification", () => {
+    const handler = jest.fn();
+    onTap(handler);
+    const listener = mocked.addNotificationResponseReceivedListener.mock.calls[0][0];
+    listener({ notification: { request: { content: { data: { room: 'horror', index: 7 } } } } });
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('does not invoke the handler when the response carries no usable index', () => {
     const handler = jest.fn();
     onTap(handler);
     const listener = mocked.addNotificationResponseReceivedListener.mock.calls[0][0];

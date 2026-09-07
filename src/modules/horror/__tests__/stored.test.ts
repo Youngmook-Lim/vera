@@ -2,10 +2,26 @@ import { EMPTY_STORED, parse, serialize } from '../stored';
 
 describe('the horror room blob', () => {
   it('round-trips what is kept and how it is read', () => {
-    const stored = { favorites: new Set(['a\nb', 'c\nd']), hidden: false };
+    const stored = {
+      favorites: new Set(['a\nb', 'c\nd']),
+      hidden: false,
+      nightly: true,
+      syncedOn: 'Mon Sep 07 2026',
+    };
     const back = parse(serialize(stored));
     expect([...back.favorites].sort()).toEqual(['a\nb', 'c\nd']);
     expect(back.hidden).toBe(false);
+    expect(back.nightly).toBe(true);
+    expect(back.syncedOn).toBe('Mon Sep 07 2026');
+  });
+
+  // The opposite default to `hidden`, and the opposite reason: nothing may
+  // start sending notifications on a device that never asked for them.
+  it('opens with the nightly story off', () => {
+    expect(EMPTY_STORED.nightly).toBe(false);
+    expect(parse(null).nightly).toBe(false);
+    expect(parse(JSON.stringify({ favorites: [], hidden: true })).nightly).toBe(false);
+    expect(parse('{not json').nightly).toBe(false);
   });
 
   it('opens hidden on a device that has never been here', () => {

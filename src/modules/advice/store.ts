@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
-import { dueForSync } from './daily';
+import { dueForSync } from '../daily';
 import { type Favorites, toggle } from '../favorites';
 import { requestDaily, syncDaily } from './notify';
 import { type Stored, parse, serialize } from './stored';

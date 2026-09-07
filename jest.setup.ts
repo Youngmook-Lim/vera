@@ -56,6 +56,10 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => 'id'),
   cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
+  // Cancelling is per-room now: a sync reads the queue and cancels only the
+  // rows it owns, so both of these have to exist for any of it to run.
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getLastNotificationResponseAsync: jest.fn(async () => null),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));

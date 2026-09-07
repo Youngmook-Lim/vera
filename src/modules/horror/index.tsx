@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TextStyle } from 'react-native';
 import type { Lang } from '../../core/i18n';
@@ -12,6 +12,9 @@ import { compactScore, storyKey } from './card';
 import { SOURCE, STORIES } from './stories';
 import { useHorror } from './store';
 import { T } from './strings';
+import { HorrorSettings } from './Settings';
+import { onTap, readTapTarget } from './notify';
+import { useHorrorStore } from './store';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 
@@ -115,6 +118,21 @@ export function HorrorScreen() {
   const [revealed, setRevealed] = useState(false);
 
   const { favorites, toggleFavorite, hidden, setHidden } = useHorror();
+
+  const pendingStory = useFacilityStore((s) => s.pendingStory);
+
+  // A story a notification asked for. Taken once and cleared, so walking back
+  // into the room later deals an ordinary card. goTo moves the position within
+  // this pass rather than starting a new one, so the counter stays truthful —
+  // and it arrives REVEALED whatever the withholding says, because the tap on
+  // the notification was the asking and there is nothing left to withhold.
+  useEffect(() => {
+    if (pendingStory == null) return;
+    setDeck((d) => goTo(d, pendingStory));
+    setRevealed(true);
+    setListing(false);
+    useFacilityStore.setState({ pendingStory: null });
+  }, [pendingStory]);
 
   const card = current(deck);
   const story = STORIES[card];
@@ -355,6 +373,16 @@ export const horror: ModuleDef = {
   slot: '02',
   Tile: HorrorTile,
   Screen: HorrorScreen,
+  Settings: HorrorSettings,
+  onBoot: async () => {
+    await useHorrorStore.getState().hydrate();
+    void useHorrorStore.getState().syncIfDue(useFacilityStore.getState().lang);
+
+    const tapped = await readTapTarget();
+    if (tapped != null) useFacilityStore.getState().openStory(tapped);
+
+    return onTap((index) => useFacilityStore.getState().openStory(index));
+  },
 };
 
 const styles = StyleSheet.create({

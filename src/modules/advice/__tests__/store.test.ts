@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { KEYS, storage } from '../../../core/storage';
-import { PLAN_DAYS } from '../daily';
+import { PLAN_DAYS } from '../../daily';
 import { parse } from '../stored';
 import { useAdviceStore } from '../store';
 
@@ -111,12 +111,16 @@ describe('the daily card', () => {
     expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
-  it('cancels everything when it is switched off', async () => {
+  it('cancels its own when it is switched off', async () => {
     await useAdviceStore.getState().setDaily(true, 'en');
     jest.clearAllMocks();
     await useAdviceStore.getState().setDaily(false, 'en');
     expect(useAdviceStore.getState().daily).toBe(false);
-    expect(notifs.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
+    // Its own, not everything: a blanket cancel here would take the horror
+    // room's horizon with it, at whatever hour this switch happened to be
+    // flipped, and that room would not resync until tomorrow.
+    expect(notifs.cancelAllScheduledNotificationsAsync).not.toHaveBeenCalled();
+    expect(notifs.getAllScheduledNotificationsAsync).toHaveBeenCalled();
     expect(notifs.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
