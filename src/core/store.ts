@@ -15,11 +15,12 @@ import { buildMessages, type Turn } from '../vera/messages';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
+import type { ModuleId } from '../modules/types';
 import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
-export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | 'mod01' | 'mod02';
+export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | ModuleId;
 
 // `system` is the app speaking, not her, rendered in danger red and a mono
 // face so it cannot be mistaken for a line of hers. Both codes are
@@ -291,7 +292,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // come through it — and on a dormant stage there is no cabinet to come
   // through at all, which is the one door this opens that nothing else does.
   openQuote: (index: number): void => {
-    set({ view: 'mod02', pendingQuote: index, cabinetOpen: false });
+    set({ view: 'mod01', pendingQuote: index, cabinetOpen: false });
   },
 
   setView: (view) => set({ view, cabinetOpen: false }),

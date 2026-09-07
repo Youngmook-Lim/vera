@@ -146,7 +146,7 @@ export function AdviceScreen() {
   return (
     <View
       style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-      testID="view-mod02"
+      testID="view-mod01"
     >
       <View style={styles.header}>
         <ExitAndLabel lang={lang} />
@@ -304,16 +304,16 @@ function AdviceTile({ onPress }: { onPress: () => void }) {
   const t = T[lang];
   return (
     // The slot numeral sits above the title, not centred with it (4a).
-    <Pressable testID="tile-mod02" style={tileStyles.tile} onPress={onPress}>
-      <Text style={[tileStyles.slot, { fontFamily: font('mono', 500, lang) }]}>02</Text>
+    <Pressable testID="tile-mod01" style={tileStyles.tile} onPress={onPress}>
+      <Text style={[tileStyles.slot, { fontFamily: font('mono', 500, lang) }]}>01</Text>
       <Text style={[tileStyles.title, { fontFamily: serif(lang) }]}>{t.label}</Text>
     </Pressable>
   );
 }
 
 export const advice: ModuleDef = {
-  id: 'mod02',
-  slot: '02',
+  id: 'mod01',
+  slot: '01',
   Tile: AdviceTile,
   Screen: AdviceScreen,
   Settings: AdviceSettings,

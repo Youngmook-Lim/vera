@@ -1,13 +1,18 @@
 import type { ComponentType } from 'react';
 
-export type ModuleId = 'mod01' | 'mod02';
+// Six slots, three to a row. A room's route id IS its slot: the two numbers
+// were allowed to differ once and drifted immediately — the advice room wore
+// 02 on a tile sitting first — so they now come out of one vocabulary and
+// cannot disagree again.
+export type Slot = '01' | '02' | '03' | '04' | '05' | '06';
+export type ModuleId = `mod${Slot}`;
 
 // The doorway rule (spec §4): the shell owns the tile, the full-bleed, one exit
 // at a fixed position in the module's own ink, and her dot. Everything inside
 // the threshold belongs to the module.
 export interface ModuleDef {
   id: ModuleId;
-  slot: '01' | '02';
+  slot: Slot;
   Tile: ComponentType<{ onPress: () => void }>;
   Screen: ComponentType;
   // A row this room contributes to the SYSTEM screen's PREFERENCES section.
@@ -18,7 +23,7 @@ export interface ModuleDef {
 }
 
 export interface EmptySlot {
-  slot: '03' | '04';
+  slot: Slot;
 }
 
 export type RegistryEntry = ModuleDef | EmptySlot;

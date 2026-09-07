@@ -58,7 +58,7 @@ test('the stage is what she boots into', async () => {
 });
 
 test('every view renders its own room', async () => {
-  const views = ['stage', 'log', 'sys', 'mem', 'soul', 'mod01', 'mod02'] as const;
+  const views = ['stage', 'log', 'sys', 'mem', 'soul', 'mod01'] as const;
   for (const view of views) {
     useFacilityStore.setState({ view });
     const rendered = await render(<ScreenRouter />);
@@ -92,16 +92,18 @@ test('the rooms come from the registry', async () => {
   expect(mod01.getByTestId('view-mod01')).toBeTruthy();
   await mod01.unmount();
 
-  useFacilityStore.setState({ view: 'mod02' });
-  const mod02 = await render(<ScreenRouter />);
-  expect(mod02.getByTestId('view-mod02')).toBeTruthy();
+  // An id with no folder behind it — an empty slot, or a benched room — is a
+  // dark surface that back still works from, never a crash.
+  useFacilityStore.setState({ view: 'mod04' });
+  const empty = await render(<ScreenRouter />);
+  expect(empty.getByTestId('view-mod04')).toBeTruthy();
 });
 
 test('the cabinet is an overlay, not a view', async () => {
   useFacilityStore.setState({ view: 'stage', cabinetOpen: true });
   const { getByText, getByTestId } = await render(<ScreenRouter />);
   // The drawer's own header, not the stage's handle label — both say CABINET.
-  expect(getByText('02 / 04 · CLOSE')).toBeTruthy();
+  expect(getByText('01 / 06 · CLOSE')).toBeTruthy();
   // The stage is still underneath it. Anchored on the optic, not her line: the
   // window holding her words collapses to its status strip when she has not
   // said anything yet, and this stage has an empty transcript. The eye is on

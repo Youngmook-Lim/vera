@@ -3,23 +3,38 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { registry } from '../modules/registry';
-import { isEmpty, isModule } from '../modules/types';
+import { isModule } from '../modules/types';
 import { T } from './strings';
 
 // The one place a module's own theme is allowed to show through the shell's
 // neutral chrome (spec §4): every tile shares the same square and the same
-// 12px radius, but Module 01 is painted in the terrarium's greens and Module
-// 02 in the advice room's cold ink. The two unfurnished slots stay bare
-// numerals on a hairline border — the shell's own colour, nothing borrowed.
+// 14px radius, but a furnished room paints its own — the advice room in its
+// cold ink. The unfurnished slots stay bare numerals on a hairline border —
+// the shell's own colour, nothing borrowed.
 //
-// The shell supplies the geometry and nothing else: the first furnished slot
-// gets the full-width row at the top, every other one gets a cell in the
-// grid, and the tile itself comes from the module's own ModuleDef. Adding a
+// The shell supplies the geometry and nothing else: every slot is the same
+// cell, and the tile itself comes from the module's own ModuleDef. Adding a
 // module is a folder plus a line in registry.ts — no edit here.
+//
+// The feature row is gone (2026-09-07). 4a gives the first furnished slot the
+// full width and the rest a three-column grid underneath; one room in a
+// building of six made that a banner over five holes, so every slot is now
+// the same square. This is a deliberate departure from the prototype.
 
-const GRID_TILE_PX = 86; // Modules 02–04, in the three-column grid
+const GRID_TILE_PX = 86; // every slot, in the three-column grid
+const PER_ROW = 3;
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Rows of three, laid out as rows rather than one wrapping container: `flex:1`
+// children in a wrapping row do not settle at three across, and the whole
+// point of the change is that every square is the same size.
+const inRows = <T,>(items: T[], per: number): T[][] =>
+  items.reduce<T[][]>((rows, item, i) => {
+    if (i % per === 0) rows.push([]);
+    rows[rows.length - 1].push(item);
+    return rows;
+  }, []);
 
 export function Cabinet() {
   const lang = useFacilityStore((s) => s.lang);
@@ -29,10 +44,9 @@ export function Cabinet() {
   const t = T[lang];
   const close = () => setCabinet(false);
 
-  const modules = registry.filter(isModule);
-  const emptySlots = registry.filter(isEmpty);
-  const [feature, ...gridModules] = modules;
-  const countLabel = `${pad2(modules.length)} / ${pad2(registry.length)} · ${t.close}`;
+  const furnished = registry.filter(isModule).length;
+  const rows = inRows(registry, PER_ROW);
+  const countLabel = `${pad2(furnished)} / ${pad2(registry.length)} · ${t.close}`;
 
   return (
     <Modal transparent animationType="slide" onRequestClose={close}>
@@ -51,22 +65,22 @@ export function Cabinet() {
             </Pressable>
           </View>
 
-          {feature ? (
-            <View style={styles.featureRow}>
-              <feature.Tile onPress={() => setView(feature.id)} />
-            </View>
-          ) : null}
-
           <View style={styles.grid}>
-            {gridModules.map((entry) => (
-              <entry.Tile key={entry.id} onPress={() => setView(entry.id)} />
-            ))}
-
-            {emptySlots.map((entry) => (
-              <View key={entry.slot} testID={`tile-${entry.slot}`} style={styles.emptyTile}>
-                <Text style={[styles.emptyNumeral, { fontFamily: font('mono', 500, lang) }]}>
-                  {entry.slot}
-                </Text>
+            {rows.map((row, i) => (
+              <View key={row[0].slot} testID={`cabinet-row-${i}`} style={styles.row}>
+                {row.map((entry) =>
+                  isModule(entry) ? (
+                    <entry.Tile key={entry.id} onPress={() => setView(entry.id)} />
+                  ) : (
+                    <View key={entry.slot} testID={`tile-${entry.slot}`} style={styles.emptyTile}>
+                      <Text
+                        style={[styles.emptyNumeral, { fontFamily: font('mono', 500, lang) }]}
+                      >
+                        {entry.slot}
+                      </Text>
+                    </View>
+                  ),
+                )}
               </View>
             ))}
           </View>
@@ -125,10 +139,13 @@ const styles = StyleSheet.create({
     letterSpacing: ms(8) * 0.14,
     color: palette.textGhost,
   },
-  featureRow: {},
-  // `margin-top:11px; gap:10px`
+  // `margin-top:11px; gap:10px` — the gap now stands between the rows as well
+  // as inside them, so the grid is square in both directions.
   grid: {
     marginTop: 11,
+    gap: 10,
+  },
+  row: {
     flexDirection: 'row',
     gap: 10,
   },

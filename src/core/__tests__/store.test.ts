@@ -59,7 +59,7 @@ describe('the router', () => {
 
   it('closes the cabinet when a room opens', () => {
     useFacilityStore.setState({ cabinetOpen: true });
-    useFacilityStore.getState().setView('mod02');
+    useFacilityStore.getState().setView('mod01');
     expect(useFacilityStore.getState().cabinetOpen).toBe(false);
   });
 });
@@ -92,7 +92,7 @@ describe('stepBack', () => {
   });
 
   it('steps every other view back to the stage', () => {
-    for (const view of ['sys', 'log', 'mod01', 'mod02'] as const) {
+    for (const view of ['sys', 'log', 'mod01'] as const) {
       useFacilityStore.setState({ view });
       expect(useFacilityStore.getState().stepBack()).toBe(true);
       expect(useFacilityStore.getState().view).toBe('stage');
@@ -1371,7 +1371,7 @@ describe('openQuote', () => {
     useFacilityStore.setState({ view: 'stage', cabinetOpen: true, pendingQuote: null });
     useFacilityStore.getState().openQuote(41);
     const s = useFacilityStore.getState();
-    expect(s.view).toBe('mod02');
+    expect(s.view).toBe('mod01');
     expect(s.cabinetOpen).toBe(false);
     expect(s.pendingQuote).toBe(41);
   });

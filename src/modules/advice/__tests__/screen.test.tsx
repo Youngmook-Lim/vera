@@ -15,7 +15,7 @@ const marked = (node: { props: { accessibilityState?: { selected?: boolean } } }
   node.props.accessibilityState?.selected;
 
 beforeEach(async () => {
-  useFacilityStore.setState({ view: 'mod02', lang: 'en', emotion: 'calm' });
+  useFacilityStore.setState({ view: 'mod01', lang: 'en', emotion: 'calm' });
   await storage.clearAll();
   useAdviceStore.setState({ hydrated: true, favorites: new Set() });
 });
@@ -260,7 +260,7 @@ describe('the cabinet tile', () => {
     const Tile = advice.Tile;
     const onPress = jest.fn();
     const view = await render(<Tile onPress={onPress} />);
-    await fireEvent.press(view.getByTestId('tile-mod02'));
+    await fireEvent.press(view.getByTestId('tile-mod01'));
     expect(onPress).toHaveBeenCalled();
     await view.unmount();
   });

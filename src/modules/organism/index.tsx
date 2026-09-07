@@ -54,7 +54,7 @@ export function OrganismScreen() {
   return (
     <View
       style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-      testID="view-mod01"
+      testID="view-mod06"
     >
       <View style={styles.header}>
         <ExitAndLabel lang={lang} />
@@ -183,7 +183,7 @@ function OrganismTile({ onPress }: { onPress: () => void }) {
   const pct = Math.round(hunger);
 
   return (
-    <Pressable testID="tile-mod01" style={tileStyles.row} onPress={onPress}>
+    <Pressable testID="tile-mod06" style={tileStyles.row} onPress={onPress}>
       <View style={tileStyles.blobWell}>
         <View style={tileStyles.blobScaler}>
           <Blob hunger={hunger} tapNonce={0} />
@@ -222,9 +222,12 @@ function OrganismTile({ onPress }: { onPress: () => void }) {
   );
 }
 
+// Benched (2026-09-07), and parked on the LAST slot rather than the next one
+// — a room waiting to be revived must not sit on the id the next room built
+// will want. Nothing imports this while it is off the registry.
 export const organism: ModuleDef = {
-  id: 'mod01',
-  slot: '01',
+  id: 'mod06',
+  slot: '06',
   Tile: OrganismTile,
   Screen: OrganismScreen,
 };
