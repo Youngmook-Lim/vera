@@ -201,3 +201,17 @@ describe('a tapped notification', () => {
     await view.unmount();
   });
 });
+
+// A room paints full bleed, under Android's status bar and gesture bar, so it
+// has to pad itself back off them. Forgetting it put this room's header
+// underneath the system bar on the phone while the advice room sat clear.
+describe('the safe area', () => {
+  it('pads the room off the system bars, top and bottom', async () => {
+    const view = await render(<HorrorScreen />);
+    const style = view.getByTestId('view-mod02').props.style as Record<string, unknown>[];
+    const applied = Object.assign({}, ...(Array.isArray(style) ? style : [style]));
+    expect(applied).toHaveProperty('paddingTop');
+    expect(applied).toHaveProperty('paddingBottom');
+    await view.unmount();
+  });
+});

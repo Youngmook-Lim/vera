@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TextStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../../core/i18n';
 import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
@@ -99,6 +100,11 @@ function Redaction() {
 }
 
 export function HorrorScreen() {
+  // Full bleed means full bleed: the room paints under the status bar and the
+  // gesture bar, so it has to pad itself back off them. Without this the
+  // header sits underneath Android's own top bar. The advice room does the
+  // same, and a room that forgets it looks broken rather than immersive.
+  const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const emotion = useFacilityStore((s) => s.emotion);
   const t = T[lang];
@@ -173,7 +179,10 @@ export function HorrorScreen() {
   };
 
   return (
-    <View testID="view-mod02" style={styles.screen}>
+    <View
+      testID="view-mod02"
+      style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+    >
       <View style={styles.header}>
         <ExitAndLabel lang={lang} />
         <Text
