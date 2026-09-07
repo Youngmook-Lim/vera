@@ -5,6 +5,10 @@ import type { Strings } from '../../core/i18n';
 // two-sentence horror story is a different story, and the turn is usually a
 // pun on the first sentence's exact words.
 export interface HorrorStrings {
+  // The room's name: its header, its tile, the title on a notification, and
+  // the SYSTEM row that switches those notifications on. The advice room keeps
+  // its row's wording apart from its own name (DAILY ADVICE against EXCELLENT
+  // ADVICE); this one is deliberately the same word in all four places.
   label: string;
   shuffle: string;
   all: string;
@@ -15,7 +19,6 @@ export interface HorrorStrings {
   reveal: string;
   hintReveal: string;
   hintNext: string;
-  nightly: string;
   on: string;
   off: string;
   blocked: string;
@@ -34,7 +37,6 @@ const en: HorrorStrings = {
   reveal: 'reveal the second sentence',
   hintReveal: 'tap the card to reveal',
   hintNext: 'tap the card for another',
-  nightly: 'NIGHTLY HORROR',
   on: 'ON',
   off: 'OFF',
   blocked: 'BLOCKED · SETTINGS',
@@ -51,7 +53,6 @@ const ko: HorrorStrings = {
   reveal: '두 번째 문장 보기',
   hintReveal: '카드를 누르면 뒷문장이 나옵니다',
   hintNext: '카드를 누르면 다른 이야기가 나옵니다',
-  nightly: '매일 밤의 공포',
   on: '켬',
   off: '끔',
   blocked: '차단됨 · 설정',

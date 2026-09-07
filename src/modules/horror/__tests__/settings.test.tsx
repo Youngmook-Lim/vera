@@ -32,6 +32,14 @@ describe('the nightly horror row', () => {
     await view.unmount();
   });
 
+  // The row is named after the room rather than after the setting, and reads
+  // the room's own string so the two cannot drift apart.
+  it("wears the room's name", async () => {
+    const view = await render(<Settings />);
+    expect(view.getByText('TWO SENTENCE HORROR')).toBeTruthy();
+    await view.unmount();
+  });
+
   it('schedules the horizon when it is switched on', async () => {
     const view = await render(<Settings />);
     await fireEvent.press(view.getByTestId('pref-nightly'));

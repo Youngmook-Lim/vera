@@ -35,7 +35,7 @@ export function HorrorSettings() {
   return (
     <PrefRow
       testID="pref-nightly"
-      label={t.nightly}
+      label={t.label}
       value={value}
       onPress={blocked ? undefined : () => void setNightly(!nightly, lang)}
     />
