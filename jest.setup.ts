@@ -62,4 +62,7 @@ jest.mock('expo-notifications', () => ({
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getLastNotificationResponseAsync: jest.fn(async () => null),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  // Without a handler registered, expo presents nothing at all while the app
+  // is open — so this has to exist for the one call that closes that hole.
+  setNotificationHandler: jest.fn(() => {}),
 }));

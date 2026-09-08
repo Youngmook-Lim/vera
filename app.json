@@ -17,7 +17,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.youngmookk.thefacility"
+      "package": "com.youngmookk.thefacility",
+      "permissions": ["android.permission.USE_EXACT_ALARM"]
     },
     "web": {
       "favicon": "./assets/favicon.png"

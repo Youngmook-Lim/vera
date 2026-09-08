@@ -27,6 +27,29 @@ const load = (): Notifs | null => {
   }
 };
 
+// A card that arrives while the app is open never reaches Android on its own:
+// expo hands it to the JS handler and presents nothing itself, and "the
+// default behavior when the handler is not set or does not respond in time is
+// not to show the notification". Nothing here ever set one, so a card due at
+// nine while the subject happened to be reading her was dropped without a
+// trace — no error, no entry in the notification log, nothing to find
+// afterwards. Registered at module scope because the only thing it must be is
+// earlier than any notification, and this file is imported at boot by both
+// rooms. Failure is swallowed for the same reason every other call here is: a
+// phone that refuses must not be the reason the app fails to start.
+try {
+  load()?.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch {
+  // no native module, or a phone that will not take a handler
+}
+
 export type PermissionState = 'granted' | 'blocked' | 'ask';
 
 // What travels inside every notification this app schedules. `room` is what
@@ -143,7 +166,20 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
             // pending card keeps the language it was scheduled under until the
             // next day's sync rewrites the horizon.
             content: { title, body, data: { room: cfg.room, index } },
-            trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: at },
+            // `channelId` rides on the TRIGGER, not the content — it is the
+            // trigger types that carry it, and the content type rejects it.
+            // Naming no channel does NOT fall back to the one ensureChannel
+            // just made: Android files the card under expo's own
+            // `expo_notifications_fallback_notification_channel`, importance 4
+            // with vibration on, so both rooms arrived under "Miscellaneous" —
+            // louder than the DEFAULT they were created at, with the room's
+            // own channel unused beside them and its switch in Android's
+            // settings governing nothing.
+            trigger: {
+              type: N.SchedulableTriggerInputTypes.DATE,
+              date: at,
+              channelId: cfg.channel,
+            },
           });
         }
       } catch {
