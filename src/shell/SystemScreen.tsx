@@ -7,6 +7,7 @@ import { font, ms, palette } from '../core/theme';
 import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
+import { BatteryRow } from './BatteryRow';
 import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
@@ -122,6 +123,12 @@ export function SystemScreen() {
             value={lang === 'en' ? 'EN / ko' : 'en / KO'}
             onPress={() => void setLang(lang === 'en' ? 'ko' : 'en')}
           />
+
+          {/* Not a room's row and not really the app's either: the setting it
+              reports belongs to Android, and no room can be trusted to own a
+              thing that governs every room's notifications. It sits above the
+              rooms because it is the reason theirs work. */}
+          <BatteryRow />
 
           {/* Rooms contribute their own rows. The shell names no module — the
               same promise registry.ts makes about Cabinet and ScreenRouter. */}

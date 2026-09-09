@@ -1,4 +1,5 @@
 import type { Lang } from '../core/i18n';
+import { askBatteryUnrestricted, isBatteryUnrestricted } from '../core/power';
 import { planDaily } from './daily';
 
 // The only file that touches expo-notifications. Everything about WHICH card
@@ -144,6 +145,20 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
         // granted against nothing.
         await ensureChannel(N);
         const { granted } = await N.requestPermissionsAsync();
+
+        // Permission is not delivery. Samsung's Freecess holds a frozen app's
+        // alarms past their hour whatever Android has granted — a ten o'clock
+        // story arrived at 03:00 — and Battery → Unrestricted is the only
+        // thing that lifts it. Switching a room's cards on is the moment that
+        // starts to matter, so the ask rides along with the one ceremony the
+        // subject is already in rather than becoming a screen of its own.
+        //
+        // `=== false` is doing real work: a null means the module could not be
+        // read, and firing a dialog we cannot verify would leave the subject
+        // no way to tell whether it took.
+        if (granted && isBatteryUnrestricted() === false) {
+          askBatteryUnrestricted();
+        }
         return granted;
       } catch {
         return false;

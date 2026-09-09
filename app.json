@@ -18,7 +18,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.youngmookk.thefacility",
-      "permissions": ["android.permission.USE_EXACT_ALARM"]
+      "permissions": [
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

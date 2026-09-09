@@ -25,6 +25,17 @@ jest.mock('@shopify/react-native-skia', () => {
   );
 });
 
+// The battery-optimisation whitelist, which is what Samsung's Unrestricted
+// writes to. Default is exempt, so the SYSTEM row's warning state is something
+// a test has to ask for rather than something every test trips over.
+jest.mock('./modules/power/src/PowerModule', () => ({
+  __esModule: true,
+  default: {
+    isIgnoringBatteryOptimizations: jest.fn(() => true),
+    requestIgnoreBatteryOptimizations: jest.fn(() => true),
+  },
+}));
+
 // requireNativeModule throws the moment it is imported without a native
 // runtime, so the launcher module has to be stubbed rather than guarded at the
 // call site. The rotation's decision — which face today wears — is pure and
