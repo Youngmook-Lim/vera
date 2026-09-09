@@ -7,23 +7,26 @@
 // Unrestricted is the only thing that lifts it. It is invisible from inside
 // the app unless something asks.
 
+import Power from '../../modules/power/src/PowerModule';
+
 type Native = {
   isIgnoringBatteryOptimizations(): boolean;
   requestIgnoreBatteryOptimizations(): boolean;
 };
 
-// Lazily required, exactly as notify.ts requires expo-notifications.
-// `requireNativeModule` THROWS at import when the module is not linked, so a
-// static import would take the whole app down on any build made before this
-// module existed — which is every build currently on the phone.
-const load = (): Native | null => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return (require('../../modules/power/src/PowerModule') as { default: Native }).default;
-  } catch {
-    return null;
-  }
-};
+// A STATIC import is safe here only because PowerModule.ts uses
+// `requireOptionalNativeModule`, which returns null rather than throwing when
+// the module is not in the build.
+//
+// The earlier version lazily required it inside a try/catch, on the reasoning
+// that a build made before this module existed must degrade rather than crash.
+// That reasoning was right and the mechanism was useless: Metro's
+// `guardedLoadModule` catches whatever a module body throws and calls
+// `global.ErrorUtils.reportFatalError` itself, so the catch here never ran and
+// the SYSTEM screen died on open (2026-09-10). Nothing wrapping a `require`
+// can protect against a module that throws at import; the module has to not
+// throw.
+const load = (): Native | null => Power ?? null;
 
 // `null` is not a third opinion about the setting — it means we could not ask.
 // Kept apart from `false` deliberately: a row that cannot see the setting must
