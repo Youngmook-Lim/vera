@@ -18,7 +18,18 @@ import { Optic } from './Optic';
 // edge and reads as cropped on four sides, and there is no lid, because the
 // art is a flat render and the lid belongs to the optic's geometry.
 //
-// So the native splash is now the bare `#131011` ground and nothing else, and
+// So the native splash is now the bare `#131011` ground and nothing else. It
+// gets there by way of `assets/splash-blank.png`, a 108² fully transparent PNG,
+// rather than by omitting the image — **omitting it does not build.**
+// `withAndroidSplashStyles` writes `windowSplashScreenAnimatedIcon` →
+// `@drawable/splashscreen_logo` into the theme unconditionally, while
+// `withAndroidSplashImages` only creates that drawable `if (image)`, so a
+// config with no image links against a resource that was never generated:
+// `error: resource drawable/splashscreen_logo not found`. The image is also
+// what stops Android falling back to its own default, which is the launcher
+// icon. A transparent one satisfies both and draws nothing.
+//
+// And
 // the eye you see is always this one: Skia, vector, sharp at any density, with
 // the lid and the drift and the blink. Nothing underneath means nothing to
 // disagree with, which is what lets the daily rotation stay.
