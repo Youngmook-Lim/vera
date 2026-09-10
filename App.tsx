@@ -14,7 +14,7 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,7 +23,6 @@ import { useFacilityStore } from './src/core/store';
 import { registry } from './src/modules/registry';
 import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
-import { Splash } from './src/shell/Splash';
 
 // The native splash is a build-time PNG and cannot follow the icon's rotation,
 // so it ships as the dormant face (app.json → icon-fg-dormant.png) and is held
@@ -34,12 +33,6 @@ import { Splash } from './src/shell/Splash';
 // It rejects if the splash is already gone (a fast reload); there is nothing to
 // do about that and nothing lost by it.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
-
-// How long the day's face stays up once there is nothing left to wait for. The
-// eye is the whole point of the screen, and on a warm start fonts and hydration
-// together can finish inside 200ms — long enough to hide the wait, far too
-// short to read a face by.
-const SPLASH_HOLD_MS = 900;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -57,7 +50,6 @@ export default function App() {
   });
 
   const hydrated = useFacilityStore((s) => s.hydrated);
-  const apiKey = useFacilityStore((s) => s.apiKey);
   // Hydration decides whether she has a key at all, so the greeting can only
   // be asked for once it has settled. greetOnce holds the once-per-session
   // guard itself (store.ts) — this effect may run again on a remount and must
@@ -111,22 +103,24 @@ export default function App() {
     };
   }, []);
 
-  // Hydration is also what settles whether she has a key, so the splash cannot
-  // know her face before this — which is exactly why the native PNG is held
-  // until it lands. While `ready` is false the JS splash is drawn but sits
-  // behind the native one, unseen; `apiKey` and `hydrated` are written together
-  // in hydrate(), so the frame it becomes visible on is already the right face.
+  // There is ONE splash now (2026-09-10), and it is the native one: a fixed
+  // Calm face baked into the build. The JS splash that used to follow it drew
+  // the day's face, which meant the launch showed the dormant grey PNG and
+  // then swapped to a colour — a seam nothing could close, because a
+  // build-time asset cannot know what day it is. The launcher icon still
+  // rotates; the splash simply no longer tries to agree with it.
+  //
+  // So nothing is rendered until there is something real to render. The native
+  // splash covers the whole wait because hideAsync() is what ends it, and that
+  // does not fire until fonts and hydration are both done.
   const ready = fontsLoaded && hydrated;
-  const [held, setHeld] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
     void SplashScreen.hideAsync().catch(() => {});
-    const id = setTimeout(() => setHeld(true), SPLASH_HOLD_MS);
-    return () => clearTimeout(id);
   }, [ready]);
 
-  if (!ready || !held) return <Splash hasKey={Boolean(apiKey)} />;
+  if (!ready) return null;
 
   return (
     <SafeAreaProvider>
