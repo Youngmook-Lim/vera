@@ -14,7 +14,6 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { Splash } from './src/shell/Splash';
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -24,23 +23,23 @@ import { useFacilityStore } from './src/core/store';
 import { registry } from './src/modules/registry';
 import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
+import { Splash } from './src/shell/Splash';
 
-// The native splash is a build-time PNG and cannot follow the icon's rotation,
-// so it ships as the dormant face (app.json → icon-fg-dormant.png) and is held
-// until the JS splash can paint the day's face over it. Holding it is what
-// makes the handover invisible: without this the PNG vanishes the instant the
-// root view mounts, and the app shows a bare colour while the fonts load.
+// The native splash is the bare `#131011` ground and nothing else (2026-09-10
+// — Splash.tsx carries the reasoning), held until the JS splash can paint the
+// day's face on the same colour. Holding it is what makes the handover
+// invisible: without this the native splash ends the instant the root view
+// mounts, and the app flashes whatever is behind it while the fonts load.
 //
 // It rejects if the splash is already gone (a fast reload); there is nothing to
 // do about that and nothing lost by it.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// How long the wordmark stays up once there is nothing left to wait for. It
-// used to be 900ms, when this screen was the first sight of the day's face and
-// needed reading time. It is not any more — the eye has been on screen since
-// the process started, and all this adds is the name — so it is the shorter
-// beat that keeps the wordmark from flickering past. Tune it here.
-const SPLASH_HOLD_MS = 550;
+// How long the day's face stays up once there is nothing left to wait for. The
+// eye is the whole point of the screen, and on a warm start fonts and hydration
+// together can finish inside 200ms — long enough to hide the wait, far too
+// short to read a face by.
+const SPLASH_HOLD_MS = 900;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -57,6 +56,7 @@ export default function App() {
     'Pretendard-Bold': require('./assets/fonts/Pretendard-Bold.otf'),
   });
 
+  const apiKey = useFacilityStore((s) => s.apiKey);
   const hydrated = useFacilityStore((s) => s.hydrated);
   // Hydration decides whether she has a key at all, so the greeting can only
   // be asked for once it has settled. greetOnce holds the once-per-session
@@ -111,16 +111,15 @@ export default function App() {
     };
   }, []);
 
-  // Two splashes, wearing the same face (2026-09-10). The native one is a
-  // build-time PNG and cannot draw the wordmark under the eye; this is the
-  // only way to put it back. Both are `calm`, so the handover changes nothing
-  // that was already on screen — the eye stays exactly where the native splash
-  // drew it and the name appears beneath it.
+  // Hydration is also what settles whether she has a key, so the splash cannot
+  // know her face before this — which is exactly why the native ground is held
+  // until it lands. While `ready` is false this splash is drawn but sits behind
+  // the native one, unseen; `apiKey` and `hydrated` are written together in
+  // hydrate(), so the frame it becomes visible on is already the right face.
   //
-  // This is what the launch used to do with the DAY'S face, which is what put
-  // a grey eye up and then flipped it to a colour. Fixing both ends to calm is
-  // what makes a second splash harmless; the launcher icon still rotates, and
-  // the splash no longer tries to agree with it.
+  // The native splash is a bare colour now (see Splash.tsx): there is no PNG
+  // under this to flip away from, so the first eye the subject sees is the
+  // day's, drawn by Skia rather than upscaled from a 432px icon asset.
   const ready = fontsLoaded && hydrated;
   const [held, setHeld] = useState(false);
 
@@ -131,7 +130,7 @@ export default function App() {
     return () => clearTimeout(id);
   }, [ready]);
 
-  if (!ready || !held) return <Splash />;
+  if (!ready || !held) return <Splash hasKey={Boolean(apiKey)} />;
 
   return (
     <SafeAreaProvider>

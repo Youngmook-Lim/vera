@@ -42,12 +42,8 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#131011",
-          "image": "./assets/icon-fg-calm.png",
-          "imageWidth": 390,
           "dark": {
-            "backgroundColor": "#131011",
-            "image": "./assets/icon-fg-calm.png",
-            "imageWidth": 390
+            "backgroundColor": "#131011"
           }
         }
       ]

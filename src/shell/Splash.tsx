@@ -1,31 +1,58 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { faceFor } from '../core/appIcon';
 import { font, ms, palette } from '../core/theme';
+import { isEmotionKey, type EmotionKey } from '../vera/emotions';
 import { Optic } from './Optic';
 
-// The wordmark's screen, and only the wordmark's. Android's native splash
-// draws the eye and the ground; it has no way to draw text under them —
-// `windowSplashScreenBrandingImage` is the slot for that, it wants a PNG we
-// have no way to generate here, and it is API 31+ with OEM support nobody has
-// verified on this phone. So the eye is handed over from the native splash to
-// this one unchanged, and the only thing that appears is the name.
+// The first frame of the app, and it is the launcher icon enlarged — same
+// ground, same eye, same face (design 2a, and turn 4's nine).
 //
-// **This deliberately does NOT follow the daily rotation** (2026-09-10). It
-// used to: `faceFor(Date.now(), hasKey)`, the same decision the launcher icon
-// makes. That is exactly what put a grey dormant eye on screen and then flipped
-// it to a colour, because the native PNG underneath is baked at build time and
-// cannot know the day. The face here is fixed at `calm` for one reason — it is
-// what `app.json` ships as the splash image — and the two must be changed
-// together or the flip comes back.
-const FACE = 'calm' as const;
+// **The native splash carries no image (2026-09-10), and this is why.** It used
+// to ship `icon-fg-dormant.png`, so the launch showed a grey eye and then
+// flipped to the day's colour when this screen took over. Pointing it at
+// `icon-fg-calm.png` fixed the colour and exposed the real problem: those
+// assets are 432² launcher-icon foregrounds, drawn to be masked into an
+// adaptive-icon squircle at about 48dp. At the splash's 390dp — 1024px on a
+// 420dpi screen — one upscales 2.4× and looks it, the sclera runs to the frame
+// edge and reads as cropped on four sides, and there is no lid, because the
+// art is a flat render and the lid belongs to the optic's geometry.
+//
+// So the native splash is now the bare `#131011` ground and nothing else, and
+// the eye you see is always this one: Skia, vector, sharp at any density, with
+// the lid and the drift and the blink. Nothing underneath means nothing to
+// disagree with, which is what lets the daily rotation stay.
+//
+// Nothing here decides anything about the rotation. `faceFor` is the launcher's
+// own decision function, called with the same two inputs the alias swap uses,
+// so the splash and the icon cannot disagree about which day it is or whether
+// she is awake. Two consequences the design names and we accept: a launcher
+// that has cached yesterday's icon will disagree for one launch, and with no
+// key she is dormant regardless of the day — which is why `hasKey` is the first
+// gate, not the second.
+//
+// The nine faces are not drawn here either. Every value turn 4 lists — iris,
+// glow, aperture, pupil, lid, blink — is already in `emotions.ts`, and the
+// optic already reads it. A face is a key, and this file hands it over.
 
 const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
 const WORDMARK_BOTTOM = 54;
 
-export function Splash() {
+// `faceFor` answers in the launcher's vocabulary ('Calm'), the optic reads
+// emotions.ts's ('calm'). The guard is not ceremony: faces.json is edited by
+// hand and shared with the config plugin, and a name added there with no
+// emotion behind it must show a dead eye, not crash the first frame.
+export const faceEmotion = (face: string): EmotionKey => {
+  const key = face.toLowerCase();
+  return isEmotionKey(key) ? key : 'dormant';
+};
+
+export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: number }) {
+  const emotion = faceEmotion(faceFor(now, hasKey));
+
   return (
     <View testID="splash" style={styles.splash}>
-      <Optic emotion={FACE} size={OPTIC_PX} />
+      <Optic emotion={emotion} size={OPTIC_PX} />
       <Text style={[styles.wordmark, { fontFamily: font('mono', 600) }]}>V.E.R.A.</Text>
     </View>
   );
@@ -42,8 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.iconBg,
   },
   // `position:absolute;bottom:54px` — it hangs off the bottom rather than
-  // riding under the eye, so the eye stays centred on the screen and lands
-  // exactly where the native splash had already drawn it.
+  // riding under the eye, so the eye stays centred on the screen.
   wordmark: {
     position: 'absolute',
     bottom: WORDMARK_BOTTOM,
