@@ -14,7 +14,8 @@ import {
 } from '@expo-google-fonts/space-grotesk';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { Splash } from './src/shell/Splash';
+import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -33,6 +34,13 @@ import { ScreenRouter } from './src/shell/ScreenRouter';
 // It rejects if the splash is already gone (a fast reload); there is nothing to
 // do about that and nothing lost by it.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// How long the wordmark stays up once there is nothing left to wait for. It
+// used to be 900ms, when this screen was the first sight of the day's face and
+// needed reading time. It is not any more — the eye has been on screen since
+// the process started, and all this adds is the name — so it is the shorter
+// beat that keeps the wordmark from flickering past. Tune it here.
+const SPLASH_HOLD_MS = 550;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -103,24 +111,27 @@ export default function App() {
     };
   }, []);
 
-  // There is ONE splash now (2026-09-10), and it is the native one: a fixed
-  // Calm face baked into the build. The JS splash that used to follow it drew
-  // the day's face, which meant the launch showed the dormant grey PNG and
-  // then swapped to a colour — a seam nothing could close, because a
-  // build-time asset cannot know what day it is. The launcher icon still
-  // rotates; the splash simply no longer tries to agree with it.
+  // Two splashes, wearing the same face (2026-09-10). The native one is a
+  // build-time PNG and cannot draw the wordmark under the eye; this is the
+  // only way to put it back. Both are `calm`, so the handover changes nothing
+  // that was already on screen — the eye stays exactly where the native splash
+  // drew it and the name appears beneath it.
   //
-  // So nothing is rendered until there is something real to render. The native
-  // splash covers the whole wait because hideAsync() is what ends it, and that
-  // does not fire until fonts and hydration are both done.
+  // This is what the launch used to do with the DAY'S face, which is what put
+  // a grey eye up and then flipped it to a colour. Fixing both ends to calm is
+  // what makes a second splash harmless; the launcher icon still rotates, and
+  // the splash no longer tries to agree with it.
   const ready = fontsLoaded && hydrated;
+  const [held, setHeld] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
     void SplashScreen.hideAsync().catch(() => {});
+    const id = setTimeout(() => setHeld(true), SPLASH_HOLD_MS);
+    return () => clearTimeout(id);
   }, [ready]);
 
-  if (!ready) return null;
+  if (!ready || !held) return <Splash />;
 
   return (
     <SafeAreaProvider>
