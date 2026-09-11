@@ -19,6 +19,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { longWarning } from '../core/conversation';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif, voice } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
@@ -145,6 +146,8 @@ export function Stage() {
   );
   const waking = useFacilityStore((s) => s.waking);
   const log = useFacilityStore((s) => s.log);
+  // null until the thread is long enough to be worth a word about.
+  const long = longWarning(log);
   const cabinetOpen = useFacilityStore((s) => s.cabinetOpen);
   const setDraft = useFacilityStore((s) => s.setDraft);
   const setCabinet = useFacilityStore((s) => s.setCabinet);
@@ -415,6 +418,21 @@ export function Stage() {
             >
               {emotionLabel(emotion, lang)}
             </Text>
+            {/* How long the thread has got, once that is worth saying — the
+                whole of the rule is in core/conversation.ts and this renders
+                its answer. It joins the LEFT cluster on the strip's own 9px
+                gap: the right-hand slot is spoken for by TRANSMITTING, COMPLETE
+                and the thinking dots, and a fourth thing competing for it would
+                be the same fight the ellipsis already settled. Below the
+                threshold nothing is rendered at all. */}
+            {long != null ? (
+              <Text
+                testID="long-warning"
+                style={[styles.longCount, { fontFamily: font('mono', 500, lang) }]}
+              >
+                {long}
+              </Text>
+            ) : null}
             {/* One slot, and the two never coincide: the word is blank while
                 she is only thinking, and the dots are gone the moment the
                 typewriter starts. Both carry the same auto margin, which is
@@ -677,6 +695,15 @@ const styles = StyleSheet.create({
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
     color: palette.textDim,
+  },
+  // The thread's length, in the app's error red — the same colour a notice
+  // uses, because this is the app speaking about itself and not a state of
+  // hers. Sized and tracked as the status word, so it reads as one more
+  // reading on the same instrument rather than an alert stuck onto it.
+  longCount: {
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.18,
+    color: palette.danger,
   },
   // `padding:20px 18px; overflow-y:auto`. `flexShrink` rather than `flex`: a
   // ScrollView claiming a flex share inside an auto-height parent collapses to

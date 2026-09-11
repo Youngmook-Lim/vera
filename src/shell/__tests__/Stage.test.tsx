@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette } from '../../core/theme';
 import * as OpticModule from '../Optic';
@@ -548,5 +549,53 @@ describe('Stage', () => {
         spy.mockRestore();
       }
     });
+  });
+});
+
+// The rule is pure and tested in core/__tests__/conversation.test.ts. What can
+// only be checked here is that the strip renders its answer — and that it does
+// not render anything at all below the threshold, which is the whole of the
+// promise that a short conversation looks exactly as it did before.
+describe('the long-conversation mark', () => {
+  const thread = (turns: number) =>
+    Array.from({ length: turns }, (_, i) => ({ who: 'you' as const, text: `q${i}`, t: i }));
+
+  it('is absent on a short thread', async () => {
+    awake({ log: thread(LONG_AFTER - 1) });
+    const view = await render(<Stage />);
+    expect(view.queryByTestId('long-warning')).toBeNull();
+    await view.unmount();
+  });
+
+  it('appears on the threshold, saying how long the thread is', async () => {
+    awake({ log: thread(LONG_AFTER) });
+    const view = await render(<Stage />);
+    expect(view.getByTestId('long-warning').props.children).toBe(LONG_AFTER);
+    await view.unmount();
+  });
+
+  // Red, and the app's own error red: this is the app talking about itself,
+  // not a state of hers, and it must not be mistaken for one.
+  it('is drawn in the app’s error red', async () => {
+    awake({ log: thread(LONG_AFTER + 3) });
+    const view = await render(<Stage />);
+
+    const mark = view.getByTestId('long-warning');
+    expect(mark.props.children).toBe(LONG_AFTER + 3);
+    expect(StyleSheet.flatten(mark.props.style).color).toBe(palette.danger);
+    await view.unmount();
+  });
+
+  // Her own replies must not push the thread over the line — a long thread is
+  // one the subject made long.
+  it('counts only what the subject said', async () => {
+    awake({
+      log: [...thread(LONG_AFTER - 1), ...Array.from({ length: 20 }, (_, i) => ({
+        who: 'vera' as const, text: 'x', t: 1000 + i,
+      }))],
+    });
+    const view = await render(<Stage />);
+    expect(view.queryByTestId('long-warning')).toBeNull();
+    await view.unmount();
   });
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, render } from '@testing-library/react-native';
 import { KEYS } from '../../core/storage';
+import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
 import { LogScreen } from '../LogScreen';
 
@@ -159,5 +160,40 @@ describe('LogScreen', () => {
     expect(view.getByText('삭제').props.style).toEqual(
       expect.arrayContaining([expect.objectContaining({ fontFamily: 'Pretendard-Medium' })]),
     );
+  });
+});
+
+// The stage is where the subject notices the thread has got long; this is the
+// only screen where they can do anything about it, which is why the mark sits
+// with CLEAR rather than across the header from it.
+describe('the long-conversation mark', () => {
+  const thread = (turns: number) =>
+    Array.from({ length: turns }, (_, i) => ({ who: 'you' as const, text: `q${i}`, t: i }));
+
+  it('is absent on a short thread', async () => {
+    seed({ log: thread(LONG_AFTER - 1) });
+    const view = await render(<LogScreen />);
+    expect(view.queryByTestId('long-warning')).toBeNull();
+    await view.unmount();
+  });
+
+  it('stands beside CLEAR once the thread is long', async () => {
+    seed({ log: thread(LONG_AFTER + 2) });
+    const view = await render(<LogScreen />);
+
+    expect(view.getByTestId('long-warning').props.children).toBe(LONG_AFTER + 2);
+    expect(view.getByText('CLEAR')).toBeTruthy();
+    await view.unmount();
+  });
+
+  // Mid-confirmation the only things worth reading are KEEP and ERASE. The
+  // count has already done its job by then.
+  it('stands down while the erasure is being confirmed', async () => {
+    seed({ log: thread(LONG_AFTER + 2), confirmingClear: true });
+    const view = await render(<LogScreen />);
+
+    expect(view.queryByTestId('long-warning')).toBeNull();
+    expect(view.getByText('ERASE ALL')).toBeTruthy();
+    await view.unmount();
   });
 });

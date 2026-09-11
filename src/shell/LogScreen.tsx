@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
+import { longWarning } from '../core/conversation';
 import { useFacilityStore } from '../core/store';
 import { systemTextFor } from './systemText';
 import { font, ms, palette, serif } from '../core/theme';
@@ -73,6 +74,7 @@ export function LogScreen() {
   const keyboardInset = useKeyboardInset();
   const lang = useFacilityStore((s) => s.lang);
   const log = useFacilityStore((s) => s.log);
+  const long = longWarning(log);
   const emotion = useFacilityStore((s) => s.emotion);
   const draft = useFacilityStore((s) => s.draft);
   const thinking = useFacilityStore((s) => s.thinking);
@@ -130,9 +132,24 @@ export function LogScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable onPress={() => setConfirmingClear(true)} hitSlop={10} style={styles.clearHit}>
-            <Text style={[styles.clear, { fontFamily: font('mono', 500, lang) }]}>{t.clear}</Text>
-          </Pressable>
+          // The count sits WITH clear, not opposite it: noticing the thread
+          // has got long and doing something about it are one thought, and
+          // this is the only screen where the second half is available. It is
+          // absent below the threshold and absent mid-confirmation, where KEEP
+          // and ERASE are the only things worth reading.
+          <View style={styles.clearGroup}>
+            {long != null ? (
+              <Text
+                testID="long-warning"
+                style={[styles.longCount, { fontFamily: font('mono', 500, lang) }]}
+              >
+                {long}
+              </Text>
+            ) : null}
+            <Pressable onPress={() => setConfirmingClear(true)} hitSlop={10} style={styles.clearHit}>
+              <Text style={[styles.clear, { fontFamily: font('mono', 500, lang) }]}>{t.clear}</Text>
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -221,6 +238,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  clearGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  // Same reading as the stage's strip, in the same error red, so the mark the
+  // subject noticed there is recognisably the same one here.
+  longCount: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.18,
+    color: palette.danger,
   },
   clearHit: {
     paddingVertical: 4,
