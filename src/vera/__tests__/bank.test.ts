@@ -1,4 +1,4 @@
-import { BANK, pick } from '../bank';
+import { BANK, isBankLine, pick } from '../bank';
 import type { BankTrigger } from '../speak';
 import { isEmotionKey } from '../emotions';
 
@@ -129,5 +129,35 @@ describe('pick', () => {
         }
       }
     }
+  });
+});
+
+// Recognising a line she already said, so a transcript written before banked
+// lines stopped being stored can be swept of them. Text identity is the only
+// marker there is: a stored turn records what she said, never why.
+describe('isBankLine', () => {
+  it('knows every line it wrote, in both languages', () => {
+    for (const trigger of Object.keys(BANK) as BankTrigger[]) {
+      for (const lang of ['en', 'ko'] as const) {
+        for (const [, line] of BANK[trigger][lang]) {
+          expect(isBankLine(line)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('does not claim a line she was actually asked for', () => {
+    expect(isBankLine('You asked me that on Tuesday as well.')).toBe(false);
+    expect(isBankLine('')).toBe(false);
+  });
+
+  // Derived from BANK rather than listed again, so a line added there is
+  // recognised without a second edit. This is what says so.
+  it('covers the whole bank, not a copy of it', () => {
+    const every = (Object.keys(BANK) as BankTrigger[]).flatMap((t) =>
+      [...BANK[t].en, ...BANK[t].ko].map(([, line]) => line),
+    );
+    expect(every.every(isBankLine)).toBe(true);
+    expect(every.length).toBeGreaterThan(0);
   });
 });

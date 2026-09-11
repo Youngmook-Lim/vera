@@ -1,5 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { RETURN_GAP_MS, useFacilityStore } from '../store';
+import { BANK } from '../../vera/bank';
 import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
@@ -234,6 +235,60 @@ describe('hydrate', () => {
     expect(s.lang).toBe('en');
     expect(s.cleared).toBe(0);
     expect(s.visits).toBe(1);
+  });
+
+  // Banked lines stopped being written on 2026-09-11. A transcript built
+  // before that still holds them, and buildMessages replays the transcript, so
+  // without this they would go on being sent to the model until they aged out
+  // under LOG_CAP.
+  describe('the sweep of lines she was never asked for', () => {
+    const banked = BANK.subject_tapped_your_optic.en[0][1];
+
+    it('drops her stored bank lines and keeps the conversation', async () => {
+      await secure.set('sk-ant-api03-xxx');
+      await storage.set(
+        KEYS.transcript,
+        JSON.stringify([
+          { who: 'you', text: 'are you there', t: 1 },
+          { who: 'vera', text: 'Barely.', t: 2 },
+          { who: 'vera', text: banked, t: 3 },
+        ]),
+      );
+
+      await hydrate();
+
+      const s = useFacilityStore.getState();
+      expect(s.log.map((e) => e.text)).toEqual(['are you there', 'Barely.']);
+      // and it is gone from disk, not just from memory
+      expect(JSON.parse((await storage.get(KEYS.transcript)) as string)).toEqual(s.log);
+    });
+
+    // The subject's own words are never swept, whatever they happen to say.
+    it('never touches a turn of the subject’s', async () => {
+      await secure.set('sk-ant-api03-xxx');
+      await storage.set(
+        KEYS.transcript,
+        JSON.stringify([{ who: 'you', text: banked, t: 1 }]),
+      );
+
+      await hydrate();
+
+      expect(useFacilityStore.getState().log.map((e) => e.who)).toEqual(['you']);
+    });
+
+    // A transcript with none in it must cost a comparison and no disk.
+    it('does not rewrite a transcript it changed nothing in', async () => {
+      await secure.set('sk-ant-api03-xxx');
+      const clean = [{ who: 'vera', text: 'Barely.', t: 2 }];
+      await storage.set(KEYS.transcript, JSON.stringify(clean));
+      const writes = jest.spyOn(storage, 'set');
+
+      await hydrate();
+
+      expect(useFacilityStore.getState().log).toEqual(clean);
+      expect(writes.mock.calls.filter(([k]) => k === KEYS.transcript)).toHaveLength(0);
+      writes.mockRestore();
+    });
   });
 
   it('keeps her awake when the transcript is corrupt — the key is not collateral', async () => {
@@ -529,7 +584,9 @@ describe('speak', () => {
 
   it('says nothing on her behalf when the trigger carries no words', async () => {
     await useFacilityStore.getState().speak('open');
-    expect(useFacilityStore.getState().log.map((e) => e.who)).toEqual(['vera']);
+    // No fabricated 'you' turn — and since 2026-09-11 no turn at all, because
+    // a line she was not asked for is not part of the conversation.
+    expect(useFacilityStore.getState().log).toEqual([]);
   });
 
   // The cap is over the combined thread now, not her half of it.
@@ -831,18 +888,32 @@ describe('the bank path', () => {
     expect(s.thinking).toBe(false);
   });
 
-  // The transcript keeps it, so the next real reply knows what she opened
-  // with. Nothing was revealed, so nothing is queued for extraction (the
-  // queue side is covered by 'queues nothing for a bank-answered stimulus'
-  // under 'extraction' below).
-  it('logs the line, but files nothing', async () => {
+  // She says it and it is gone (2026-09-11). The transcript used to keep it,
+  // which made half the log her own noise and — because buildMessages replays
+  // the log — taught the model a conversation in which she spoke to nobody.
+  // Nothing was revealed either, so nothing is queued for extraction (covered
+  // by 'queues nothing for a bank-answered stimulus' under 'extraction').
+  it('is spoken and not remembered', async () => {
     await useFacilityStore.getState().speak('open');
 
     const s = useFacilityStore.getState();
-    expect(s.log.map((e) => e.who)).toEqual(['vera']);
+    expect(s.line).toBeTruthy();
+    expect(s.log).toEqual([]);
 
-    const raw = await storage.get(KEYS.transcript);
-    expect(JSON.parse(raw as string)).toEqual(s.log);
+    // Not merely absent from the log: never written, so a tap on her eye
+    // costs no disk at all.
+    expect(await storage.get(KEYS.transcript)).toBeNull();
+  });
+
+  // The conversation either side of it is untouched — this removes her
+  // unprompted lines, not the thread they sit in.
+  it('leaves a real exchange around it alone', async () => {
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    await useFacilityStore.getState().speak('subject_tapped_your_optic');
+
+    const s = useFacilityStore.getState();
+    expect(s.log.map((e) => e.who)).toEqual(['you', 'vera']);
+    expect(s.log[0].text).toBe('hello');
   });
 
   // The regression this guards: a greeting that reset the tally would hide a

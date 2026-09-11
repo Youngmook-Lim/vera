@@ -136,3 +136,25 @@ export const pick = (
   lastSpoken.set(key, line);
   return { emotion, line };
 };
+
+// Every authored line, in every language, as a set. Built once at import from
+// BANK itself, so a line added above is recognised here without a second edit.
+const AUTHORED: ReadonlySet<string> = new Set(
+  Object.values(BANK).flatMap((byLang) =>
+    Object.values(byLang).flatMap((lines) => lines.map(([, line]) => line)),
+  ),
+);
+
+// Whether a line of hers came out of this file rather than out of a
+// conversation (2026-09-11). Her greetings and her answers to a poked optic
+// are not things the subject said anything to prompt, and replaying them to
+// the model as conversation taught it that half the transcript was her talking
+// to nobody. They are shown and then forgotten; this is how the transcript
+// recognises the ones it already stored.
+//
+// Identity of TEXT is the only marker available — a stored turn records what
+// she said and not why — so a model reply that happened to be character-
+// identical to an authored line would be read as banked. Under thirty words
+// and exact, that is a coincidence worth accepting against the alternative of
+// versioning every stored turn.
+export const isBankLine = (text: string): boolean => AUTHORED.has(text);

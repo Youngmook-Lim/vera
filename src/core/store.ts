@@ -4,7 +4,7 @@ import type { Lang } from './i18n';
 import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
 import { applyExtraction } from '../vera/apply';
-import { pick } from '../vera/bank';
+import { isBankLine, pick } from '../vera/bank';
 import { buildContext } from '../vera/context';
 import type { EmotionKey } from '../vera/emotions';
 import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM, buildExtractPrompt, parseExtraction } from '../vera/extract';
@@ -385,6 +385,27 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         log = [];
       }
 
+      // Banked lines stopped being written on 2026-09-11, but a transcript
+      // built before that still holds them, and would go on replaying them to
+      // the model until they aged out under LOG_CAP. A stored turn records
+      // what she said and not why, so the text is the only thing left to
+      // recognise them by — see isBankLine.
+      //
+      // Written back only when something actually went, so a transcript that
+      // has never held one costs a comparison and no disk. This is also the
+      // one place the app removes turns the subject did not ask it to: they
+      // are hers and they are re-drawable, never anything the subject typed.
+      const swept = log.filter((entry) => !(entry.who === 'vera' && isBankLine(entry.text)));
+      if (swept.length !== log.length) {
+        log = swept;
+        try {
+          await storage.set(KEYS.transcript, JSON.stringify(log));
+        } catch {
+          // an unwritable disk — they are gone from this session either way,
+          // and the next launch will try again
+        }
+      }
+
       const deviceKo = getLocales()[0]?.languageCode === 'ko';
 
       const now = Date.now();
@@ -587,9 +608,22 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // subject can fix, and saying it in her voice would hide it behind a
       // line that reads like any other. So she says nothing, and the system
       // speaks instead.
-      const log = [...get().log, notice
-        ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
-        : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP);
+      //
+      // **Only the live path writes anything down (2026-09-11).** A greeting,
+      // an activation and an answer to a poked optic come out of the bank:
+      // nothing was asked, nothing was sent, and nothing was revealed. Keeping
+      // them made the transcript half her own noise, and since `buildMessages`
+      // replays that transcript, it also fed the model a conversation in which
+      // she repeatedly spoke to nobody. She still SAYS them — `line` and the
+      // typewriter below are untouched — they are simply not remembered.
+      //
+      // Nothing else has to change for the prompt: what is not in the log
+      // cannot reach `buildMessages`.
+      const log = live
+        ? [...get().log, notice
+            ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
+            : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP)
+        : get().log;
 
       // A refusal leaves the key exactly where it is — she is never sent
       // dormant for it, and the tally only tells ACCESS which row to mark
@@ -609,11 +643,16 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // nothing about the key, so it must not mark a row under ACCESS.
         authFails: live ? (notice === 'auth' ? get().authFails + 1 : 0) : get().authFails,
       });
-      try {
-        await storage.set(KEYS.transcript, JSON.stringify(log));
-      } catch {
-        // an unwritable disk — her reply stands on screen, it just does not
-        // survive a restart
+      // Skipped entirely on the bank path: `log` is the same array it already
+      // was, and rewriting the whole transcript to disk to record nothing is a
+      // write per tap on her eye.
+      if (live) {
+        try {
+          await storage.set(KEYS.transcript, JSON.stringify(log));
+        } catch {
+          // an unwritable disk — her reply stands on screen, it just does not
+          // survive a restart
+        }
       }
 
       // A new typewriter always cancels whatever was still ticking — the
