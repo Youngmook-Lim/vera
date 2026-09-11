@@ -981,6 +981,38 @@ describe('the prompt record', () => {
     expect(record?.turns?.[2].text).toContain('> did you miss me');
   });
 
+  // The end-to-end half of context.ts's rationing: the pure rule is tested
+  // there, and what can only be checked here is that the store actually
+  // remembers what it sent and stops sending it.
+  it('tells her a notable fact once a session and then stops', async () => {
+    useFacilityStore.setState({ visits: 7, notableSaid: null });
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    const first: Turn[] = callLlm.mock.calls[0][2];
+    expect(first.at(-1)?.text).toContain('return number 7 today');
+    expect(useFacilityStore.getState().notableSaid).toBe('this is return number 7 today');
+
+    await useFacilityStore.getState().speak('subject_spoke', 'still here');
+    const second: Turn[] = callLlm.mock.calls[1][2];
+    expect(second.at(-1)?.text).not.toContain('return number 7');
+    // and the rest of the moment is untouched
+    expect(second.at(-1)?.text).toContain('time_of_day');
+  });
+
+  // A session is an app launch or an activation. A new one may say it again.
+  it('may say it again in a new session', async () => {
+    useFacilityStore.setState({ visits: 7, notableSaid: 'this is return number 7 today' });
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+    expect((callLlm.mock.calls[0][2] as Turn[]).at(-1)?.text).not.toContain('return number 7');
+
+    useFacilityStore.setState({ notableSaid: null, sessionStartedAt: Date.now() });
+    await useFacilityStore.getState().speak('subject_spoke', 'hello again');
+    expect((callLlm.mock.calls[1][2] as Turn[]).at(-1)?.text).toContain('return number 7 today');
+  });
+
   it('records no turns at all for a stimulus answered from the bank', async () => {
     await useFacilityStore.getState().speak('open');
     expect(useFacilityStore.getState().lastPrompt)

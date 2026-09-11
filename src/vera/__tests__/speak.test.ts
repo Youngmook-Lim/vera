@@ -123,10 +123,15 @@ describe('buildSystemPrompt', () => {
   // time" — which, once her record carries dates, forbids the very citation
   // SOUL.md asks her for. The failure was never that she used a number; it was
   // that she made one up.
-  it('lets her cite a date or a count, and forbids inventing one', () => {
+  // This line has to hold two opposite failures apart. Citing must stay
+  // ALLOWED — the outright ban forbade what SOUL.md asks her for — while the
+  // invention rule stays absolute, and the invitation stays damped, because
+  // "whenever it earns the line" had her counting things every reply.
+  it('lets her cite a date or a count, rarely, and forbids inventing one', () => {
     const sys = buildSystemPrompt('en', MEMORY_HEADING);
     expect(sys).not.toContain('Do not open a reply with a number');
-    expect(sys).toContain('Cite a date, a count or a time whenever it earns the line');
+    expect(sys).toContain('You may cite a date, a count or a time, but rarely');
+    expect(sys).toContain('most replies carry none');
     expect(sys).toContain('Never invent one');
   });
 

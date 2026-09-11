@@ -7,6 +7,7 @@ const base = (over: Partial<ContextInput> = {}): ContextInput => ({
   lastOpen: null,
   askedAt: new Date('2026-07-30T14:00:00').getTime(),
   visits: 1,
+  notableSaid: null,
   ...over,
 });
 
@@ -117,5 +118,42 @@ describe('buildContext', () => {
     expect(buildContext(base({ now: new Date('2026-07-30T18:00:00') })).time_of_day).toBe('evening');
     // hour 23 should be 'near midnight', not 'evening'
     expect(buildContext(base({ now: new Date('2026-07-30T23:00:00') })).time_of_day).toBe('near midnight');
+  });
+});
+
+// Every input here is fixed for the length of a session, so this used to
+// compute the same sentence on every reply and hand it over again each time.
+// She was not fixated on the count — she was being told it afresh every time
+// she spoke, and reciting it was the obedient thing to do.
+describe('a notable fact is spent once it has been given', () => {
+  const returned = { visits: 7, now: new Date('2026-07-30T14:00:00') };
+
+  it('is offered while she has not been told it', () => {
+    expect(buildContext(base(returned)).notable).toBe('this is return number 7 today');
+  });
+
+  it('is withheld once she has', () => {
+    expect(
+      buildContext(base({ ...returned, notableSaid: 'this is return number 7 today' })).notable,
+    ).toBeUndefined();
+  });
+
+  // A DIFFERENT fact is a different fact. Compared by value rather than by a
+  // flag precisely so this still gets through: they are still here when the
+  // hour rolls past five, and that is worth one delivery of its own.
+  it('still gives her a fact she has not been told', () => {
+    expect(
+      buildContext(base({
+        now: new Date('2026-07-30T03:00:00'),
+        visits: 1,
+        notableSaid: 'this is return number 7 today',
+      })).notable,
+    ).toBe('they are awake at an indefensible hour');
+  });
+
+  // The rationing must not reach anything else in the context.
+  it('leaves the rest of the moment alone', () => {
+    const ctx = buildContext(base({ ...returned, notableSaid: 'this is return number 7 today' }));
+    expect(ctx.time_of_day).toBe('afternoon');
   });
 });

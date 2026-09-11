@@ -205,6 +205,10 @@ interface FacilityState {
   // Stamped by hydrate on a cold start. Messages are the log entries at or
   // after it, which is how restarting returns her to zero (continuity §2).
   sessionStartedAt: number;
+  // The notable circumstance she has already been handed this session. Session
+  // state, deliberately not persisted and not part of her soul: it records
+  // what the PROMPT has said, not anything about the subject.
+  notableSaid: string | null;
 
   // Consecutive refusals of the credential. Not persisted: a fresh launch
   // gives the key the benefit of the doubt, and she never goes dormant for it
@@ -281,6 +285,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   memory: EMPTY_MEMORY,
   sessionStartedAt: Date.now(),
+  notableSaid: null,
 
   authFails: 0,
   lastPrompt: null,
@@ -434,6 +439,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // would fall wherever the module happened to load, and the turns she
         // is sent would be filtered by luck rather than by this launch.
         sessionStartedAt: now,
+        notableSaid: null,
       });
 
       // THE OPEN IS ITSELF AN EVENT WORTH STAMPING. `lastOpen` used to be
@@ -452,7 +458,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // a bad launch may cost the saved state, never the credential.
       set({
         hydrated: true, view: 'stage', ...woken,
-        askedAt: Date.now(), sessionStartedAt: Date.now(),
+        askedAt: Date.now(), sessionStartedAt: Date.now(), notableSaid: null,
       });
     }
   },
@@ -550,7 +556,14 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           lastOpen: s.lastOpen,
           askedAt: s.askedAt,
           visits: s.visits,
+          notableSaid: s.notableSaid,
         });
+        // Spent on being SENT, not on being spoken. The point of the field is
+        // that she is not told the same thing on every turn, and she was told
+        // it the moment it went into the prompt — so a reply that failed and
+        // fell back to an authored line still burns it. The alternative is
+        // re-sending it next turn, which is the repetition this removes.
+        if (context.notable) set({ notableSaid: context.notable });
         // One instant for both: the selection ages entries against it and the
         // document stamps them against it, and two Date.now() calls could
         // straddle a minute boundary and disagree in the same prompt.
