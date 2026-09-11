@@ -203,14 +203,29 @@ describe('Stage', () => {
     expect(done.queryByTestId('caret')).toBeNull();
   });
 
-  it('hides the conversation pill until there is a transcript', async () => {
-    awake({ log: [] });
-    const empty = await render(<Stage />);
-    expect(empty.queryByText('OPEN CONVERSATION')).toBeNull();
-
+  // It used to be gated on the transcript existing, per 4a — which meant CLEAR
+  // took the only route to the LOG screen away with the transcript. That
+  // screen has a designed empty state and its own input box, so the door has
+  // to outlast what is behind it.
+  it('keeps the conversation pill after the transcript is cleared', async () => {
     awake({ log: [{ who: 'vera', text: 'Hm.', t: 1, emotion: 'calm' }] });
     const withLog = await render(<Stage />);
     expect(withLog.getByText('OPEN CONVERSATION')).toBeTruthy();
+    await withLog.unmount();
+
+    awake({ log: [] });
+    const cleared = await render(<Stage />);
+    expect(cleared.getByText('OPEN CONVERSATION')).toBeTruthy();
+    await cleared.unmount();
+  });
+
+  // A dormant optic has no conversation to open, and the gate she is behind is
+  // the key rather than the transcript.
+  it('offers no pill before she is awake', async () => {
+    awake({ log: [], apiKey: '' });
+    const view = await render(<Stage />);
+    expect(view.queryByText('OPEN CONVERSATION')).toBeNull();
+    await view.unmount();
   });
 
   // With the keyboard up the stage has three things worth the height — the

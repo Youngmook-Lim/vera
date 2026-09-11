@@ -50,8 +50,14 @@ export interface LogEntry {
 // array, of which the composed prompt is only the last entry. Recording that
 // entry alone hid every earlier turn that went to the provider.
 //
-// `system` and `turns` are null when she answered from the bank, which is
-// itself the answer to "why did that reply look canned".
+// **Only a live call is recorded (2026-09-11).** `speak('open')` fires on every
+// launch and a poked optic fires on every tap, and each of those used to
+// overwrite this — so the one screen built to read the last request to the
+// model almost always held a greeting that made no request, and said so
+// instead of showing the prompt. It used to be argued that recording them
+// answered "why did that reply look canned"; it did not earn the cost, and the
+// canned-looking case that actually needs diagnosing is a FALLBACK, which is a
+// live call and is still recorded with its failure beside it.
 export interface PromptRecord {
   at: number;
   trigger: Trigger;
@@ -81,7 +87,9 @@ export interface PromptRecord {
   // Round trip in milliseconds. A 25s timeout, a slow provider and an instant
   // 400 are three different problems and read identically without it.
   took: number;
-  outcome: 'model' | 'fallback' | 'bank';
+  // No 'bank' (2026-09-11): this record is about a request, and a stimulus
+  // answered from the bank made none.
+  outcome: 'model' | 'fallback';
 }
 
 // The other call. Extraction reads finished exchanges into her file, is never
@@ -597,24 +605,31 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // reply present alongside a `fallback` source means the model answered
       // and the answer was unreadable — which looks identical to a dead
       // network on the stage, and is only distinguishable here.
+      //
+      // Live calls only. A greeting or a poked optic made no request, and
+      // recording one here displaced the last real prompt — which, since
+      // `speak('open')` fires on every launch, meant the screen was showing a
+      // greeting nearly every time it was opened.
       const route = providerFor(get().apiKey);
-      set({
-        lastPrompt: {
-          at: Date.now(),
-          trigger,
-          route: route?.label ?? '',
-          model: route?.model ?? '',
-          system: outcome.debug.system,
-          turns: outcome.debug.turns,
-          raw: outcome.debug.raw,
-          failure: outcome.debug.failure,
-          emotion,
-          line,
-          notice,
-          took,
-          outcome: live ? outcome.source : 'bank',
-        },
-      });
+      if (live) {
+        set({
+          lastPrompt: {
+            at: Date.now(),
+            trigger,
+            route: route?.label ?? '',
+            model: route?.model ?? '',
+            system: outcome.debug.system,
+            turns: outcome.debug.turns,
+            raw: outcome.debug.raw,
+            failure: outcome.debug.failure,
+            emotion,
+            line,
+            notice,
+            took,
+            outcome: outcome.source,
+          },
+        });
+      }
 
       // A refused credential is the one failure the app reports itself. It is
       // not an event in the fiction — it is a configuration problem only the

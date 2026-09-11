@@ -370,9 +370,14 @@ export function Stage() {
         ) : null}
       </View>
 
-      {/* Its own centred row between the header and the optic, once a
-          transcript exists (4a). */}
-      {log.length > 0 && apiKey ? (
+      {/* Its own centred row between the header and the optic (4a). The design
+          shows it "once a transcript exists", and it was gated on
+          `log.length > 0` to match — which meant CLEAR took the only route to
+          the LOG screen away with the transcript (2026-09-11). That screen has
+          a designed empty state and its own input; hiding the door to it is
+          the inconsistency, not showing a door to an empty room. A deliberate
+          departure from 4a: the pill now stands whenever she is awake. */}
+      {apiKey ? (
         <View style={styles.pillRow}>
           <Pressable style={styles.pill} onPress={() => setView('log')}>
             <View style={styles.hairlines}>

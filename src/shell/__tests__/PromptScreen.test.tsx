@@ -115,13 +115,6 @@ describe('the prompt inspector', () => {
     expect(body).toContain('"emotion":"wry"');
   });
 
-  // A bank line never reaches the model, so its raw reply is null — the header
-  // is the only thing that can say what the eye did.
-  it('prints the state of a line that came from the bank', async () => {
-    show({ ...RECORD, trigger: 'open', system: null, turns: null, raw: null, emotion: 'bored', outcome: 'bank' });
-    expect(await bodyOf()).toContain('emotion: bored');
-  });
-
   // The one thing the screen could not show: the output. Everything else here
   // describes the request, and a screenshot of it could not be read against the
   // stage it came from without knowing which line it produced.
@@ -203,14 +196,16 @@ describe('the prompt inspector', () => {
     for (const turn of RECORD.turns ?? []) expect(body).toContain(turn.text);
   });
 
-  // A bank line makes no request at all, and saying so is the answer to "why
-  // did that reply look canned".
-  it('says plainly when nothing was sent', async () => {
-    show({ ...RECORD, trigger: 'open', system: null, turns: null, raw: null, outcome: 'bank' });
+  // This screen is about requests, and a stimulus answered from the bank makes
+  // none. It is no longer recorded at all (the store side is pinned by 'leaves
+  // the last real prompt standing' in store.test.ts), so the screen has no
+  // bank case left to render — every record it can be handed has a system
+  // prompt in it.
+  it('always has a system prompt to show', async () => {
+    show({ ...RECORD });
     const body = await bodyOf();
-    expect(body).toContain('outcome: bank');
-    expect(body).toContain('no request was made');
-    expect(body).not.toContain('--- SYSTEM');
+    expect(body).toContain('--- SYSTEM');
+    expect(body).not.toContain('no request was made');
   });
 
   // The distinction the stage cannot show: a reply that arrived and could not

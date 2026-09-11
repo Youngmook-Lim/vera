@@ -91,10 +91,6 @@ const buildReplyMd = (p: PromptRecord | null): string => {
     '',
   ].join('\n');
 
-  if (p.outcome === 'bank') {
-    return `${head}(answered from the authored bank. no request was made.)`;
-  }
-
   const turns = p.turns ?? [];
   const sent = [
     `--- SYSTEM (${p.system?.length ?? 0} chars) ---`,

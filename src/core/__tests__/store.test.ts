@@ -1013,10 +1013,28 @@ describe('the prompt record', () => {
     expect((callLlm.mock.calls[1][2] as Turn[]).at(-1)?.text).toContain('return number 7 today');
   });
 
-  it('records no turns at all for a stimulus answered from the bank', async () => {
+  // The PROMPT screen is about requests to the model. A greeting and a poked
+  // optic make none — and since speak('open') fires on every launch, recording
+  // them meant the screen was showing a greeting nearly every time it was
+  // opened, with the last real prompt already gone.
+  it('leaves the last real prompt standing when she answers from the bank', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'hello');
+
+    const real = useFacilityStore.getState().lastPrompt;
+    expect(real?.system).toBeTruthy();
+
     await useFacilityStore.getState().speak('open');
-    expect(useFacilityStore.getState().lastPrompt)
-      .toMatchObject({ outcome: 'bank', system: null, turns: null });
+    await useFacilityStore.getState().speak('subject_tapped_your_optic');
+
+    expect(useFacilityStore.getState().lastPrompt).toBe(real);
+  });
+
+  // Nothing to displace yet: a bank reply before any real one must not leave a
+  // record of its own either.
+  it('records nothing at all when the bank answers first', async () => {
+    await useFacilityStore.getState().speak('open');
+    expect(useFacilityStore.getState().lastPrompt).toBeNull();
   });
 
   // The call that writes her file is the one hardest to debug by watching her,
