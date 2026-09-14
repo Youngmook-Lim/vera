@@ -28,6 +28,19 @@ beforeEach(() => {
   mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
 });
 
+// A room that has moved channel once, so the deletion of the old one has
+// something to act on.
+const moved = makeDaily({
+  room: 'moved',
+  channel: 'moved-channel.v2',
+  legacyChannel: 'moved-channel',
+  channelName: 'MOVED',
+  hour: 9,
+  count: () => 1,
+  build: () => ({ title: 'T', body: 'card' }),
+});
+
+
 // Android files a notification under the channel its request names, which for
 // a scheduled card is the one on the TRIGGER — the content type has no such
 // field. Naming none does not fall back to the channel the app just made — it
@@ -51,6 +64,84 @@ describe('the channel a card is filed under', () => {
     const [created] = mocked.setNotificationChannelAsync.mock.calls[0];
     const { trigger } = mocked.scheduleNotificationAsync.mock.calls[0][0];
     expect(trigger.channelId).toBe(created);
+  });
+});
+
+// Importance 3 is a status-bar icon and nothing else — Android peeks from 4 up
+// — and vibration is off because `enableVibration` is applied only when the
+// option is actually present. Both were measured on the phone: `advice` and
+// `horror` sat at mImportance=3, mVibrationEnabled=false, with expo's fallback
+// channel beside them at 4 with vibration on, which is what the cards were
+// getting before they named a channel of their own.
+describe('how loudly a card arrives', () => {
+  it('is created loud enough to pop up at all, and to vibrate', async () => {
+    await daily.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+
+    const [, options] = mocked.setNotificationChannelAsync.mock.calls[0];
+    expect(options.importance).toBe(Notifications.AndroidImportance.HIGH);
+    expect(options.enableVibrate).toBe(true);
+    expect(options.vibrationPattern?.length).toBeGreaterThan(0);
+  });
+});
+
+// Android will not raise an existing channel's importance. The
+// existing-channel branch of PreferencesHelper.createNotificationChannel
+// updates the name, description and group, applies a new importance only when
+// it is LOWER, and never touches vibration at all — so a phone already holding
+// `advice` at 3 keeps it whatever this code asks for. Deleting and recreating
+// the same id does not help either: Android remembers a deleted channel's
+// settings and restores them. A new id is the only way through, which makes
+// the old one somebody's to clean up.
+describe('a channel the room has moved off', () => {
+  it('is taken away, so no dead switch is left in Android’s settings', async () => {
+    await moved.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+
+    expect(mocked.deleteNotificationChannelAsync).toHaveBeenCalledWith('moved-channel');
+  });
+
+  it('is never the channel a card is filed under', async () => {
+    await moved.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+
+    for (const [call] of mocked.scheduleNotificationAsync.mock.calls) {
+      expect(call.trigger.channelId).toBe('moved-channel.v2');
+    }
+  });
+
+  // The room has always had one channel, so there is nothing to remove and
+  // asking would create the very orphan this is meant to prevent.
+  it('is not asked for by a room that never moved', async () => {
+    await daily.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+
+    expect(mocked.deleteNotificationChannelAsync).not.toHaveBeenCalled();
+  });
+
+  // Switching a room's cards on creates the channel the permission is granted
+  // against, and that is also the moment the old one has to go: a subject who
+  // never opens SYSTEM again would otherwise keep the dead switch forever.
+  it('is taken away at the toggle too, not only at a sync', async () => {
+    await moved.request();
+
+    expect(mocked.deleteNotificationChannelAsync).toHaveBeenCalledWith('moved-channel');
+  });
+
+  // The one way this mechanism could silence a room outright. Deleting the
+  // channel the same call just created would take the cards down with it, and
+  // every other test here would still pass.
+  it('is never the channel the room is moving TO', async () => {
+    const confused = makeDaily({
+      room: 'confused',
+      channel: 'same',
+      legacyChannel: 'same',
+      channelName: 'CONFUSED',
+      hour: 9,
+      count: () => 1,
+      build: () => ({ title: 'T', body: 'card' }),
+    });
+
+    await confused.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+
+    expect(mocked.setNotificationChannelAsync).toHaveBeenCalledWith('same', expect.anything());
+    expect(mocked.deleteNotificationChannelAsync).not.toHaveBeenCalled();
   });
 });
 

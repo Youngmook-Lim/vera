@@ -67,6 +67,10 @@ export interface DailyConfig {
   // The tag written into every notification and matched when cancelling.
   room: string;
   channel: string;
+  // A channel this room used to file its cards under, to be deleted. Optional
+  // because a room that has never moved has none, and asking Android to remove
+  // a channel that was never created would be the orphan this exists to avoid.
+  legacyChannel?: string;
   channelName: string;
   hour: number;
   // How many cards the room has to draw from.
@@ -99,11 +103,35 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
     return null;
   };
 
+  // HIGH, not DEFAULT, and vibration asked for by name. Android peeks — shows a
+  // pop-up rather than only a status-bar icon — from importance 4 up, and
+  // expo's DEFAULT is 3; vibration is off unless `enableVibrate` is actually
+  // present, since the native side applies it only `if (args.containsKey(...))`.
+  // Measured on the phone: both room channels sat at mImportance=3 with
+  // mVibrationEnabled=false, while expo's fallback channel — where every card
+  // landed before the rooms named a channel of their own — sat beside them at 4
+  // with vibration on. Naming the right channel made the cards quieter, which
+  // is the whole of what this puts back.
+  //
+  // The old channel goes in the same breath. Android will not raise an existing
+  // channel's importance — PreferencesHelper.createNotificationChannel applies a
+  // new one only when it is LOWER, and never touches vibration at all — and
+  // recreating a deleted id restores its old settings rather than resetting
+  // them. So the id had to change, and the id it changed from would otherwise
+  // sit in Android's notification settings as a switch governing nothing.
   const ensureChannel = async (N: Notifs): Promise<void> => {
     await N.setNotificationChannelAsync(cfg.channel, {
       name: cfg.channelName,
-      importance: N.AndroidImportance.DEFAULT,
+      importance: N.AndroidImportance.HIGH,
+      enableVibrate: true,
+      vibrationPattern: [0, 250, 250, 250],
     });
+    // Never the channel just created: a room that set both to the same string
+    // would delete its own live channel here and go silent, with every test
+    // still passing and nothing but a device to notice.
+    if (cfg.legacyChannel && cfg.legacyChannel !== cfg.channel) {
+      await N.deleteNotificationChannelAsync(cfg.legacyChannel);
+    }
   };
 
   // Only this room's. Reading the queue and cancelling by identifier is more

@@ -11,7 +11,11 @@ export const NOTIFY_HOUR = 9;
 
 const daily = makeDaily({
   room: 'advice',
-  channel: 'advice',
+  // Bumped from 'advice' (2026-09-14): the old channel was created at
+  // importance DEFAULT with vibration off, and Android will not let an app
+  // raise either on a channel that already exists.
+  channel: 'advice.v2',
+  legacyChannel: 'advice',
   channelName: 'EXCELLENT ADVICE',
   hour: NOTIFY_HOUR,
   count: () => QUOTES.length,

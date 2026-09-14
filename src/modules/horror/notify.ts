@@ -12,7 +12,10 @@ export const NOTIFY_HOUR = 22;
 
 const daily = makeDaily({
   room: 'horror',
-  channel: 'horror',
+  // Bumped from 'horror' for the reason the advice room's was: a channel's
+  // importance and vibration are fixed once Android has created it.
+  channel: 'horror.v2',
+  legacyChannel: 'horror',
   channelName: 'TWO SENTENCE HORROR',
   hour: NOTIFY_HOUR,
   count: () => STORIES.length,

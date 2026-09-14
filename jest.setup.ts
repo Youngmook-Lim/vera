@@ -60,9 +60,14 @@ jest.mock('expo-haptics', () => ({
 // something no test can observe arriving.
 jest.mock('expo-notifications', () => ({
   __esModule: true,
-  AndroidImportance: { DEFAULT: 3 },
+  // expo's own enum, not AOSP's: expo DEFAULT is 5 and HIGH is 6, remapped to
+  // Android's 3 and 4 natively. Worth spelling out, because a mock carrying the
+  // AOSP numbers reads as correct and is not.
+  AndroidImportance: { DEFAULT: 5, HIGH: 6 },
   SchedulableTriggerInputTypes: { DATE: 'date' },
   setNotificationChannelAsync: jest.fn(async () => {}),
+  // A room that has moved channel has to be able to take its old one away.
+  deleteNotificationChannelAsync: jest.fn(async () => {}),
   getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => 'id'),
