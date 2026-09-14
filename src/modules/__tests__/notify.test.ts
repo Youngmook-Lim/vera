@@ -10,6 +10,11 @@ const power = Power as unknown as Record<string, jest.Mock>;
 // here, at import order, rather than made lazy to suit a test.
 const handlerCalls = [...mocked.setNotificationHandler.mock.calls];
 
+// The dead-channel sweep runs at import too, and for the same reason has to be
+// read before any beforeEach can clear it. Taken here rather than later, where
+// ensureChannel's own deletions would be mixed in with it.
+const sweptAtImport = mocked.deleteNotificationChannelAsync.mock.calls.map(([id]) => id);
+
 // The shared half of both rooms' daily card. What is IN a notification belongs
 // to the room and is tested there; these are the three things the mechanism
 // itself has to get right, and every one of them was wrong on the phone before
@@ -159,6 +164,23 @@ describe('a card that lands while the app is open', () => {
       shouldPlaySound: true,
       shouldSetBadge: false,
     });
+  });
+});
+
+// A channel outlives the code that made it: Android has no way to learn that a
+// feature was cut, so it goes on offering the category in the notification
+// settings forever. `vera` was created by v1's transmissions (acc4804) and
+// orphaned when that file died in the v2 cut, and it has sat on the phone ever
+// since as a switch governing nothing.
+describe('a channel left behind by a feature that no longer exists', () => {
+  it('is swept, so the settings screen stops offering it', () => {
+    expect(sweptAtImport).toContain('vera');
+  });
+
+  // At import, not per room: it belongs to no room, and a sweep living inside
+  // makeDaily would run once per room and read as one room's business.
+  it('is swept once, without a room having to ask', () => {
+    expect(sweptAtImport.filter((id) => id === 'vera')).toHaveLength(1);
   });
 });
 

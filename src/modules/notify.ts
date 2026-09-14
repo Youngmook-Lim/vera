@@ -51,6 +51,31 @@ try {
   // no native module, or a phone that will not take a handler
 }
 
+// Channels Android is still holding for features this app no longer has. A
+// channel outlives the code that created it — Android cannot know a feature was
+// cut — so it goes on offering the category in the notification settings, where
+// it reads as a switch that ought to do something and does nothing. `vera` was
+// created by v1's transmissions (acc4804, 'V.E.R.A.', importance DEFAULT) and
+// orphaned when that file died in the v2 cut.
+//
+// Swept at import rather than inside makeDaily: it is nobody's room, and a
+// sweep in the factory would run once per room. This is the same bargain
+// `LEGACY_KEYS` in storage.ts takes — a cheap call on every boot, forever, for
+// a cleanup that matters exactly once — and it is the cheaper half of it, since
+// nothing here has to be read back.
+const DEAD_CHANNELS = ['vera'];
+
+try {
+  const N = load();
+  for (const id of DEAD_CHANNELS) {
+    // Fire and forget. A channel that was never there is not an error worth
+    // hearing about, and a phone that refuses must not delay the first card.
+    void N?.deleteNotificationChannelAsync(id).catch(() => {});
+  }
+} catch {
+  // no native module, or a build too old to have the call
+}
+
 export type PermissionState = 'granted' | 'blocked' | 'ask';
 
 // What travels inside every notification this app schedules. `room` is what
