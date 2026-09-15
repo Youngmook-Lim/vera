@@ -2,6 +2,8 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { EMPTY_MEMORY } from '../../vera/memory';
+import { MODES } from '../../vera/modes/registry';
+import { CORE_SOUL_MD } from '../../vera/soul';
 import { FileScreen } from '../FileScreen';
 
 describe('FileScreen', () => {
@@ -14,21 +16,30 @@ describe('FileScreen', () => {
 
   // The two documents are shown apart because they ARE apart: the core is what
   // every mode is written against, and the mode is the half that was chosen.
-  it('shows the core document alone under SOUL.md', async () => {
+  //
+  // Asserted against the constants rather than against a sentence out of
+  // either. A register is rewritten whenever she is, and a screen test that
+  // quotes her copy fails for the wrong reason every time she changes.
+  it('shows the core document alone under CORE_SOUL_MD', async () => {
     useFacilityStore.setState({ view: 'soul', lang: 'en', mode: 'supportive' });
     const view = await render(<FileScreen />);
-    const body = view.getByTestId('file-body').props.children as string;
-    expect(body).toContain('Very Emotional Robot Assistant');
-    expect(body).not.toContain('Warm. Certain. Unhurried.');
+    expect(view.getByTestId('file-body').props.children).toBe(CORE_SOUL_MD);
     await view.unmount();
   });
 
   it('shows the active register’s document under its own row', async () => {
     useFacilityStore.setState({ view: 'mode', lang: 'en', mode: 'supportive' });
     const view = await render(<FileScreen />);
-    const body = view.getByTestId('file-body').props.children as string;
-    expect(body).toContain('Warm. Certain. Unhurried.');
-    expect(body).not.toContain('Very Emotional Robot Assistant');
+    expect(view.getByTestId('file-body').props.children).toBe(MODES.supportive.soul);
+    await view.unmount();
+  });
+
+  it('never shows one register’s document under the other', async () => {
+    useFacilityStore.setState({ view: 'mode', lang: 'en', mode: 'default' });
+    const view = await render(<FileScreen />);
+    const body = view.getByTestId('file-body').props.children;
+    expect(body).toBe(MODES.default.soul);
+    expect(body).not.toBe(MODES.supportive.soul);
     await view.unmount();
   });
 
