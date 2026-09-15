@@ -7,8 +7,7 @@ import type { Strings } from '../../core/i18n';
 // Shaped after ModuleDef deliberately. A mode is one file exporting one of
 // these plus one line in registry.ts, and no shell file names a mode.
 
-// Widened as modes are added. One member now; Task 2 adds 'supportive'.
-export type Mode = 'default';
+export type Mode = 'default' | 'supportive';
 
 export interface ModeDef {
   id: Mode;

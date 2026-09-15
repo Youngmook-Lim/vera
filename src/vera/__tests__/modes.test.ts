@@ -58,3 +58,34 @@ describe('what no mode may reintroduce', () => {
     for (const id of MODE_ORDER) expect(composeSoul(id)).not.toContain('베라');
   });
 });
+
+describe('the modes are actually different people', () => {
+  it('gives every mode its own document and its own label', () => {
+    const souls = new Set(MODE_ORDER.map((id) => MODES[id].soul));
+    const labels = new Set(MODE_ORDER.map((id) => MODES[id].label.en));
+    expect(souls.size).toBe(MODE_ORDER.length);
+    expect(labels.size).toBe(MODE_ORDER.length);
+  });
+
+  // The licence to be unkind about the subject is the one thing that must not
+  // leak across: it is the whole difference between these two.
+  it('keeps the unkindness licence out of the supportive mode', () => {
+    expect(MODES.default.soul).toContain('You may be unkind about the subject themselves');
+    expect(MODES.supportive.soul).not.toContain('You may be unkind');
+    expect(MODES.supportive.soul).toContain('never unkind about the subject');
+  });
+});
+
+// Regenerating these with `npx jest -u` is a deliberate act: a change here is
+// a change to who she is, not a test failure to wave through. Named one by one
+// rather than looped, so that reordering MODE_ORDER cannot silently reassign a
+// snapshot to the wrong mode.
+describe('each register is pinned', () => {
+  it('matches the default document', () => {
+    expect(MODES.default.soul).toMatchSnapshot();
+  });
+
+  it('matches the supportive document', () => {
+    expect(MODES.supportive.soul).toMatchSnapshot();
+  });
+});
