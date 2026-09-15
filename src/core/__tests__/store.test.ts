@@ -1,6 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { RETURN_GAP_MS, useFacilityStore } from '../store';
-import { BANK } from '../../vera/bank';
+import { MODES } from '../../vera/modes/registry';
 import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
@@ -242,7 +242,7 @@ describe('hydrate', () => {
   // without this they would go on being sent to the model until they aged out
   // under LOG_CAP.
   describe('the sweep of lines she was never asked for', () => {
-    const banked = BANK.subject_tapped_your_optic.en[0][1];
+    const banked = MODES.default.bank.subject_tapped_your_optic.en[0][1];
 
     it('drops her stored bank lines and keeps the conversation', async () => {
       await secure.set('sk-ant-api03-xxx');

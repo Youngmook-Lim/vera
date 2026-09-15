@@ -1,46 +1,72 @@
-import { BANK, isBankLine, pick } from '../bank';
+import { isBankLine, pick } from '../bank';
+import { MODES, MODE_ORDER } from '../modes/registry';
 import type { BankTrigger } from '../speak';
 import { isEmotionKey } from '../emotions';
 
-const TRIGGERS: BankTrigger[] = ['open', 'activation', 'subject_tapped_your_optic'];
+const TRIGGERS: BankTrigger[] = ['open', 'activation', 'subject_tapped_your_optic', 'mode_set'];
 
-describe('BANK', () => {
-  it('covers every stimulus she answers without the model, in both languages', () => {
-    for (const trigger of TRIGGERS) {
-      expect(BANK[trigger].en.length).toBeGreaterThan(0);
-      expect(BANK[trigger].ko.length).toBeGreaterThan(0);
+const everyLine = (): string[] =>
+  MODE_ORDER.flatMap((m) =>
+    TRIGGERS.flatMap((t) =>
+      (['en', 'ko'] as const).flatMap((l) => MODES[m].bank[t][l].map(([, line]) => line))));
+
+describe('the bank belongs to the mode', () => {
+  it('covers every stimulus, in both languages, for every mode', () => {
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        expect(MODES[mode].bank[trigger].en.length).toBeGreaterThan(0);
+        expect(MODES[mode].bank[trigger].ko.length).toBeGreaterThan(0);
+      }
     }
   });
 
   it('tags every line with a real emotion and no empty text', () => {
-    for (const trigger of TRIGGERS) {
-      for (const lang of ['en', 'ko'] as const) {
-        for (const [emotion, line] of BANK[trigger][lang]) {
-          expect(isEmotionKey(emotion)).toBe(true);
-          expect(line.trim()).not.toBe('');
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        for (const lang of ['en', 'ko'] as const) {
+          for (const [emotion, line] of MODES[mode].bank[trigger][lang]) {
+            expect(isEmotionKey(emotion)).toBe(true);
+            expect(line.trim()).not.toBe('');
+          }
         }
       }
     }
   });
 
-  // She is never dormant when a bank line is spoken, so no pool may offer the
-  // dormant optic — the eye would go dead mid-greeting.
+  // dormant is the app's dead grey, not a state she may be in.
   it('never offers the dormant state', () => {
-    for (const trigger of TRIGGERS) {
-      for (const lang of ['en', 'ko'] as const) {
-        for (const [emotion] of BANK[trigger][lang]) {
-          expect(emotion).not.toBe('dormant');
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        for (const lang of ['en', 'ko'] as const) {
+          for (const [emotion] of MODES[mode].bank[trigger][lang]) {
+            expect(emotion).not.toBe('dormant');
+          }
         }
       }
     }
   });
+
+  it('never draws one mode\u2019s line for another', () => {
+    for (const mode of MODE_ORDER) {
+      const own = new Set(
+        TRIGGERS.flatMap((t) =>
+          (['en', 'ko'] as const).flatMap((l) => MODES[mode].bank[t][l].map(([, line]) => line))));
+      for (let i = 0; i < 60; i += 1) {
+        expect(own.has(pick('open', 'en', mode).line)).toBe(true);
+      }
+    }
+  });
+
+  it('writes her name in Latin letters in Korean too', () => {
+    for (const line of everyLine()) expect(line).not.toContain('\uBCA0\uB77C');
+  });
 });
+
 
 // SOUL.md's limits are the contract every authored line signs. A bank line
 // that breaks them teaches the subject a register the model is forbidden.
 describe('every line obeys her limits', () => {
-  const lines = TRIGGERS.flatMap((t) =>
-    (['en', 'ko'] as const).flatMap((l) => BANK[t][l].map(([, line]) => line)));
+  const lines = everyLine();
 
   // Three sentences always, four only when they are clipped enough that the
   // line still reads as one thought rather than a paragraph.
@@ -94,70 +120,81 @@ describe('every line obeys her limits', () => {
 
 describe('pick', () => {
   it('answers in the reading language', () => {
-    for (const trigger of TRIGGERS) {
-      expect(pick(trigger, 'ko').line).toMatch(/[가-힣]/);
-      expect(pick(trigger, 'en').line).not.toMatch(/[가-힣]/);
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        expect(pick(trigger, 'ko', mode).line).toMatch(/[가-힣]/);
+        expect(pick(trigger, 'en', mode).line).not.toMatch(/[가-힣]/);
+      }
     }
   });
 
   // A run of taps that stutters the same line reads as a broken app rather
   // than a bored administrator.
   it('never says the same line twice running', () => {
-    for (const trigger of TRIGGERS) {
-      if (BANK[trigger].en.length < 2) continue;
-      let previous = pick(trigger, 'en').line;
-      for (let i = 0; i < 40; i += 1) {
-        const next = pick(trigger, 'en').line;
-        expect(next).not.toBe(previous);
-        previous = next;
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        if (MODES[mode].bank[trigger].en.length < 2) continue;
+        let previous = pick(trigger, 'en', mode).line;
+        for (let i = 0; i < 40; i += 1) {
+          const next = pick(trigger, 'en', mode).line;
+          expect(next).not.toBe(previous);
+          previous = next;
+        }
       }
     }
   });
 
+  // The "not twice running" memory is keyed per mode as well as per trigger,
+  // so alternating registers cannot make either one stutter.
+  it('keeps each mode’s last line apart from the other’s', () => {
+    let previousDefault = pick('open', 'en', 'default').line;
+    for (let i = 0; i < 40; i += 1) {
+      pick('open', 'en', 'supportive');
+      const next = pick('open', 'en', 'default').line;
+      expect(next).not.toBe(previousDefault);
+      previousDefault = next;
+    }
+  });
+
   it('still reaches every line in the pool', () => {
-    const seen = new Set<string>();
-    for (let i = 0; i < 400; i += 1) seen.add(pick('open', 'en').line);
-    expect(seen.size).toBe(BANK.open.en.length);
+    for (const mode of MODE_ORDER) {
+      const seen = new Set<string>();
+      for (let i = 0; i < 400; i += 1) seen.add(pick('open', 'en', mode).line);
+      expect(seen.size).toBe(MODES[mode].bank.open.en.length);
+    }
   });
 
   it('only ever returns a line that is actually in the pool', () => {
-    for (const trigger of TRIGGERS) {
-      for (const lang of ['en', 'ko'] as const) {
-        const lines = BANK[trigger][lang].map(([, line]) => line);
-        for (let i = 0; i < 50; i += 1) {
-          expect(lines).toContain(pick(trigger, lang).line);
+    for (const mode of MODE_ORDER) {
+      for (const trigger of TRIGGERS) {
+        for (const lang of ['en', 'ko'] as const) {
+          const lines = MODES[mode].bank[trigger][lang].map(([, line]) => line);
+          for (let i = 0; i < 50; i += 1) {
+            expect(lines).toContain(pick(trigger, lang, mode).line);
+          }
         }
       }
     }
   });
 });
 
-// Recognising a line she already said, so a transcript written before banked
-// lines stopped being stored can be swept of them. Text identity is the only
-// marker there is: a stored turn records what she said, never why.
+// A line stored before the subject ever switched mode must still be swept from
+// the transcript at hydrate. Deriving this from the ACTIVE mode would silently
+// stop sweeping for anybody who has ever changed register.
 describe('isBankLine', () => {
-  it('knows every line it wrote, in both languages', () => {
-    for (const trigger of Object.keys(BANK) as BankTrigger[]) {
-      for (const lang of ['en', 'ko'] as const) {
-        for (const [, line] of BANK[trigger][lang]) {
-          expect(isBankLine(line)).toBe(true);
-        }
-      }
-    }
+  it('knows every line of every mode, not only the one she is in', () => {
+    for (const line of everyLine()) expect(isBankLine(line)).toBe(true);
   });
 
   it('does not claim a line she was actually asked for', () => {
-    expect(isBankLine('You asked me that on Tuesday as well.')).toBe(false);
+    expect(isBankLine('I have read your message and I have decided against it.')).toBe(false);
     expect(isBankLine('')).toBe(false);
   });
 
-  // Derived from BANK rather than listed again, so a line added there is
-  // recognised without a second edit. This is what says so.
+  // Built from the registry at import, so a line added to any mode is
+  // recognised without a second edit here.
   it('covers the whole bank, not a copy of it', () => {
-    const every = (Object.keys(BANK) as BankTrigger[]).flatMap((t) =>
-      [...BANK[t].en, ...BANK[t].ko].map(([, line]) => line),
-    );
-    expect(every.every(isBankLine)).toBe(true);
-    expect(every.length).toBeGreaterThan(0);
+    expect(everyLine().every(isBankLine)).toBe(true);
+    expect(everyLine().length).toBeGreaterThan(100);
   });
 });

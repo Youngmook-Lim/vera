@@ -4,6 +4,7 @@ import { SUPPORTIVE_MODE } from './supportive';
 import type { Mode, ModeDef } from './types';
 
 export type { Mode, ModeDef };
+export type { BankLine, BankTrigger } from './types';
 
 // Every mode she has. Both consumers — the stage pill and the SYSTEM row —
 // read this, and neither names a mode.

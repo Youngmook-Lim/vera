@@ -602,7 +602,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // Nothing was revealed by a greeting she had already written, and
         // nothing was sent, which is what the inspector reports.
         outcome = {
-          ...pick(trigger, get().lang),
+          ...pick(trigger, get().lang, get().mode),
           notice: null,
           source: 'fallback',
           debug: { system: null, turns: null, raw: null, failure: null },

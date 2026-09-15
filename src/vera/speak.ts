@@ -6,10 +6,13 @@ import { FALLBACK } from './fallback';
 import { fence, quoted } from './fencing';
 import { MEMORY_HEADING } from './memoryDoc';
 import { composeSoul, type Mode } from './modes/registry';
+import type { BankTrigger } from './modes/types';
 
-// The triggers she answers from the authored bank: no network, no context, no
-// impression. Nothing she is told about the moment could change them.
-export type BankTrigger = 'open' | 'activation' | 'subject_tapped_your_optic';
+// The triggers she answers from the authored bank live with the data they
+// index, in modes/types.ts, and are re-exported here so that every existing
+// importer is untouched. See the note there for why they are not declared in
+// this file.
+export type { BankTrigger, BankLine } from './modes/types';
 
 // …and the one that reaches the model. The subject saying something is the
 // only stimulus worth a round trip.
