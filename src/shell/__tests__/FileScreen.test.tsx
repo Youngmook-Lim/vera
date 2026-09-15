@@ -32,11 +32,18 @@ describe('FileScreen', () => {
     await view.unmount();
   });
 
-  it('names that document after the register it belongs to', async () => {
+  // Named as a sibling of SOUL.md, because that is what it is: the same
+  // document's chosen half. Not translated, for the same reason SOUL.md is not.
+  it('names that document as a sibling of SOUL.md', async () => {
     useFacilityStore.setState({ view: 'mode', lang: 'en', mode: 'default' });
     const view = await render(<FileScreen />);
-    expect(view.getByText('DEFAULT V.E.R.A.')).toBeTruthy();
+    expect(view.getByText('SOUL.DEFAULT.md')).toBeTruthy();
     await view.unmount();
+
+    useFacilityStore.setState({ view: 'mode', lang: 'ko', mode: 'supportive' });
+    const ko = await render(<FileScreen />);
+    expect(ko.getByText('SOUL.SUPPORTIVE.md')).toBeTruthy();
+    await ko.unmount();
   });
 });
 

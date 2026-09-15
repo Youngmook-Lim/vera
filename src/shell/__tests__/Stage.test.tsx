@@ -235,7 +235,6 @@ describe('Stage', () => {
     const view = await render(<Stage />);
 
     expect(view.getByText('V.E.R.A.')).toBeTruthy();
-    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
     expect(view.getByText('SUPPORTIVE')).toBeTruthy();
 
     await view.unmount();
@@ -247,7 +246,7 @@ describe('Stage', () => {
     awake({ log: [], apiKey: '' });
     const view = await render(<Stage />);
 
-    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+    expect(view.getByText('V.E.R.A.')).toBeTruthy();
     expect(view.queryByTestId('mode-tag')).toBeNull();
 
     await view.unmount();

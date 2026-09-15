@@ -139,24 +139,36 @@ describe('preferences row', () => {
 // exactly this — was never called. This row is the answer, read at render.
 
 describe('the register row', () => {
+  // Named as a sibling of SOUL.md above it, so the two read as one document in
+  // two halves rather than as a file and a setting.
   it('names the register she is currently in, and opens its document', async () => {
     useFacilityStore.setState({ mode: 'supportive', lang: 'en' });
     const view = await render(<SystemScreen />);
 
-    expect(view.getByText('SUPPORTIVE V.E.R.A.')).toBeTruthy();
+    expect(view.getByText('SOUL.md')).toBeTruthy();
+    expect(view.getByText('SOUL.SUPPORTIVE.md')).toBeTruthy();
     await fireEvent.press(view.getByTestId('tile-mode'));
     expect(useFacilityStore.getState().view).toBe('mode');
 
     await view.unmount();
   });
 
-  // The row reads the mode's own label, so a mode added to the registry needs
-  // no edit in the shell.
-  it('follows the reading language', async () => {
+  it('follows the register she is in', async () => {
+    useFacilityStore.setState({ mode: 'default', lang: 'en' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('SOUL.DEFAULT.md')).toBeTruthy();
+    expect(view.queryByText('SOUL.SUPPORTIVE.md')).toBeNull();
+
+    await view.unmount();
+  });
+
+  // A filename is not copy. SOUL.md is not translated and neither is its half.
+  it('keeps the filename out of the translation', async () => {
     useFacilityStore.setState({ mode: 'supportive', lang: 'ko' });
     const view = await render(<SystemScreen />);
 
-    expect(view.getByText('든든한 V.E.R.A.')).toBeTruthy();
+    expect(view.getByText('SOUL.SUPPORTIVE.md')).toBeTruthy();
 
     await view.unmount();
   });

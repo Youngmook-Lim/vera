@@ -3,16 +3,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { MODES, MODE_ORDER } from '../vera/modes/registry';
-import { T } from './strings';
 
 // The logo, and the register behind it. Her name is the app's identity and is
 // the first thing on the screen, so it is also the most reachable control on
 // it: the register is the one setting worth changing mid-conversation, and
 // SYSTEM is three taps away.
 //
-// The whole cluster is one tap target — wordmark, expansion and tag together —
+// The whole cluster is one tap target — pulse, wordmark and tag together —
 // because they read as one object and picking a smaller target out of them
-// would be a worse thing to hit than the thing it sits in.
+// would be a worse thing to hit than the thing it sits in. Her pulse is in
+// there too: it is her emotion rather than a control, but a dead spot in the
+// middle of a tap target is worse than a dot that opens the picker.
 //
 // The open flag lives in the store beside cabinetOpen and keyPanelOpen so that
 // hardware back closes the bubble first, but the bubble renders HERE rather
@@ -23,10 +24,9 @@ import { T } from './strings';
 // Choosing is the whole interaction. setMode writes, closes this, and hands her
 // a line out of the new mode's bank, so the change is heard at the moment it is
 // made rather than on the next message.
-// `leading` goes INSIDE the title row rather than beside the whole component:
-// the logo is two lines, and anything centred against the block sits halfway
-// down it, level with neither line. The stage passes her pulse dot, which
-// belongs level with her name.
+// `leading` goes INSIDE the title row rather than beside the whole component,
+// so flex centring aligns it with the wordmark and the tag rather than with
+// whatever the block happens to contain. The stage passes her pulse dot.
 export function ModePicker({ leading }: { leading?: ReactNode }) {
   const lang = useFacilityStore((s) => s.lang);
   const mode = useFacilityStore((s) => s.mode);
@@ -74,10 +74,6 @@ export function ModePicker({ leading }: { leading?: ReactNode }) {
             </View>
           ) : null}
         </View>
-        {/* Her name, spelled out. Always English — see the note in strings.ts. */}
-        <Text style={[styles.expansion, { fontFamily: font('mono', 500, lang) }]}>
-          {T[lang].veraFull}
-        </Text>
       </Pressable>
 
       {open ? (
@@ -142,12 +138,6 @@ const styles = StyleSheet.create({
   tag: {
     fontSize: ms(6.5),
     letterSpacing: ms(6.5) * 0.18,
-  },
-  expansion: {
-    marginTop: 3,
-    fontSize: ms(6.5),
-    letterSpacing: ms(6.5) * 0.14,
-    color: palette.textGhost,
   },
   // Reaches well past the logo in every direction: it sits in the top-left
   // corner, so a backdrop bounded by its own parent would leave almost the

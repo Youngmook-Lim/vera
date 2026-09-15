@@ -24,22 +24,11 @@ beforeEach(() => {
 });
 
 describe('the logo', () => {
-  it('spells her name out underneath the wordmark', async () => {
+  it('is her name and nothing under it', async () => {
     const view = await render(<ModePicker />);
 
     expect(view.getByText('V.E.R.A.')).toBeTruthy();
-    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
-
-    await view.unmount();
-  });
-
-  // The acronym is English, so its expansion is too. Expanding it in Korean
-  // would be expanding a different acronym.
-  it('keeps the expansion in English whatever the interface is set to', async () => {
-    useFacilityStore.setState({ lang: 'ko' });
-    const view = await render(<ModePicker />);
-
-    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+    expect(view.queryByText('Very Emotional Robot Assistant')).toBeNull();
 
     await view.unmount();
   });
@@ -106,9 +95,6 @@ describe('the logo', () => {
     expect(row.getByText('V.E.R.A.')).toBeTruthy();
     expect(row.getByTestId('mode-tag-pill')).toBeTruthy();
 
-    // The expansion is the second line and must stay out of that row.
-    expect(row.queryByText('Very Emotional Robot Assistant')).toBeNull();
-
     await view.unmount();
   });
 
@@ -130,11 +116,10 @@ describe('the logo', () => {
 describe('before she is awake', () => {
   beforeEach(() => useFacilityStore.setState({ apiKey: '' }));
 
-  it('still spells out her name', async () => {
+  it('still carries her name', async () => {
     const view = await render(<ModePicker />);
 
     expect(view.getByText('V.E.R.A.')).toBeTruthy();
-    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
 
     await view.unmount();
   });

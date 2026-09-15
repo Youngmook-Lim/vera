@@ -5,7 +5,7 @@ import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import type { Memory } from '../vera/memory';
-import { MODES } from '../vera/modes/registry';
+import { MODES, soulDocName } from '../vera/modes/registry';
 import { CORE_SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
@@ -202,7 +202,7 @@ export function FileScreen() {
     // The chosen half, named after the register it belongs to rather than
     // after a file, because that is what the subject picked on the stage.
     : view === 'mode'
-    ? { name: MODES[mode].label[lang], meta: t.modeSub, body: MODES[mode].soul, footer: t.everyReply }
+    ? { name: soulDocName(mode), meta: t.modeSub, body: MODES[mode].soul, footer: t.everyReply }
     : view === 'prompt'
       ? {
         name: 'PROMPT',
