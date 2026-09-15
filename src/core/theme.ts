@@ -44,6 +44,16 @@ export const palette = {
   dangerSoft: '#ff6a5a',
   sealed: '#9d8757',
 
+  // Her two registers, worn by the tag beside the wordmark and by each choice
+  // in the picker. Each is the iris of the state that register is most often
+  // in: calm's amber for the default, affectionate's rose for the supportive.
+  // Kept here rather than in the ModeDef so that every hex in the app is still
+  // in one file; a new mode adds a key here and a folder in vera/modes.
+  mode: {
+    default: '#f4b43a', // = amber, and calm's iris
+    supportive: '#ef8f8a', // = affectionate's iris
+  },
+
   // module 01 — the terrarium owns every pixel inside its frame
   organism: {
     bg: '#0c110e',

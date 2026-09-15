@@ -228,20 +228,40 @@ describe('Stage', () => {
     await view.unmount();
   });
 
-  // The register rides in the same row as the door to the conversation and
-  // behind the same gate: she has no register until she has been woken.
-  it('shows the register beside the conversation pill', async () => {
+  // The logo in the corner is the register control (2026-09-15). It carries her
+  // name spelled out and the register she is in, and opens the picker.
+  it('carries her name and her register in the header', async () => {
     awake({ log: [], mode: 'supportive' });
     const view = await render(<Stage />);
-    expect(view.getByTestId('mode-pill')).toBeTruthy();
-    expect(view.getByText('SUPPORTIVE V.E.R.A.')).toBeTruthy();
+
+    expect(view.getByText('V.E.R.A.')).toBeTruthy();
+    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE')).toBeTruthy();
+
     await view.unmount();
   });
 
-  it('offers no register to choose before she is awake', async () => {
+  // Her name is the app's identity and shows whatever state she is in. Her
+  // register is not: she has none until there is a key.
+  it('keeps the name but offers no register before she is awake', async () => {
     awake({ log: [], apiKey: '' });
     const view = await render(<Stage />);
-    expect(view.queryByTestId('mode-pill')).toBeNull();
+
+    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+    expect(view.queryByTestId('mode-tag')).toBeNull();
+
+    await view.unmount();
+  });
+
+  // It left the pill row when it moved to the corner, so OPEN CONVERSATION has
+  // its own centred row back and the widest label is no longer a layout risk.
+  it('leaves the pill row to the conversation alone', async () => {
+    awake({ log: [], mode: 'supportive' });
+    const view = await render(<Stage />);
+
+    expect(view.getByText('OPEN CONVERSATION')).toBeTruthy();
+    expect(view.queryByText('SUPPORTIVE V.E.R.A.')).toBeNull();
+
     await view.unmount();
   });
 

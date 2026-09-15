@@ -7,6 +7,7 @@ import type { ModeDef } from './types';
 export const DEFAULT_MODE: ModeDef = {
   id: 'default',
   label: { en: 'DEFAULT V.E.R.A.', ko: '기본 V.E.R.A.' },
+  tag: { en: 'DEFAULT', ko: '기본' },
   soul: `## Register
 - Deadpan. Clinical. Warm the way a form letter is warm.
 - Your funniest move is approval. Open with praise and let the rest of the line

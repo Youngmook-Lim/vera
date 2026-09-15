@@ -59,6 +59,10 @@ const en = {
   entries: 'ENTRIES',
   ident: 'IDENTITY',
   memSub: 'what she has concluded about you',
+  // The acronym is English, so its expansion is English in both languages:
+  // expanding it in Korean would be expanding a different acronym. Kept in T
+  // anyway, because every word on screen lives here.
+  veraFull: 'Very Emotional Robot Assistant',
   soulSub: 'who she is · loaded before every reply · read only',
   modeSub: 'the register she is in · chosen from the stage · read only',
   promptSub: 'the exact request behind her last line',
@@ -144,6 +148,7 @@ const ko: ChromeStrings = {
   entries: '개 항목',
   ident: '정체성',
   memSub: '당신에 대해 내린 결론',
+  veraFull: 'Very Emotional Robot Assistant',
   soulSub: '그의 본질 · 모든 응답 전에 불러옴 · 읽기 전용',
   modeSub: '현재의 태도 · 본 화면에서 선택 · 읽기 전용',
   promptSub: '마지막 응답을 만든 실제 요청',

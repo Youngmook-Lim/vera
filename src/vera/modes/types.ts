@@ -26,9 +26,12 @@ export type Mode = 'default' | 'supportive';
 
 export interface ModeDef {
   id: Mode;
-  // What the stage pill and the SYSTEM row show. Carried here rather than in
-  // shell/strings.ts so that adding a mode touches one folder.
+  // The full name, for the SYSTEM row and the picker. Carried here rather than
+  // in shell/strings.ts so that adding a mode touches one folder.
   label: Strings<string>;
+  // The short name, for the tag beside the wordmark — where `label` would read
+  // as "V.E.R.A. SUPPORTIVE V.E.R.A.".
+  tag: Strings<string>;
   // This mode's half of the document. It owns its own headings; composeSoul
   // adds nothing.
   soul: string;

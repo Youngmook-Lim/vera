@@ -356,9 +356,13 @@ export function Stage() {
       onTouchStart={(e) => aim(e.nativeEvent.pageX, e.nativeEvent.pageY)}
     >
       <View style={styles.header}>
+        {/* The logo IS the register control (2026-09-15). Her name, spelled
+            out under it, and the register she is in beside it — one tap
+            target, opening the picker's bubble under the corner it sits in.
+            The pulse stays out of it: that is her emotion, not a control. */}
         <View style={styles.headerLeft}>
           <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />
-          <Text style={[styles.wordmark, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
+          <ModePicker />
         </View>
         {awake ? (
           // Three drawn dots, not a "•••" glyph — the design sets them at 3px
@@ -388,10 +392,6 @@ export function Stage() {
             </View>
             <Text style={[styles.pillText, { fontFamily: font('mono', 500, lang) }]}>{t.conv}</Text>
           </Pressable>
-          {/* Her register, beside the door to the conversation, because both
-              are things you reach for mid-sentence. Gated with its neighbour on
-              the key: she has no register until she has been woken. */}
-          <ModePicker />
         </View>
       ) : null}
 
@@ -584,13 +584,11 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    // The logo is two lines now, so the pulse rides with the wordmark rather
+    // than floating in the middle of the block.
+    alignItems: 'flex-start',
+    paddingTop: 2,
     gap: 8,
-  },
-  wordmark: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.22,
-    color: palette.textDim,
   },
   headerDots: {
     flexDirection: 'row',
@@ -607,10 +605,7 @@ const styles = StyleSheet.create({
   },
   // `padding:15px 0 0`, centred
   pillRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
     paddingTop: 15,
   },
   pill: {

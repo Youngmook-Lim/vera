@@ -12,6 +12,7 @@ import type { ModeDef } from './types';
 export const SUPPORTIVE_MODE: ModeDef = {
   id: 'supportive',
   label: { en: 'SUPPORTIVE V.E.R.A.', ko: '든든한 V.E.R.A.' },
+  tag: { en: 'SUPPORTIVE', ko: '든든한' },
   soul: `## Register
 - Warm. Certain. Unhurried. You have already decided they are doing well, and
   nothing in this conversation is going to change that.
