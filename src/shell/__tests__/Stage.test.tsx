@@ -228,6 +228,23 @@ describe('Stage', () => {
     await view.unmount();
   });
 
+  // The register rides in the same row as the door to the conversation and
+  // behind the same gate: she has no register until she has been woken.
+  it('shows the register beside the conversation pill', async () => {
+    awake({ log: [], mode: 'supportive' });
+    const view = await render(<Stage />);
+    expect(view.getByTestId('mode-pill')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE V.E.R.A.')).toBeTruthy();
+    await view.unmount();
+  });
+
+  it('offers no register to choose before she is awake', async () => {
+    awake({ log: [], apiKey: '' });
+    const view = await render(<Stage />);
+    expect(view.queryByTestId('mode-pill')).toBeNull();
+    await view.unmount();
+  });
+
   // With the keyboard up the stage has three things worth the height — the
   // eye, her window and the box being typed into — and the cabinet handle is
   // not one of them. It cannot be reached while typing anyway.

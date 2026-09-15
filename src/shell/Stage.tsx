@@ -24,6 +24,7 @@ import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif, voice } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
+import { ModePicker } from './ModePicker';
 import { Optic } from './Optic';
 import { gazeFor } from './opticGeometry';
 import { useKeyboardState } from 'react-native-keyboard-controller';
@@ -387,6 +388,10 @@ export function Stage() {
             </View>
             <Text style={[styles.pillText, { fontFamily: font('mono', 500, lang) }]}>{t.conv}</Text>
           </Pressable>
+          {/* Her register, beside the door to the conversation, because both
+              are things you reach for mid-sentence. Gated with its neighbour on
+              the key: she has no register until she has been woken. */}
+          <ModePicker />
         </View>
       ) : null}
 
@@ -602,7 +607,10 @@ const styles = StyleSheet.create({
   },
   // `padding:15px 0 0`, centred
   pillRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
     paddingTop: 15,
   },
   pill: {
