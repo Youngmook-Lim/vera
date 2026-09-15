@@ -581,13 +581,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
+    // The register bubble hangs out of this row and over the conversation pill
+    // in the row below. Siblings paint in tree order, so without this the
+    // bubble opens behind the pill however high its own zIndex is.
+    zIndex: 30,
+    elevation: 30,
   },
   headerLeft: {
     flexDirection: 'row',
-    // The logo is two lines now, so the pulse rides with the wordmark rather
-    // than floating in the middle of the block.
-    alignItems: 'flex-start',
-    paddingTop: 2,
+    alignItems: 'center',
     gap: 8,
   },
   headerDots: {

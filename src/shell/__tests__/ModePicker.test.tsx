@@ -67,14 +67,28 @@ describe('the logo', () => {
   // amber for the default, affectionate's rose for the supportive.
   it('paints the tag in that register’s own colour', async () => {
     const view = await render(<ModePicker />);
-    expect(flat(view.getByTestId('mode-tag').props.style).color).toBe(palette.mode.default);
+    expect(flat(view.getByTestId('mode-tag').props.style).color).toBe(palette.mode.default.ink);
     await view.unmount();
 
     useFacilityStore.setState({ mode: 'supportive' });
     const supportive = await render(<ModePicker />);
     expect(flat(supportive.getByTestId('mode-tag').props.style).color)
-      .toBe(palette.mode.supportive);
+      .toBe(palette.mode.supportive.ink);
     await supportive.unmount();
+  });
+
+  // A pill of its own, filled and edged in the register's colour, so it reads
+  // as a badge she is wearing rather than a second word of her name.
+  it('sits the tag in a pill wearing that colour', async () => {
+    useFacilityStore.setState({ mode: 'supportive' });
+    const view = await render(<ModePicker />);
+
+    const pill = flat(view.getByTestId('mode-tag-pill').props.style);
+    expect(pill.backgroundColor).toBe(palette.mode.supportive.wash);
+    expect(pill.borderColor).toBe(palette.mode.supportive.edge);
+    expect(pill.borderRadius).toBeGreaterThan(0);
+
+    await view.unmount();
   });
 
   // The flag is the store's, not this component's, so hardware back can close
@@ -131,7 +145,7 @@ describe('the bubble', () => {
     const view = await render(<ModePicker />);
 
     expect(flat(view.getByTestId('mode-choice-supportive').props.style).borderLeftColor)
-      .toBe(palette.mode.supportive);
+      .toBe(palette.mode.supportive.ink);
 
     await view.unmount();
   });
@@ -150,6 +164,21 @@ describe('the bubble', () => {
     await fireEvent.press(view.getByTestId('mode-choice-supportive'));
 
     expect(useFacilityStore.getState().mode).toBe('supportive');
+
+    await view.unmount();
+  });
+
+  // The bubble hangs out of the header and over the row below it, which holds
+  // the conversation pill. Later siblings paint on top in React Native, so
+  // without both of these the bubble opens BEHIND the pill — and nothing but a
+  // device can see that happen.
+  it('paints over what is under the header', async () => {
+    useFacilityStore.setState({ modePickerOpen: true });
+    const view = await render(<ModePicker />);
+
+    const bubble = flat(view.getByTestId('mode-bubble').props.style);
+    expect(bubble.zIndex).toBeGreaterThan(0);
+    expect(bubble.elevation).toBeGreaterThan(0);
 
     await view.unmount();
   });

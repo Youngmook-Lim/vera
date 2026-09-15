@@ -47,15 +47,26 @@ export function ModePicker() {
         <View style={styles.titleRow}>
           <Text style={[styles.wordmark, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
           {awake ? (
-            <Text
-              testID="mode-tag"
+            <View
+              testID="mode-tag-pill"
               style={[
-                styles.tag,
-                { fontFamily: font('mono', 600, lang), color: palette.mode[mode] },
+                styles.tagPill,
+                {
+                  backgroundColor: palette.mode[mode].wash,
+                  borderColor: palette.mode[mode].edge,
+                },
               ]}
             >
-              {MODES[mode].tag[lang]}
-            </Text>
+              <Text
+                testID="mode-tag"
+                style={[
+                  styles.tag,
+                  { fontFamily: font('mono', 600, lang), color: palette.mode[mode].ink },
+                ]}
+              >
+                {MODES[mode].tag[lang]}
+              </Text>
+            </View>
           ) : null}
         </View>
         {/* Her name, spelled out. Always English — see the note in strings.ts. */}
@@ -82,14 +93,14 @@ export function ModePicker() {
                 testID={`mode-choice-${id}`}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: id === mode }}
-                style={[styles.choice, { borderLeftColor: palette.mode[id] }]}
+                style={[styles.choice, { borderLeftColor: palette.mode[id].ink }]}
                 onPress={() => void setMode(id)}
               >
                 <Text
                   style={[
                     styles.choiceText,
                     { fontFamily: font('mono', 500, lang) },
-                    id === mode ? { color: palette.mode[id] } : null,
+                    id === mode ? { color: palette.mode[id].ink } : null,
                   ]}
                 >
                   {MODES[id].label[lang]}
@@ -115,11 +126,17 @@ const styles = StyleSheet.create({
     letterSpacing: ms(8.5) * 0.22,
     color: palette.textDim,
   },
-  // Smaller than the wordmark and in the register's colour, so it reads as a
-  // state of hers rather than a second half of her name.
+  // A badge she is wearing, not a second word of her name: filled and edged in
+  // the register's own colour, on the SEND button's wash-and-edge idiom.
+  tagPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
   tag: {
-    fontSize: ms(7),
-    letterSpacing: ms(7) * 0.22,
+    fontSize: ms(6.5),
+    letterSpacing: ms(6.5) * 0.18,
   },
   expansion: {
     marginTop: 3,
@@ -136,6 +153,8 @@ const styles = StyleSheet.create({
     left: -1000,
     right: -1000,
     bottom: -1000,
+    zIndex: 29,
+    elevation: 29,
   },
   // Left-aligned under the logo rather than centred, because the thing it
   // belongs to is in the corner.
@@ -144,6 +163,14 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     marginTop: 10,
+    // It hangs out of the header and over the conversation pill below it.
+    // Later siblings paint on top in React Native, so both of these are
+    // load-bearing — zIndex for the JS-side order, elevation because Android
+    // stacks by elevation regardless of it — and so is the header's own zIndex
+    // in Stage, without which nothing inside the header can rise above a later
+    // sibling at all.
+    zIndex: 30,
+    elevation: 30,
     minWidth: 190,
     paddingVertical: 6,
     borderRadius: 14,
