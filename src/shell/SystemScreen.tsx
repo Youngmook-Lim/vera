@@ -8,6 +8,7 @@ import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
 import { BatteryRow } from './BatteryRow';
+import { MODES } from '../vera/modes/registry';
 import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
@@ -45,6 +46,7 @@ function SectionLabel({ text, lang, first }: { text: string; lang: Lang; first?:
 export function SystemScreen() {
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
+  const mode = useFacilityStore((s) => s.mode);
   const apiKey = useFacilityStore((s) => s.apiKey);
   const memory = useFacilityStore((s) => s.memory);
   const authFails = useFacilityStore((s) => s.authFails);
@@ -94,6 +96,23 @@ export function SystemScreen() {
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {t.soulSub}
+              </Text>
+            </View>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
+          </Pressable>
+
+          {/* Her register, read from the mode itself. SOUL.md above is the
+              core document every mode is written against; this is the half
+              that was chosen, and it is the subject's to change from the
+              stage. Named by the mode's own label, so a mode added to the
+              registry needs no edit here. */}
+          <Pressable testID="tile-mode" style={styles.tile} onPress={() => setView('mode')}>
+            <View style={styles.tileText}>
+              <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
+                {MODES[mode].label[lang]}
+              </Text>
+              <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
+                {t.modeSub}
               </Text>
             </View>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>

@@ -21,7 +21,7 @@ import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
-export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | ModuleId;
+export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'mode' | 'prompt' | ModuleId;
 
 // `system` is the app speaking, not her, rendered in danger red and a mono
 // face so it cannot be mistaken for a line of hers. Both codes are
@@ -362,7 +362,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ cabinetOpen: false });
       return true;
     }
-    if (s.view === 'mem' || s.view === 'soul' || s.view === 'prompt') {
+    if (s.view === 'mem' || s.view === 'soul' || s.view === 'mode' || s.view === 'prompt') {
       set({ view: 'sys' });
       return true;
     }

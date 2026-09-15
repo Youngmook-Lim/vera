@@ -5,6 +5,7 @@ import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import type { Memory } from '../vera/memory';
+import { MODES } from '../vera/modes/registry';
 import { CORE_SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
@@ -179,6 +180,7 @@ export function FileScreen() {
   const insets = useSafeAreaInsets();
   const view = useFacilityStore((s) => s.view);
   const lang = useFacilityStore((s) => s.lang);
+  const mode = useFacilityStore((s) => s.mode);
   const memory = useFacilityStore((s) => s.memory);
   const confirmingWipe = useFacilityStore((s) => s.confirmingWipe);
   const setConfirmingWipe = useFacilityStore((s) => s.setConfirmingWipe);
@@ -197,6 +199,10 @@ export function FileScreen() {
   // there is more than one axis of difference between them.
   const doc = view === 'soul'
     ? { name: 'SOUL.md', meta: t.soulSub, body: CORE_SOUL_MD, footer: t.everyReply }
+    // The chosen half, named after the register it belongs to rather than
+    // after a file, because that is what the subject picked on the stage.
+    : view === 'mode'
+    ? { name: MODES[mode].label[lang], meta: t.modeSub, body: MODES[mode].soul, footer: t.everyReply }
     : view === 'prompt'
       ? {
         name: 'PROMPT',

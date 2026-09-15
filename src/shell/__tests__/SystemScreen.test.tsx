@@ -137,3 +137,27 @@ describe('preferences row', () => {
 // The rotation sat stuck for weeks with nothing on any screen to say so: the
 // swap swallowed its own failures, and `getIcon` — which exists to answer
 // exactly this — was never called. This row is the answer, read at render.
+
+describe('the register row', () => {
+  it('names the register she is currently in, and opens its document', async () => {
+    useFacilityStore.setState({ mode: 'supportive', lang: 'en' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('SUPPORTIVE V.E.R.A.')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('tile-mode'));
+    expect(useFacilityStore.getState().view).toBe('mode');
+
+    await view.unmount();
+  });
+
+  // The row reads the mode's own label, so a mode added to the registry needs
+  // no edit in the shell.
+  it('follows the reading language', async () => {
+    useFacilityStore.setState({ mode: 'supportive', lang: 'ko' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('든든한 V.E.R.A.')).toBeTruthy();
+
+    await view.unmount();
+  });
+});

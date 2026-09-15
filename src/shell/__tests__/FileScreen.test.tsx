@@ -11,6 +11,33 @@ describe('FileScreen', () => {
     expect(view.getByTestId('file-body').props.children).toContain('# SOUL.md');
     await view.unmount();
   });
+
+  // The two documents are shown apart because they ARE apart: the core is what
+  // every mode is written against, and the mode is the half that was chosen.
+  it('shows the core document alone under SOUL.md', async () => {
+    useFacilityStore.setState({ view: 'soul', lang: 'en', mode: 'supportive' });
+    const view = await render(<FileScreen />);
+    const body = view.getByTestId('file-body').props.children as string;
+    expect(body).toContain('Very Emotional Robot Assistant');
+    expect(body).not.toContain('Warm. Certain. Unhurried.');
+    await view.unmount();
+  });
+
+  it('shows the active register’s document under its own row', async () => {
+    useFacilityStore.setState({ view: 'mode', lang: 'en', mode: 'supportive' });
+    const view = await render(<FileScreen />);
+    const body = view.getByTestId('file-body').props.children as string;
+    expect(body).toContain('Warm. Certain. Unhurried.');
+    expect(body).not.toContain('Very Emotional Robot Assistant');
+    await view.unmount();
+  });
+
+  it('names that document after the register it belongs to', async () => {
+    useFacilityStore.setState({ view: 'mode', lang: 'en', mode: 'default' });
+    const view = await render(<FileScreen />);
+    expect(view.getByText('DEFAULT V.E.R.A.')).toBeTruthy();
+    await view.unmount();
+  });
 });
 
 const MEMORY = {
