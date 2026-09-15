@@ -42,7 +42,7 @@ describe('SystemScreen', () => {
   it('lists both her files', async () => {
     const view = await render(<SystemScreen />);
     expect(view.getByText('RECORD')).toBeTruthy();
-    expect(view.getByText('SOUL.md')).toBeTruthy();
+    expect(view.getByText('CORE_SOUL_MD')).toBeTruthy();
   });
 
   it('opens a file', async () => {
@@ -137,3 +137,39 @@ describe('preferences row', () => {
 // The rotation sat stuck for weeks with nothing on any screen to say so: the
 // swap swallowed its own failures, and `getIcon` — which exists to answer
 // exactly this — was never called. This row is the answer, read at render.
+
+describe('the register row', () => {
+  // Named after the constant it actually is, like CORE_SOUL_MD above it, so
+  // the two read as one document in two halves.
+  it('names the register she is currently in, and opens its document', async () => {
+    useFacilityStore.setState({ mode: 'supportive', lang: 'en' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('CORE_SOUL_MD')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE_SOUL_MD')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('tile-mode'));
+    expect(useFacilityStore.getState().view).toBe('mode');
+
+    await view.unmount();
+  });
+
+  it('follows the register she is in', async () => {
+    useFacilityStore.setState({ mode: 'default', lang: 'en' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('DEFAULT_SOUL_MD')).toBeTruthy();
+    expect(view.queryByText('SUPPORTIVE_SOUL_MD')).toBeNull();
+
+    await view.unmount();
+  });
+
+  // An identifier is not copy, so it does not translate.
+  it('keeps the identifier out of the translation', async () => {
+    useFacilityStore.setState({ mode: 'supportive', lang: 'ko' });
+    const view = await render(<SystemScreen />);
+
+    expect(view.getByText('SUPPORTIVE_SOUL_MD')).toBeTruthy();
+
+    await view.unmount();
+  });
+});

@@ -24,6 +24,7 @@ import { useFacilityStore } from '../core/store';
 import { font, ms, palette, serif, voice } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
+import { ModePicker } from './ModePicker';
 import { Optic } from './Optic';
 import { gazeFor } from './opticGeometry';
 import { useKeyboardState } from 'react-native-keyboard-controller';
@@ -355,10 +356,13 @@ export function Stage() {
       onTouchStart={(e) => aim(e.nativeEvent.pageX, e.nativeEvent.pageY)}
     >
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />
-          <Text style={[styles.wordmark, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
-        </View>
+        {/* The logo IS the register control (2026-09-15). Her name, spelled
+            out under it, and the register she is in beside it — one tap
+            target, opening the picker's bubble under the corner it sits in.
+            Her pulse rides in the picker's own title row rather than beside
+            the whole logo, or it would sit halfway down two lines of text and
+            be level with neither. */}
+        <ModePicker leading={<PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />} />
         {awake ? (
           // Three drawn dots, not a "•••" glyph — the design sets them at 3px
           // with a 3px gap, which no bullet run reproduces.
@@ -576,16 +580,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  wordmark: {
-    fontSize: ms(8.5),
-    letterSpacing: ms(8.5) * 0.22,
-    color: palette.textDim,
+    // The register bubble hangs out of this row and over the conversation pill
+    // in the row below. Siblings paint in tree order, so without this the
+    // bubble opens behind the pill however high its own zIndex is.
+    zIndex: 30,
+    elevation: 30,
   },
   headerDots: {
     flexDirection: 'row',

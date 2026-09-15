@@ -228,6 +228,42 @@ describe('Stage', () => {
     await view.unmount();
   });
 
+  // The logo in the corner is the register control (2026-09-15). It carries her
+  // name spelled out and the register she is in, and opens the picker.
+  it('carries her name and her register in the header', async () => {
+    awake({ log: [], mode: 'supportive' });
+    const view = await render(<Stage />);
+
+    expect(view.getByText('V.E.R.A.')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE')).toBeTruthy();
+
+    await view.unmount();
+  });
+
+  // Her name is the app's identity and shows whatever state she is in. Her
+  // register is not: she has none until there is a key.
+  it('keeps the name but offers no register before she is awake', async () => {
+    awake({ log: [], apiKey: '' });
+    const view = await render(<Stage />);
+
+    expect(view.getByText('V.E.R.A.')).toBeTruthy();
+    expect(view.queryByTestId('mode-tag')).toBeNull();
+
+    await view.unmount();
+  });
+
+  // It left the pill row when it moved to the corner, so OPEN CONVERSATION has
+  // its own centred row back and the widest label is no longer a layout risk.
+  it('leaves the pill row to the conversation alone', async () => {
+    awake({ log: [], mode: 'supportive' });
+    const view = await render(<Stage />);
+
+    expect(view.getByText('OPEN CONVERSATION')).toBeTruthy();
+    expect(view.queryByText('SUPPORTIVE V.E.R.A.')).toBeNull();
+
+    await view.unmount();
+  });
+
   // With the keyboard up the stage has three things worth the height — the
   // eye, her window and the box being typed into — and the cabinet handle is
   // not one of them. It cannot be reached while typing anyway.

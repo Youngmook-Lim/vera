@@ -5,6 +5,7 @@ import type { EmotionKey } from '../vera/emotions';
 import { AuthError, QuotaError } from '../vera/llm';
 import type { Turn } from '../vera/messages';
 import type { SystemCode } from './store';
+import type { Mode } from '../vera/modes/registry';
 import { buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../vera/speak';
 
 export interface SpeechDeps {
@@ -12,6 +13,7 @@ export interface SpeechDeps {
   said: string;
   turns: Turn[];
   lang: Lang;
+  mode: Mode;
   context: SpeakContext;
   memoryMd: string;
   call: (system: string, turns: Turn[]) => Promise<string>;
@@ -54,7 +56,7 @@ export interface SpeechOutcome {
 // only by `subject_spoke` — the other three stimuli are answered from the
 // bank and never come through here.
 export const runSpeech = async (deps: SpeechDeps): Promise<SpeechOutcome> => {
-  const system = buildSystemPrompt(deps.lang, deps.memoryMd);
+  const system = buildSystemPrompt(deps.lang, deps.memoryMd, deps.mode);
   const user = buildUserPrompt(deps.said, deps.context);
   // The current input is already the last turn when the subject spoke; the user
   // prompt carries only the situational CONTEXT alongside it. When it is not —

@@ -71,7 +71,7 @@ test('sys is the SYSTEM screen now, not a placeholder', async () => {
   useFacilityStore.setState({ view: 'sys' });
   const { getByText, queryByText } = await render(<ScreenRouter />);
   expect(getByText('RECORD')).toBeTruthy();
-  expect(getByText('SOUL.md')).toBeTruthy();
+  expect(getByText('CORE_SOUL_MD')).toBeTruthy();
   expect(queryByText('DORMANT')).toBeNull();
 });
 
@@ -83,7 +83,7 @@ test('both documents come out of one screen', async () => {
 
   useFacilityStore.setState({ view: 'soul' });
   const soul = await render(<ScreenRouter />);
-  expect(soul.getByText('SOUL.md')).toBeTruthy();
+  expect(soul.getByText('CORE_SOUL_MD')).toBeTruthy();
 });
 
 test('the rooms come from the registry', async () => {

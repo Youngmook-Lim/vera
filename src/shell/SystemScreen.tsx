@@ -8,6 +8,7 @@ import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
 import { BatteryRow } from './BatteryRow';
+import { soulConstName } from '../vera/modes/registry';
 import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
@@ -45,6 +46,7 @@ function SectionLabel({ text, lang, first }: { text: string; lang: Lang; first?:
 export function SystemScreen() {
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
+  const mode = useFacilityStore((s) => s.mode);
   const apiKey = useFacilityStore((s) => s.apiKey);
   const memory = useFacilityStore((s) => s.memory);
   const authFails = useFacilityStore((s) => s.authFails);
@@ -90,10 +92,29 @@ export function SystemScreen() {
           <Pressable style={styles.tile} onPress={() => setView('soul')}>
             <View style={styles.tileText}>
               <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
-                SOUL.md
+                CORE_SOUL_MD
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {t.soulSub}
+              </Text>
+            </View>
+            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
+          </Pressable>
+
+          {/* Her register. SOUL.md above is the core document every mode is
+              written against; this is the half that was chosen, and it is the
+              subject's to change from the logo on the stage. Named as a
+              sibling of it — SOUL.SUPPORTIVE.md — so the two read as one
+              document in two halves rather than as a file and a setting, and
+              derived from the mode id, so a mode added to the registry needs
+              no edit here. */}
+          <Pressable testID="tile-mode" style={styles.tile} onPress={() => setView('mode')}>
+            <View style={styles.tileText}>
+              <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
+                {soulConstName(mode)}
+              </Text>
+              <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
+                {t.modeSub}
               </Text>
             </View>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>

@@ -5,11 +5,14 @@ import { EMOTIONS, isEmotionKey, type EmotionKey } from './emotions';
 import { FALLBACK } from './fallback';
 import { fence, quoted } from './fencing';
 import { MEMORY_HEADING } from './memoryDoc';
-import { SOUL_MD } from './soul';
+import { composeSoul, type Mode } from './modes/registry';
+import type { BankTrigger } from './modes/types';
 
-// The triggers she answers from the authored bank: no network, no context, no
-// impression. Nothing she is told about the moment could change them.
-export type BankTrigger = 'open' | 'activation' | 'subject_tapped_your_optic';
+// The triggers she answers from the authored bank live with the data they
+// index, in modes/types.ts, and are re-exported here so that every existing
+// importer is untouched. See the note there for why they are not declared in
+// this file.
+export type { BankTrigger, BankLine } from './modes/types';
 
 // …and the one that reaches the model. The subject saying something is the
 // only stimulus worth a round trip.
@@ -43,11 +46,14 @@ export const SPEAKABLE_EMOTIONS: EmotionKey[] =
 // so memoryDoc.ts stays the one place this section is named.
 const MEMORY_LABEL = MEMORY_HEADING.replace(/^#+\s*/, '');
 
-export const buildSystemPrompt = (lang: Lang, memoryMd: string): string =>
+export const buildSystemPrompt = (lang: Lang, memoryMd: string, mode: Mode): string =>
   [
     'This is your SOUL.md. It defines who you are. Follow it exactly, in every reply.',
     '',
-    fence('SOUL.md', SOUL_MD),
+    // Core and the chosen mode, inside ONE fence. The prompt names no mode and
+    // carries no word for "register": she is not told she is configurable, so
+    // each mode is who she is rather than a part she has been given.
+    fence('SOUL.md', composeSoul(mode)),
     '',
     // After SOUL.md, always: a provider-side prompt cache only helps if the
     // static document is the stable prefix (continuity §2). Everything above

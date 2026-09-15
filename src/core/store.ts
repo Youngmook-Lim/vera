@@ -12,6 +12,7 @@ import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages, type Turn } from '../vera/messages';
+import { isMode, type Mode } from '../vera/modes/registry';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
@@ -20,7 +21,7 @@ import type { Trigger } from '../vera/speak';
 
 // Conditional rendering on this value IS the router, as in v1 — no navigation
 // library, instant swaps.
-export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'prompt' | ModuleId;
+export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'mode' | 'prompt' | ModuleId;
 
 // `system` is the app speaking, not her, rendered in danger red and a mono
 // face so it cannot be mistaken for a line of hers. Both codes are
@@ -164,6 +165,7 @@ interface SoulBlob {
   lastOpen: number;
   lang: Lang;
   cleared: number;
+  mode: Mode;
 }
 
 // A failed write is the same bargain hydrate strikes on the way in: this turn
@@ -176,6 +178,7 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     lastOpen: Date.now(),
     lang: s.lang,
     cleared: s.cleared,
+    mode: s.mode,
   };
   try {
     await storage.set(KEYS.soul, JSON.stringify(blob));
@@ -188,6 +191,8 @@ interface FacilityState {
   hydrated: boolean;
   view: View;
   lang: Lang;
+  // Her register. The core document is everything this cannot change.
+  mode: Mode;
   apiKey: string;
 
   emotion: EmotionKey;
@@ -213,6 +218,11 @@ interface FacilityState {
   // Stamped by hydrate on a cold start. Messages are the log entries at or
   // after it, which is how restarting returns her to zero (continuity §2).
   sessionStartedAt: number;
+  // The moment her register last changed, and the second half of the replay
+  // boundary. Session only, and deliberately NOT in SoulBlob: a restart
+  // advances sessionStartedAt past any switch made before it, so a stored
+  // value could only ever be redundant. Reset wherever sessionStartedAt is.
+  modeSetAt: number;
   // The notable circumstance she has already been handed this session. Session
   // state, deliberately not persisted and not part of her soul: it records
   // what the PROMPT has said, not anything about the subject.
@@ -236,6 +246,7 @@ interface FacilityState {
 
   cabinetOpen: boolean;
   keyPanelOpen: boolean;
+  modePickerOpen: boolean;
   confirmingClear: boolean;
   confirmingWipe: boolean;
 
@@ -266,6 +277,7 @@ interface FacilityState {
   clearTranscript: () => Promise<void>;
   clearMemory: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
+  setMode: (mode: Mode) => Promise<void>;
   loadMemory: () => Promise<void>;
   saveMemory: () => Promise<void>;
   extractNow: () => Promise<void>;
@@ -275,6 +287,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   hydrated: false,
   view: 'stage',
   lang: 'en',
+  mode: 'default',
   apiKey: '',
 
   emotion: 'dormant',
@@ -293,6 +306,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   memory: EMPTY_MEMORY,
   sessionStartedAt: Date.now(),
+  modeSetAt: 0,
   notableSaid: null,
 
   authFails: 0,
@@ -302,6 +316,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   cabinetOpen: false,
   keyPanelOpen: false,
+  modePickerOpen: false,
   confirmingClear: false,
   confirmingWipe: false,
 
@@ -335,6 +350,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // to close, which is the signal to let the OS exit.
   stepBack: () => {
     const s = get();
+    if (s.modePickerOpen) {
+      set({ modePickerOpen: false });
+      return true;
+    }
     if (s.keyPanelOpen) {
       set({ keyPanelOpen: false });
       return true;
@@ -343,7 +362,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       set({ cabinetOpen: false });
       return true;
     }
-    if (s.view === 'mem' || s.view === 'soul' || s.view === 'prompt') {
+    if (s.view === 'mem' || s.view === 'soul' || s.view === 'mode' || s.view === 'prompt') {
       set({ view: 'sys' });
       return true;
     }
@@ -437,6 +456,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
+        // A blob written before modes existed carries no register at all, and
+        // so does one whose stored mode has since been deleted. Both read as
+        // the default, which is who she was when it was written.
+        mode: isMode(saved?.mode) ? saved.mode : 'default',
         visits,
         lastOpen,
         // A cold start is not a question she asked four minutes ago: without
@@ -447,6 +470,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // would fall wherever the module happened to load, and the turns she
         // is sent would be filtered by luck rather than by this launch.
         sessionStartedAt: now,
+        modeSetAt: 0,
         notableSaid: null,
       });
 
@@ -466,7 +490,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // a bad launch may cost the saved state, never the credential.
       set({
         hydrated: true, view: 'stage', ...woken,
-        askedAt: Date.now(), sessionStartedAt: Date.now(), notableSaid: null,
+        askedAt: Date.now(), sessionStartedAt: Date.now(), modeSetAt: 0, notableSaid: null,
       });
     }
   },
@@ -581,8 +605,12 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         outcome = await runSpeech({
           key: s.apiKey,
           said: said ?? '',
-          turns: buildMessages(s.log, s.sessionStartedAt),
+          // Her turns in the old register are still on the LOG screen and
+          // are still hers. They simply stop being replayed as examples the
+          // moment the register changes.
+          turns: buildMessages(s.log, Math.max(s.sessionStartedAt, s.modeSetAt)),
           lang: s.lang,
+          mode: s.mode,
           context,
           memoryMd,
           call: (system, turns) => callLlm(get().apiKey, system, turns),
@@ -591,7 +619,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // Nothing was revealed by a greeting she had already written, and
         // nothing was sent, which is what the inspector reports.
         outcome = {
-          ...pick(trigger, get().lang),
+          ...pick(trigger, get().lang, get().mode),
           notice: null,
           source: 'fallback',
           debug: { system: null, turns: null, raw: null, failure: null },
@@ -771,6 +799,28 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
     await saveSoul(get());
+  },
+
+  // Her register, chosen by the subject. She is never told that modes exist —
+  // the prompt names none of this — so the line she says here is not an
+  // announcement. It comes out of the NEW mode's bank and reads as something
+  // she felt change, which is what keeps each mode sincere rather than a
+  // performance.
+  //
+  // Choosing the register she is already in is not a change. It closes the
+  // picker and does nothing else, because moving the boundary would throw away
+  // the conversation she is mid-way through over a stray tap on the pill.
+  //
+  // `modeSetAt` is set BEFORE she speaks, so the boundary is already in place
+  // when the next reply builds its messages.
+  setMode: async (mode: Mode): Promise<void> => {
+    if (get().mode === mode) {
+      set({ modePickerOpen: false });
+      return;
+    }
+    set({ mode, modeSetAt: Date.now(), modePickerOpen: false });
+    await saveSoul(get());
+    await get().speak('mode_set');
   },
 
   loadMemory: async (): Promise<void> => {

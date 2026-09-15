@@ -1,6 +1,6 @@
 import { KEYS, secure, storage } from '../storage';
 import { RETURN_GAP_MS, useFacilityStore } from '../store';
-import { BANK } from '../../vera/bank';
+import { MODES } from '../../vera/modes/registry';
 import { EXTRACT_MAX_TOKENS, EXTRACT_SYSTEM } from '../../vera/extract';
 import { EMPTY_MEMORY, type Verdict } from '../../vera/memory';
 import type { Turn } from '../../vera/messages';
@@ -242,7 +242,7 @@ describe('hydrate', () => {
   // without this they would go on being sent to the model until they aged out
   // under LOG_CAP.
   describe('the sweep of lines she was never asked for', () => {
-    const banked = BANK.subject_tapped_your_optic.en[0][1];
+    const banked = MODES.default.bank.subject_tapped_your_optic.en[0][1];
 
     it('drops her stored bank lines and keeps the conversation', async () => {
       await secure.set('sk-ant-api03-xxx');
@@ -617,7 +617,7 @@ describe('speak', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'visits'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
     expect(saved.visits).toBe(3);
@@ -819,7 +819,7 @@ describe('setLang', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'visits'].sort(),
     );
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
@@ -1565,3 +1565,131 @@ describe('erasing the record', () => {
   });
 });
 
+
+describe('setMode', () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+    reset();
+    callLlm.mockReset();
+    await storage.clearAll();
+    await secure.remove();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      askedAt: Date.now(), lastOpen: null, visits: 1, cleared: 0, lang: 'en',
+      mode: 'default', modeSetAt: 0, log: [],
+    });
+  });
+
+  afterEach(() => {
+    jest.runAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('remembers the choice across a restart', async () => {
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().mode).toBe('supportive');
+    const blob = JSON.parse((await storage.get(KEYS.soul)) ?? '{}');
+    expect(blob.mode).toBe('supportive');
+  });
+
+  // She is never told that modes exist, so this is not an announcement. It is a
+  // line she says because something in her changed, and it comes out of the NEW
+  // mode's bank, which is how the subject hears the switch land.
+  it('says one line, in the voice she has just become', async () => {
+    await useFacilityStore.getState().setMode('supportive');
+
+    const spoken = MODES.supportive.bank.mode_set.en.map(([, text]) => text);
+    expect(spoken).toContain(useFacilityStore.getState().line);
+  });
+
+  it('never reaches the network for it', async () => {
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(callLlm).not.toHaveBeenCalled();
+  });
+
+  // The bank path has written nothing down since 2026-09-11 and this is no
+  // exception: nothing was asked, nothing was sent, nothing is remembered.
+  it('writes nothing to the log or the transcript', async () => {
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().log).toHaveLength(0);
+    expect(await storage.get(KEYS.transcript)).toBeNull();
+  });
+
+  // Her old voice must stop reaching the model, and the boundary is what does
+  // it. The LOG screen is untouched and still shows everything.
+  it('moves the replay boundary to the moment of the switch', async () => {
+    const before = Date.now();
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().modeSetAt).toBeGreaterThanOrEqual(before);
+  });
+
+  // The shallowest overlay, so back closes it and the view stays put.
+  it('is what hardware back closes first', () => {
+    useFacilityStore.setState({ modePickerOpen: true, view: 'stage' });
+
+    expect(useFacilityStore.getState().stepBack()).toBe(true);
+    expect(useFacilityStore.getState().modePickerOpen).toBe(false);
+    expect(useFacilityStore.getState().view).toBe('stage');
+  });
+
+  // The whole point of the boundary, checked where it actually matters: what
+  // goes ON THE WIRE. messages.test.ts pins that buildMessages honours a
+  // boundary; this pins that the store hands it the right one. Without it,
+  // reverting to sessionStartedAt alone breaks nothing any test can see.
+  it('stops sending her turns in the register she has left', async () => {
+    const now = Date.now();
+    useFacilityStore.setState({
+      sessionStartedAt: now - 10_000,
+      log: [
+        { who: 'you', text: 'said before the switch', t: now - 5_000 },
+        { who: 'vera', text: 'answered in the old voice', t: now - 4_000, emotion: 'bored' },
+      ],
+    });
+
+    await useFacilityStore.getState().setMode('supportive');
+    callLlm.mockResolvedValue('{"emotion":"pleased","line":"Of course."}');
+    await useFacilityStore.getState().speak('subject_spoke', 'and now');
+
+    const sent = JSON.stringify(callLlm.mock.calls[0][2]);
+    expect(sent).not.toContain('answered in the old voice');
+    expect(sent).not.toContain('said before the switch');
+    expect(sent).toContain('and now');
+
+    // Still hers, still on the LOG screen. Only the replay is trimmed.
+    const texts = useFacilityStore.getState().log.map((e) => e.text);
+    expect(texts).toContain('answered in the old voice');
+  });
+
+  it('closes the picker behind it', async () => {
+    useFacilityStore.setState({ modePickerOpen: true });
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().modePickerOpen).toBe(false);
+  });
+
+  // Choosing the register she is already in is not a change, so she does not
+  // remark on it and the boundary does not move — otherwise a stray tap on the
+  // pill would silently throw away the conversation she is mid-way through.
+  it('says nothing and moves nothing when the register is already hers', async () => {
+    useFacilityStore.setState({ modePickerOpen: true, line: 'standing' });
+    await useFacilityStore.getState().setMode('default');
+
+    expect(useFacilityStore.getState().line).toBe('standing');
+    expect(useFacilityStore.getState().modeSetAt).toBe(0);
+    expect(useFacilityStore.getState().modePickerOpen).toBe(false);
+  });
+});
+
+describe('a stored soul from before modes existed', () => {
+  it('reads as the default register rather than as nothing', async () => {
+    await storage.clearAll();
+    await storage.set(KEYS.soul, JSON.stringify({ visits: 3, lang: 'en', cleared: 0 }));
+    await useFacilityStore.getState().hydrate();
+
+    expect(useFacilityStore.getState().mode).toBe('default');
+  });
+});

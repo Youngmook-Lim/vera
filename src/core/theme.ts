@@ -44,6 +44,20 @@ export const palette = {
   dangerSoft: '#ff6a5a',
   sealed: '#9d8757',
 
+  // Her two registers, worn by the tag beside the wordmark and by each choice
+  // in the picker. Each is the iris of the state that register is most often
+  // in: calm's amber for the default, affectionate's rose for the supportive.
+  // Kept here rather than in the ModeDef so that every hex in the app is still
+  // in one file; a new mode adds a key here and a folder in vera/modes.
+  // Three values each, on the SEND button's idiom: the ink, a wash to fill the
+  // tag pill, and an edge to draw it. The wash is the ink at 12% and the edge
+  // at 53%, written out rather than composed at render so that every hex in
+  // the app is still greppable in this file.
+  mode: {
+    default: { ink: '#f4b43a', wash: '#f4b43a1f', edge: '#f4b43a88' },
+    supportive: { ink: '#ef8f8a', wash: '#ef8f8a1f', edge: '#ef8f8a88' },
+  },
+
   // module 01 — the terrarium owns every pixel inside its frame
   organism: {
     bg: '#0c110e',

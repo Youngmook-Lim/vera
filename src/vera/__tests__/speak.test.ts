@@ -10,7 +10,7 @@ const ctx: SpeakContext = {
 
 describe('buildSystemPrompt', () => {
   it('sends SOUL.md, then what she knows about the subject', () => {
-    const sys = buildSystemPrompt('en', `${MEMORY_HEADING}\n\n## About them\n- works in software`);
+    const sys = buildSystemPrompt('en', `${MEMORY_HEADING}\n\n## About them\n- works in software`, 'default');
     expect(sys).toContain('# SOUL.md');
     expect(sys).toContain('works in software');
     // Ordering is load-bearing: a provider-side cache keeps a stable prefix
@@ -24,7 +24,7 @@ describe('buildSystemPrompt', () => {
   // now: the opening sentence, its own heading, and the two fence lines that
   // close it. The count is not the point; the one name is.
   it('names no file but SOUL.md', () => {
-    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    const sys = buildSystemPrompt('en', MEMORY_HEADING, 'default');
     expect(sys.match(/\.md/g)).toEqual(['.md', '.md', '.md', '.md']);
     expect(sys).not.toContain('MEMORY.md');
   });
@@ -35,7 +35,7 @@ describe('buildSystemPrompt', () => {
   // `## Unanswered` heading like more items in the list.
   describe('the seams between documents', () => {
     const sys = () =>
-      buildSystemPrompt('en', `${MEMORY_HEADING}\n\n## Unanswered\n- why the grids`);
+      buildSystemPrompt('en', `${MEMORY_HEADING}\n\n## Unanswered\n- why the grids`, 'default');
 
     it('opens and closes both documents', () => {
       expect(sys()).toContain('=== BEGIN SOUL.md ===');
@@ -70,13 +70,13 @@ describe('buildSystemPrompt', () => {
   });
 
   it('no longer asks her to write impressions', () => {
-    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    const sys = buildSystemPrompt('en', MEMORY_HEADING, 'default');
     expect(sys).not.toContain('impression');
     expect(sys).not.toContain('HARD MAXIMUM 9 WORDS');
   });
 
   it('asks only for an emotion and a line', () => {
-    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
+    expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('{"emotion":"<one of your states>","line":"<your reply>"}');
   });
 
   // The regression this list closes, and the reason it is worth a test: the
@@ -84,7 +84,7 @@ describe('buildSystemPrompt', () => {
   // SOUL.md — ever said what they were. She invented a word every reply,
   // parseSpeech recognised none of them, and every one became `calm`.
   it('names every state she is allowed to choose', () => {
-    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    const sys = buildSystemPrompt('en', MEMORY_HEADING, 'default');
     expect(SPEAKABLE_EMOTIONS).toHaveLength(8);
     for (const key of SPEAKABLE_EMOTIONS) {
       expect(sys).toContain(key);
@@ -101,22 +101,22 @@ describe('buildSystemPrompt', () => {
   // SOUL.md forbids her reciting her own machinery. Naming the states to her
   // is exactly the sort of thing that leaks into a line if it is not said.
   it('tells her the state is for the record and not for the line', () => {
-    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('never say it');
+    expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('never say it');
   });
 
   it('asks for korean in the same deadpan register', () => {
-    expect(buildSystemPrompt('ko', MEMORY_HEADING)).toContain('존댓말');
+    expect(buildSystemPrompt('ko', MEMORY_HEADING, 'default')).toContain('존댓말');
   });
 
   // Activation is answered from the bank now, so nothing is ever generated
   // under a situation override and the prompt has no branch for one.
   it('never carries a situation override', () => {
-    expect(buildSystemPrompt('en', MEMORY_HEADING)).not.toContain('SITUATION OVERRIDE');
-    expect(buildSystemPrompt('ko', MEMORY_HEADING)).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).not.toContain('SITUATION OVERRIDE');
+    expect(buildSystemPrompt('ko', MEMORY_HEADING, 'default')).not.toContain('SITUATION OVERRIDE');
   });
 
   it('replies in english when the reading language is english', () => {
-    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('Reply in English.');
+    expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('Reply in English.');
   });
 
   // She used to be told "Do not open a reply with a number, a count, or the
@@ -128,7 +128,7 @@ describe('buildSystemPrompt', () => {
   // invention rule stays absolute, and the invitation stays damped, because
   // "whenever it earns the line" had her counting things every reply.
   it('lets her cite a date or a count, rarely, and forbids inventing one', () => {
-    const sys = buildSystemPrompt('en', MEMORY_HEADING);
+    const sys = buildSystemPrompt('en', MEMORY_HEADING, 'default');
     expect(sys).not.toContain('Do not open a reply with a number');
     expect(sys).toContain('You may cite a date, a count or a time, but rarely');
     expect(sys).toContain('most replies carry none');
@@ -136,7 +136,7 @@ describe('buildSystemPrompt', () => {
   });
 
   it('asks for minified json only', () => {
-    expect(buildSystemPrompt('en', MEMORY_HEADING)).toContain('Return ONLY minified JSON');
+    expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('Return ONLY minified JSON');
   });
 });
 
