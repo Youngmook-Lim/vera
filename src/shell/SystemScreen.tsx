@@ -8,7 +8,7 @@ import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
 import { BatteryRow } from './BatteryRow';
-import { soulDocName } from '../vera/modes/registry';
+import { soulConstName } from '../vera/modes/registry';
 import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
@@ -92,7 +92,7 @@ export function SystemScreen() {
           <Pressable style={styles.tile} onPress={() => setView('soul')}>
             <View style={styles.tileText}>
               <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
-                SOUL.md
+                CORE_SOUL_MD
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {t.soulSub}
@@ -111,7 +111,7 @@ export function SystemScreen() {
           <Pressable testID="tile-mode" style={styles.tile} onPress={() => setView('mode')}>
             <View style={styles.tileText}>
               <Text style={[styles.tileName, { fontFamily: font('mono', 500, lang) }]}>
-                {soulDocName(mode)}
+                {soulConstName(mode)}
               </Text>
               <Text style={[styles.tileSub, { fontFamily: font('mono', 500, lang) }]}>
                 {t.modeSub}

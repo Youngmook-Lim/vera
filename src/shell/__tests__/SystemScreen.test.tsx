@@ -42,7 +42,7 @@ describe('SystemScreen', () => {
   it('lists both her files', async () => {
     const view = await render(<SystemScreen />);
     expect(view.getByText('RECORD')).toBeTruthy();
-    expect(view.getByText('SOUL.md')).toBeTruthy();
+    expect(view.getByText('CORE_SOUL_MD')).toBeTruthy();
   });
 
   it('opens a file', async () => {
@@ -139,14 +139,14 @@ describe('preferences row', () => {
 // exactly this — was never called. This row is the answer, read at render.
 
 describe('the register row', () => {
-  // Named as a sibling of SOUL.md above it, so the two read as one document in
-  // two halves rather than as a file and a setting.
+  // Named after the constant it actually is, like CORE_SOUL_MD above it, so
+  // the two read as one document in two halves.
   it('names the register she is currently in, and opens its document', async () => {
     useFacilityStore.setState({ mode: 'supportive', lang: 'en' });
     const view = await render(<SystemScreen />);
 
-    expect(view.getByText('SOUL.md')).toBeTruthy();
-    expect(view.getByText('SOUL.SUPPORTIVE.md')).toBeTruthy();
+    expect(view.getByText('CORE_SOUL_MD')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE_SOUL_MD')).toBeTruthy();
     await fireEvent.press(view.getByTestId('tile-mode'));
     expect(useFacilityStore.getState().view).toBe('mode');
 
@@ -157,18 +157,18 @@ describe('the register row', () => {
     useFacilityStore.setState({ mode: 'default', lang: 'en' });
     const view = await render(<SystemScreen />);
 
-    expect(view.getByText('SOUL.DEFAULT.md')).toBeTruthy();
-    expect(view.queryByText('SOUL.SUPPORTIVE.md')).toBeNull();
+    expect(view.getByText('DEFAULT_SOUL_MD')).toBeTruthy();
+    expect(view.queryByText('SUPPORTIVE_SOUL_MD')).toBeNull();
 
     await view.unmount();
   });
 
-  // A filename is not copy. SOUL.md is not translated and neither is its half.
-  it('keeps the filename out of the translation', async () => {
+  // An identifier is not copy, so it does not translate.
+  it('keeps the identifier out of the translation', async () => {
     useFacilityStore.setState({ mode: 'supportive', lang: 'ko' });
     const view = await render(<SystemScreen />);
 
-    expect(view.getByText('SOUL.SUPPORTIVE.md')).toBeTruthy();
+    expect(view.getByText('SUPPORTIVE_SOUL_MD')).toBeTruthy();
 
     await view.unmount();
   });

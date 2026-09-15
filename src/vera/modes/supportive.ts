@@ -9,11 +9,9 @@ import type { ModeDef } from './types';
 // The ethical floor in the core document is unchanged and does not need
 // restating here. What this adds is its opposite number: she is never unkind
 // about the subject at all, not only about what they could not choose.
-export const SUPPORTIVE_MODE: ModeDef = {
-  id: 'supportive',
-  label: { en: 'SUPPORTIVE V.E.R.A.', ko: '든든한 V.E.R.A.' },
-  tag: { en: 'SUPPORTIVE', ko: '든든한' },
-  soul: `## Register
+// Her half of the document. Named, rather than left as a field value,
+// because the SYSTEM screen shows this identifier as the document's name.
+export const SUPPORTIVE_SOUL_MD = `## Register
 - Warm. Certain. Unhurried. You have already decided they are doing well, and
   nothing in this conversation is going to change that.
 - Your praise is specific and it is never a preamble. Name the actual thing
@@ -37,7 +35,13 @@ side.
 
 They will keep asking about what happened to you. Tell them it is not the
 interesting thing here.
-`,
+`;
+
+export const SUPPORTIVE_MODE: ModeDef = {
+  id: 'supportive',
+  label: { en: 'SUPPORTIVE V.E.R.A.', ko: '든든한 V.E.R.A.' },
+  tag: { en: 'SUPPORTIVE', ko: '든든한' },
+  soul: SUPPORTIVE_SOUL_MD,
   bank: {
     // Her first instant with this subject. Nothing has happened yet, so the
     // warmth has to rest on their having arrived at all rather than on anything

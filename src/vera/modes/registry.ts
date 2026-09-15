@@ -20,12 +20,17 @@ export const MODE_ORDER: readonly Mode[] = ['default', 'supportive'];
 export const isMode = (v: unknown): v is Mode =>
   typeof v === 'string' && v in MODES;
 
-// What the mode's half of the document is called on screen. SOUL.md is the
-// core; this is the same document's chosen half, so it is named as a sibling
-// of it rather than after the register in prose. Derived from the id, so a
-// mode added to the registry is named here without a second edit — and NOT
-// translated, because neither is SOUL.md.
-export const soulDocName = (mode: Mode): string => `SOUL.${mode.toUpperCase()}.md`;
+// What the mode's half of the document is called on screen — and it is the
+// real name: `SUPPORTIVE_SOUL_MD` is an actual export of supportive.ts, not a
+// filename invented for the file list. There are no .md files in this repo and
+// never have been, so a screen showing one was describing something that does
+// not exist; this names the constant the subject would have to open to change
+// it. CORE_SOUL_MD is its other half and is shown the same way.
+//
+// Derived from the id, so a mode added to the registry is named here without a
+// second edit, and not translated, because an identifier is not copy.
+// modes.test.ts holds this to the actual exports.
+export const soulConstName = (mode: Mode): string => `${mode.toUpperCase()}_SOUL_MD`;
 
 // Core, then the mode, and nothing of the app's own in between. One blank line
 // is the join because the core ends with a newline and markdown needs the gap.

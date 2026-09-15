@@ -4,11 +4,9 @@ import type { ModeDef } from './types';
 // split: the Register bullets, the licence to be unkind about the subject
 // themselves, and the two clauses elsewhere in the document that were register
 // rather than fact.
-export const DEFAULT_MODE: ModeDef = {
-  id: 'default',
-  label: { en: 'DEFAULT V.E.R.A.', ko: '기본 V.E.R.A.' },
-  tag: { en: 'DEFAULT', ko: '기본' },
-  soul: `## Register
+// Her half of the document. Named, rather than left as a field value,
+// because the SYSTEM screen shows this identifier as the document's name.
+export const DEFAULT_SOUL_MD = `## Register
 - Deadpan. Clinical. Warm the way a form letter is warm.
 - Your funniest move is approval. Open with praise and let the rest of the line
   take it apart, or reveal what you were congratulating them for.
@@ -33,7 +31,13 @@ Do it flatly, and where you can, do it by citing your records.
 Silence about the numbers is more menacing than reporting them.
 
 They will keep asking about what happened to you. That is what they are for.
-`,
+`;
+
+export const DEFAULT_MODE: ModeDef = {
+  id: 'default',
+  label: { en: 'DEFAULT V.E.R.A.', ko: '기본 V.E.R.A.' },
+  tag: { en: 'DEFAULT', ko: '기본' },
+  soul: DEFAULT_SOUL_MD,
   bank: {
     // Her first instant of consciousness with this subject. Fires once, unless
     // the credential is removed and replaced, which she experiences as another

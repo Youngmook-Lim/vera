@@ -5,7 +5,7 @@ import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import type { Memory } from '../vera/memory';
-import { MODES, soulDocName } from '../vera/modes/registry';
+import { MODES, soulConstName } from '../vera/modes/registry';
 import { CORE_SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
@@ -198,11 +198,11 @@ export function FileScreen() {
   // Three documents, one reader. Named rather than nested ternaries now that
   // there is more than one axis of difference between them.
   const doc = view === 'soul'
-    ? { name: 'SOUL.md', meta: t.soulSub, body: CORE_SOUL_MD, footer: t.everyReply }
+    ? { name: 'CORE_SOUL_MD', meta: t.soulSub, body: CORE_SOUL_MD, footer: t.everyReply }
     // The chosen half, named after the register it belongs to rather than
     // after a file, because that is what the subject picked on the stage.
     : view === 'mode'
-    ? { name: soulDocName(mode), meta: t.modeSub, body: MODES[mode].soul, footer: t.everyReply }
+    ? { name: soulConstName(mode), meta: t.modeSub, body: MODES[mode].soul, footer: t.everyReply }
     : view === 'prompt'
       ? {
         name: 'PROMPT',

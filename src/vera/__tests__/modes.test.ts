@@ -1,5 +1,7 @@
 import { CORE_SOUL_MD } from '../soul';
-import { MODES, MODE_ORDER, composeSoul, isMode } from '../modes/registry';
+import { MODES, MODE_ORDER, composeSoul, isMode, soulConstName } from '../modes/registry';
+import * as defaultMode from '../modes/default';
+import * as supportiveMode from '../modes/supportive';
 
 describe('the mode registry', () => {
   it('offers every mode it knows about, in a stable order', () => {
@@ -87,5 +89,35 @@ describe('each register is pinned', () => {
 
   it('matches the supportive document', () => {
     expect(MODES.supportive.soul).toMatchSnapshot();
+  });
+});
+
+// The SYSTEM screen shows these identifiers as the documents' names, which is
+// only honest while they are identifiers. There are no .md files in this repo
+// and never have been, so a name that drifted from its export would be the
+// screen describing something that does not exist — the exact thing this
+// naming replaced.
+describe('the name the subject is shown', () => {
+  const sources: Record<string, Record<string, unknown>> = {
+    default: defaultMode,
+    supportive: supportiveMode,
+  };
+
+  it('is a real export of the mode it names', () => {
+    for (const id of MODE_ORDER) {
+      expect(sources[id]).toHaveProperty(soulConstName(id));
+    }
+  });
+
+  it('names the very text she is sent', () => {
+    for (const id of MODE_ORDER) {
+      expect(sources[id][soulConstName(id)]).toBe(MODES[id].soul);
+    }
+  });
+
+  // An identifier is not copy, so it does not translate.
+  it('is spelled the same whatever the interface is set to', () => {
+    expect(soulConstName('supportive')).toBe('SUPPORTIVE_SOUL_MD');
+    expect(soulConstName('default')).toBe('DEFAULT_SOUL_MD');
   });
 });
