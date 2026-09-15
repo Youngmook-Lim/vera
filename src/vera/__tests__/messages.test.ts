@@ -131,3 +131,35 @@ describe('buildMessages', () => {
     expect(out).toEqual([{ role: 'user', text: 'hi\nagain' }]);
   });
 });
+
+// Switching register mid-session leaves her old voice sitting in the messages
+// as assistant turns — a worked example of exactly the register the new system
+// prompt is trying to replace. This repo has already lost this fight once, when
+// her turns were replayed as bare prose and taught the model to ignore the JSON
+// instruction: an example in the conversation beats an instruction in the
+// system prompt.
+//
+// The boundary is the same one the session already uses; the store hands it the
+// later of the two.
+describe('the boundary a register change moves', () => {
+  it('drops her turns from before it and keeps the ones after', () => {
+    const log: LogEntry[] = [
+      you('before', 100),
+      her('in the old voice', 110, 'bored'),
+      you('after', 300),
+      her('in the new voice', 310, 'affectionate'),
+    ];
+
+    const turns = buildMessages(log, 200);
+
+    expect(turns).toHaveLength(2);
+    expect(turns[0].text).toBe('after');
+    expect(turns[1].text).toBe(said('affectionate', 'in the new voice'));
+  });
+
+  it('sends nothing at all when the register just changed', () => {
+    const log: LogEntry[] = [you('before', 100), her('old voice', 110, 'bored')];
+
+    expect(buildMessages(log, 200)).toEqual([]);
+  });
+});
