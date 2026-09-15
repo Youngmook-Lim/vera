@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { Text as RNText } from 'react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { palette } from '../../core/theme';
 import { MODES } from '../../vera/modes/registry';
@@ -87,6 +88,26 @@ describe('the logo', () => {
     expect(pill.backgroundColor).toBe(palette.mode.supportive.wash);
     expect(pill.borderColor).toBe(palette.mode.supportive.edge);
     expect(pill.borderRadius).toBeGreaterThan(0);
+
+    await view.unmount();
+  });
+
+  // Her pulse dot goes in the title row, level with the wordmark and the tag —
+  // NOT beside the logo as a whole, where it would sit halfway down two lines
+  // of text and be level with neither. Structural rather than visual, because
+  // where a thing sits in the tree is the most a jsdom test can see.
+  it('puts the leading slot in the title row, level with the wordmark', async () => {
+    const view = await render(
+      <ModePicker leading={<RNText testID="leading-probe">•</RNText>} />,
+    );
+
+    const row = within(view.getByTestId('mode-title-row'));
+    expect(row.getByTestId('leading-probe')).toBeTruthy();
+    expect(row.getByText('V.E.R.A.')).toBeTruthy();
+    expect(row.getByTestId('mode-tag-pill')).toBeTruthy();
+
+    // The expansion is the second line and must stay out of that row.
+    expect(row.queryByText('Very Emotional Robot Assistant')).toBeNull();
 
     await view.unmount();
   });

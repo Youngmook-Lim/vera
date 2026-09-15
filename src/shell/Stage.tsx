@@ -359,11 +359,10 @@ export function Stage() {
         {/* The logo IS the register control (2026-09-15). Her name, spelled
             out under it, and the register she is in beside it — one tap
             target, opening the picker's bubble under the corner it sits in.
-            The pulse stays out of it: that is her emotion, not a control. */}
-        <View style={styles.headerLeft}>
-          <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />
-          <ModePicker />
-        </View>
+            Her pulse rides in the picker's own title row rather than beside
+            the whole logo, or it would sit halfway down two lines of text and
+            be level with neither. */}
+        <ModePicker leading={<PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />} />
         {awake ? (
           // Three drawn dots, not a "•••" glyph — the design sets them at 3px
           // with a 3px gap, which no bullet run reproduces.
@@ -586,11 +585,6 @@ const styles = StyleSheet.create({
     // bubble opens behind the pill however high its own zIndex is.
     zIndex: 30,
     elevation: 30,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   headerDots: {
     flexDirection: 'row',

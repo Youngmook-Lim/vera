@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
@@ -23,7 +23,11 @@ import { T } from './strings';
 // Choosing is the whole interaction. setMode writes, closes this, and hands her
 // a line out of the new mode's bank, so the change is heard at the moment it is
 // made rather than on the next message.
-export function ModePicker() {
+// `leading` goes INSIDE the title row rather than beside the whole component:
+// the logo is two lines, and anything centred against the block sits halfway
+// down it, level with neither line. The stage passes her pulse dot, which
+// belongs level with her name.
+export function ModePicker({ leading }: { leading?: ReactNode }) {
   const lang = useFacilityStore((s) => s.lang);
   const mode = useFacilityStore((s) => s.mode);
   const open = useFacilityStore((s) => s.modePickerOpen);
@@ -44,7 +48,8 @@ export function ModePicker() {
         onPress={() => setOpen(!open)}
         hitSlop={8}
       >
-        <View style={styles.titleRow}>
+        <View testID="mode-title-row" style={styles.titleRow}>
+          {leading}
           <Text style={[styles.wordmark, { fontFamily: font('mono', 600, lang) }]}>V.E.R.A.</Text>
           {awake ? (
             <View
@@ -118,7 +123,7 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
   },
   // Verbatim from the header's own wordmark, which this replaces.
   wordmark: {
