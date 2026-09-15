@@ -5,7 +5,7 @@ import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import type { Memory } from '../vera/memory';
-import { SOUL_MD } from '../vera/soul';
+import { CORE_SOUL_MD } from '../vera/soul';
 import { T } from './strings';
 
 // Both files she keeps, shown as they actually are. These two screens are a
@@ -196,7 +196,7 @@ export function FileScreen() {
   // Three documents, one reader. Named rather than nested ternaries now that
   // there is more than one axis of difference between them.
   const doc = view === 'soul'
-    ? { name: 'SOUL.md', meta: t.soulSub, body: SOUL_MD, footer: t.everyReply }
+    ? { name: 'SOUL.md', meta: t.soulSub, body: CORE_SOUL_MD, footer: t.everyReply }
     : view === 'prompt'
       ? {
         name: 'PROMPT',

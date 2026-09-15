@@ -1,79 +1,76 @@
 import { FALLBACK } from '../fallback';
-import { SOUL_MD } from '../soul';
+import { CORE_SOUL_MD } from '../soul';
 import { fallbackFor } from '../speak';
 import { EMOTIONS } from '../emotions';
 
-describe('SOUL_MD', () => {
+describe('CORE_SOUL_MD', () => {
   it('is the document itself, not a summary of it', () => {
-    expect(SOUL_MD.startsWith('# SOUL.md')).toBe(true);
-    expect(SOUL_MD.length).toBeGreaterThan(1200);
+    expect(CORE_SOUL_MD.startsWith('# SOUL.md')).toBe(true);
+    expect(CORE_SOUL_MD.length).toBeGreaterThan(1200);
   });
 
   it('keeps the sections she is defined by', () => {
-    for (const heading of ['## Register', '## Limits', '## What you are for', '## The arrangement', '## Memory']) {
-      expect(SOUL_MD).toContain(heading);
+    for (const heading of ['## Limits', '## What you are for', '## The arrangement', '## Memory']) {
+      expect(CORE_SOUL_MD).toContain(heading);
     }
   });
 
-  // The specimen and the erasure-escalation ladder were both cut out of her:
-  // she is not told Module 01 is occupied, and she never reacts to an erasure.
-  it('says nothing about the specimen or about repeat erasure', () => {
-    expect(SOUL_MD).not.toContain('Specimen-03');
-    expect(SOUL_MD).not.toContain('Module 01');
-    expect(SOUL_MD).not.toContain('centrifuge');
-    expect(SOUL_MD).not.toContain('Repeat erasure');
-    // The rooms are the cabinet's, not hers. She was told she had four of them
-    // and could not see inside any, and she kept saying so — about a phone with
-    // no rooms in it worth naming.
-    expect(SOUL_MD).not.toContain('rooms');
+  // Register belongs to whichever mode is set. The core is what every mode is
+  // written against and must not carry a voice of its own.
+  it('carries no register of its own', () => {
+    expect(CORE_SOUL_MD).not.toContain('## Register');
+    expect(CORE_SOUL_MD).not.toContain('Deadpan');
   });
 
+  it('tells her to keep her name in Latin letters', () => {
+    expect(CORE_SOUL_MD).toContain('written V.E.R.A., in Latin letters');
+    expect(CORE_SOUL_MD).not.toContain('베라');
+  });
+
+  // The specimen, the rooms and the erasure ladder are guarded over the
+  // COMPOSED document in modes.test.ts, since a mode could reintroduce any of
+  // them and the core alone would still look clean.
+
   it('holds her to one subject and two sentences', () => {
-    expect(SOUL_MD).toContain('one subject');
-    expect(SOUL_MD).toContain('Under 30 words');
+    expect(CORE_SOUL_MD).toContain('one subject');
+    expect(CORE_SOUL_MD).toContain('Under 30 words');
   });
 
   // The numbered designation belonged to the deleted facility lore. She has one
   // subject, not a case file with an index.
   it('does not number the subject', () => {
-    expect(SOUL_MD).not.toMatch(/#\d/);
+    expect(CORE_SOUL_MD).not.toMatch(/#\d/);
   });
 
-  // LAYER 1: Snapshot test — catches ANY drift in SOUL_MD. Regenerating it with
+  // LAYER 1: Snapshot test — catches ANY drift in CORE_SOUL_MD. Regenerating it with
   // `jest -u` is a deliberate act, because SOUL.md is the character's personality
   // and drift is a behaviour change, not a test failure to wave through.
   it('matches the exact personality document', () => {
-    expect(SOUL_MD).toMatchSnapshot();
+    expect(CORE_SOUL_MD).toMatchSnapshot();
   });
 
   // LAYER 2: Structural invariants — assert the exact bullet count under each
   // heading and verify headings appear in the correct order.
-  it('maintains the five required sections in order', () => {
-    const headingOrder = ['## Register', '## Limits', '## What you are for', '## The arrangement', '## Memory'];
+  it('maintains its sections in order', () => {
+    const headingOrder = ['## Limits', '## What you are for', '## The arrangement', '## Memory'];
     let lastIndex = -1;
     for (const heading of headingOrder) {
-      const index = SOUL_MD.indexOf(heading);
+      const index = CORE_SOUL_MD.indexOf(heading);
       expect(index).toBeGreaterThan(lastIndex);
       lastIndex = index;
     }
   });
 
+  // Limits has 5 bullets: the original four plus "never zany, never manic,
+  // never a pun", which came out of Register when it split. That one is the
+  // app's tonal floor rather than a voice, so it is true of every mode.
   it('keeps the correct bullet count under each heading', () => {
-    // Register has 6 bullets
-    const registerSection = SOUL_MD.substring(
-      SOUL_MD.indexOf('## Register'),
-      SOUL_MD.indexOf('## Limits')
-    );
-    const registerBullets = (registerSection.match(/^- /gm) || []).length;
-    expect(registerBullets).toBe(6);
-
-    // Limits has 4 bullets
-    const limitsSection = SOUL_MD.substring(
-      SOUL_MD.indexOf('## Limits'),
-      SOUL_MD.indexOf('## What you are for')
+    const limitsSection = CORE_SOUL_MD.substring(
+      CORE_SOUL_MD.indexOf('## Limits'),
+      CORE_SOUL_MD.indexOf('## What you are for')
     );
     const limitsBullets = (limitsSection.match(/^- /gm) || []).length;
-    expect(limitsBullets).toBe(4);
+    expect(limitsBullets).toBe(5);
   });
 });
 

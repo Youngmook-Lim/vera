@@ -8,6 +8,7 @@ const deps = (over = {}) => ({
   said: 'did you miss me',
   turns: [{ role: 'user' as const, text: 'did you miss me' }],
   lang: 'en' as const,
+  mode: 'default' as const,
   context: { time_of_day: 'afternoon' },
   memoryMd: `${MEMORY_HEADING}\n\n## About them\n- works in software`,
   call: jest.fn().mockResolvedValue('{"emotion":"amused","line":"Barely."}'),

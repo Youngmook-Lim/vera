@@ -12,6 +12,7 @@ import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages, type Turn } from '../vera/messages';
+import { isMode, type Mode } from '../vera/modes/registry';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
@@ -164,6 +165,7 @@ interface SoulBlob {
   lastOpen: number;
   lang: Lang;
   cleared: number;
+  mode: Mode;
 }
 
 // A failed write is the same bargain hydrate strikes on the way in: this turn
@@ -176,6 +178,7 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     lastOpen: Date.now(),
     lang: s.lang,
     cleared: s.cleared,
+    mode: s.mode,
   };
   try {
     await storage.set(KEYS.soul, JSON.stringify(blob));
@@ -188,6 +191,8 @@ interface FacilityState {
   hydrated: boolean;
   view: View;
   lang: Lang;
+  // Her register. The core document is everything this cannot change.
+  mode: Mode;
   apiKey: string;
 
   emotion: EmotionKey;
@@ -275,6 +280,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   hydrated: false,
   view: 'stage',
   lang: 'en',
+  mode: 'default',
   apiKey: '',
 
   emotion: 'dormant',
@@ -437,6 +443,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
+        // A blob written before modes existed carries no register at all, and
+        // so does one whose stored mode has since been deleted. Both read as
+        // the default, which is who she was when it was written.
+        mode: isMode(saved?.mode) ? saved.mode : 'default',
         visits,
         lastOpen,
         // A cold start is not a question she asked four minutes ago: without
@@ -583,6 +593,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
           said: said ?? '',
           turns: buildMessages(s.log, s.sessionStartedAt),
           lang: s.lang,
+          mode: s.mode,
           context,
           memoryMd,
           call: (system, turns) => callLlm(get().apiKey, system, turns),
