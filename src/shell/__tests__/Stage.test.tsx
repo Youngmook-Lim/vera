@@ -270,81 +270,68 @@ describe('Stage', () => {
     await view.unmount();
   });
 
-  // Two equal fields fill what is left between the pill row and the input. The
-  // seam between them is where her window starts — a little below the middle of
-  // the screen — and the eye is centred in the field above it, which puts it
-  // halfway between the conversation pill and her window.
+  // The eye and her window take their natural heights; the leftover between the
+  // pill row and the input box is pooled in three places. Equal above and below
+  // the eye, so it sits halfway between the conversation pill and her window,
+  // and a bigger pool under her window, so the air that has nowhere else to go
+  // collects at the bottom rather than pushing her down a tall screen.
   //
-  // This has been wrong twice. Centring the eye and the window together as a
-  // PAIR lifted the eye about 130px the moment she spoke, because her window
-  // grows from a collapsed strip to 300px and centring pushes a taller block
-  // up. Centring the eye alone in the whole gap fixed that and put her window
-  // at about 65% down the screen instead.
-  //
-  // Layout is invisible to jsdom, so these assert the mechanism. Both fields
-  // look like empty wrappers and are exactly what a tidy-up flattens.
+  // This has been wrong four times, each in its own direction — see the comment
+  // on `centre` in Stage.tsx. Layout is invisible to jsdom, so these assert the
+  // mechanism: three Views that look empty and are exactly what a tidy-up
+  // deletes.
   describe('where the eye and her window sit', () => {
-    const fields = (view: Rendered) => ({
-      optic: flat(view.getByTestId('optic-field').props.style),
-      window: flat(view.getByTestId('window-field').props.style),
+    const pools = (view: Rendered) => ({
+      aboveEye: flat(view.getByTestId('slack-above-eye').props.style),
+      belowEye: flat(view.getByTestId('slack-below-eye').props.style),
+      belowWindow: flat(view.getByTestId('slack-below-window').props.style),
     });
 
-    it('splits the gap evenly, so her window starts at the seam', async () => {
+    it('keeps the eye halfway between the pill and her window', async () => {
       awake({ log: [], line: 'x'.repeat(400) });
       const view = await render(<Stage />);
 
-      const { optic, window } = fields(view);
-      expect(optic.flex).toBe(window.flex);
-      expect(optic.flex).toBe(1);
+      const { aboveEye, belowEye } = pools(view);
+      expect(aboveEye.flex).toBe(belowEye.flex);
+      expect(aboveEye.flex).toBeGreaterThan(0);
 
       await view.unmount();
     });
 
-    // The eye is centred in its own field, not in the whole gap: that is the
-    // difference between "halfway to her window" and "halfway to the input".
-    it('centres the eye inside the upper field', async () => {
-      awake({ log: [] });
+    // The one that keeps her near the middle. An even share put her window at
+    // 63% of the screen on the device, which read as floating low.
+    it('pools the rest of the slack under her window', async () => {
+      awake({ log: [], line: 'Noted.' });
       const view = await render(<Stage />);
 
-      expect(fields(view).optic.justifyContent).toBe('center');
+      const { belowEye, belowWindow } = pools(view);
+      expect(Number(belowWindow.flex)).toBeGreaterThan(Number(belowEye.flex));
 
       await view.unmount();
     });
 
-    it('holds that split whether or not she has spoken', async () => {
+    it('holds that arrangement whether or not she has spoken', async () => {
       awake({ log: [], line: '' });
       const silent = await render(<Stage />);
-      const before = fields(silent);
+      const before = pools(silent);
       await silent.unmount();
 
       awake({ log: [], line: 'She said a great deal, at length, and then some more.' });
       const speaking = await render(<Stage />);
-      expect(fields(speaking)).toEqual(before);
+      expect(pools(speaking)).toEqual(before);
       await speaking.unmount();
     });
 
-    // Each field centres what it holds. Her window pinned to the top of its
-    // field piled every unused pixel into one place — under her — so a short
-    // reply left about 100dp of dead space above the input box.
-    it('centres her window in its field rather than pinning it to the top', async () => {
+    // Her window keeps its natural height. Given a flex share it would stretch
+    // to fill one, and an empty window is a large empty box.
+    it('lets her window size itself', async () => {
       awake({ log: [], line: 'Noted.' });
       const view = await render(<Stage />);
 
-      const { optic, window } = fields(view);
-      expect(window.justifyContent).toBe('center');
-      expect(window.justifyContent).toBe(optic.justifyContent);
-
-      await view.unmount();
-    });
-
-    // Her window lives below the seam and the eye above it, so a long reply
-    // fills downward and never moves her.
-    it('keeps the eye and her window in separate fields', async () => {
-      awake({ log: [], line: 'Noted.' });
-      const view = await render(<Stage />);
-
+      const field = flat(view.getByTestId('window-field').props.style);
+      expect(field.flex).toBeUndefined();
+      expect(field.flexShrink).toBe(1);
       expect(within(view.getByTestId('window-field')).getByTestId('her-line')).toBeTruthy();
-      expect(within(view.getByTestId('optic-field')).queryByTestId('her-line')).toBeNull();
 
       await view.unmount();
     });
@@ -375,26 +362,28 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    // It sat flush on the keys for one commit. The handle is out of the tree
-    // either way, so no amount of gap here can expose it — which leaves the
-    // right gap as the one the stage already uses, rather than none.
-    //
-    // It was also briefly 20 with the keys up, to match the box's own sides,
-    // and then 8, on a misreading of which gap was too wide. The wide one was
-    // the one INSIDE the lower field, under her window — see windowField.
-    it('keeps the same gap under the box whether the keyboard is up or not', async () => {
+    // With the keys up the box sits on them and its three visible margins are
+    // read together. It was 16dp under against 20dp beside, which is the wrong
+    // kind of nearly-equal; it matches now. It sat flush for one commit before
+    // that, and at 8 for another, on a misreading of which gap was too wide —
+    // the wide one was above the input box, not below it.
+    it('squares the box off against its own sides with the keys up', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      const lifted = flat(typing.getByTestId('input-row').props.style).marginBottom;
+      const lifted = flat(typing.getByTestId('input-row').props.style);
       await typing.unmount();
 
+      expect(lifted.marginBottom).toBe(lifted.marginHorizontal);
+    });
+
+    // Resting it keeps 4a's own 14, which is where the cabinet handle hangs.
+    it('keeps the design’s gap while the keys are down', async () => {
       keyboard(false);
       const idle = await render(<Stage />);
-      const resting = flat(idle.getByTestId('input-row').props.style).marginBottom;
+      const resting = flat(idle.getByTestId('input-row').props.style);
       await idle.unmount();
 
-      expect(lifted).toBe(resting);
-      expect(lifted).toBeGreaterThan(0);
+      expect(resting.marginBottom).toBe(14);
     });
 
     // The box she is typed into must never be what disappears.

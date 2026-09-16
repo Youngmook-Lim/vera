@@ -68,6 +68,12 @@ const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
 const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 
+// How the leftover height between the pill row and the input box is shared: one
+// part above the eye, one below it, and this many under her window. Measured
+// against the device — at 1 (an even split) her window sat at 63% of the screen
+// with the keys down, which read as floating low; at 3 it lands near half.
+const SLACK_BELOW_WINDOW = 3;
+
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
@@ -402,25 +408,33 @@ export function Stage() {
         </View>
       ) : null}
 
-      {/* Two equal fields, and the seam between them is where her window starts
-          (2026-09-16). The seam lands at half of what is left between the pill
-          row and the input, which is a little below the middle of the screen,
-          and the eye is centred in the field ABOVE it — so the eye sits halfway
-          between the conversation pill and her window.
+      {/* The eye and her window take their natural heights and the leftover is
+          pooled in THREE places: equally above and below the eye, so it sits
+          halfway between the conversation pill and her window, and then
+          SLACK_BELOW_WINDOW times that much under her, so the air that has
+          nowhere else to go collects at the bottom rather than pushing her down
+          the screen.
 
-          It used to be the eye and the window centred together as a PAIR, which
-          meant the eye rose about 130px the moment she spoke: the window grows
-          from its collapsed strip to 300px, the block gets taller, and centring
-          pushes the top of it up. Then it was the eye alone centred in the whole
-          gap, which fixed that and put her window at about 65% down the screen,
-          far lower than it had ever sat.
+          Four arrangements have been tried here and each failed in its own
+          direction, which is worth knowing before reaching for a fifth:
+
+          - eye and window centred as one BLOCK: the eye rose ~130px the moment
+            she spoke, because her window grows from a collapsed strip to 300px
+            and centring pushes a taller block up.
+          - eye centred in the whole gap, window pinned under it: fixed the
+            jump, put her window at ~65% of the screen.
+          - two equal fields, window pinned to the top of the lower one: left
+            ~100dp of dead space between her window and the input box.
+          - the same, window centred in its field: measured on the device at 63%
+            of the screen with the keys down, which is still too low.
 
           `centre` shrinks with the keyboard — useKeyboardInset pads the stage's
-          bottom rather than translating it — so both fields shrink in step and
-          the arrangement holds without anything being said about the keyboard
-          here. */}
+          bottom rather than translating it — so all three pools shrink in step
+          and the arrangement holds without anything being said about the
+          keyboard here. */}
       <View style={styles.centre}>
-        <View testID="optic-field" style={styles.opticField}>
+        <View testID="slack-above-eye" style={styles.slack} />
+
         <View style={styles.opticRow}>
           <View ref={opticBox} onLayout={measureOptic} collapsable={false}>
             <Optic
@@ -439,7 +453,8 @@ export function Stage() {
             />
           </View>
         </View>
-        </View>
+
+        <View testID="slack-below-eye" style={styles.slack} />
 
         {/* Her words get an instrument of their own (3a): a status strip
             carrying her state, and a body holding nothing but what she said.
@@ -528,6 +543,8 @@ export function Stage() {
           ) : null}
         </View>
         </View>
+
+        <View testID="slack-below-window" style={styles.slackBelowWindow} />
       </View>
 
       {awake ? (
@@ -537,7 +554,10 @@ export function Stage() {
               the handle is out of the tree while the keyboard is up, so no gap
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
-          <View testID="input-row" style={styles.inputRow}>
+          <View
+            testID="input-row"
+            style={[styles.inputRow, keyboardUp ? styles.inputRowEven : null]}
+          >
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -678,30 +698,22 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
-  // Equal flex, so the seam between them sits at half of what is left between
-  // the pill row and the input — a little below the middle of the screen, which
-  // is where her window begins. The eye is centred in the upper field, putting
-  // it halfway between the conversation pill and her window, and it stays there
-  // however much she says, because the window grows downward inside the lower
-  // field and never touches the upper one.
-  //
-  // minHeight:0 on both lets the window's own ScrollView shrink rather than
-  // forcing the field taller than its share.
-  opticField: {
+  // One above the eye and one below it, equal, so the eye sits halfway between
+  // the conversation pill and her window whatever either of them is doing.
+  slack: {
     flex: 1,
-    minHeight: 0,
-    justifyContent: 'center',
   },
-  // Her window is CENTRED in its field, not pinned to the top of it. Pinned,
-  // every pixel the window did not use piled up in one place — under her — so a
-  // short reply left about 100dp of dead space between the bottom of her window
-  // and the top of the input box while the eye sat comfortably above. Centred,
-  // the leftover is split above and below her, and each field now does the same
-  // thing with what it holds: the eye centred in one, her words in the other.
+  // And the rest under her, which is what keeps her near the middle of a tall
+  // screen instead of floating down it. Raising this lifts her window and
+  // lowers the eye; lowering it does the reverse.
+  slackBelowWindow: {
+    flex: SLACK_BELOW_WINDOW,
+  },
+  // Not a pool — just a wrapper, so the window keeps its natural height and its
+  // own ScrollView does the shrinking rather than a flex share forcing it.
   windowField: {
-    flex: 1,
     minHeight: 0,
-    justifyContent: 'center',
+    flexShrink: 1,
   },
   // `padding:22px 0 22px`, the eye centred in its own row
   opticRow: {
@@ -812,6 +824,13 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: ms(11),
     color: palette.amber,
+  },
+  // With the keys up the box sits on them and its three visible margins are
+  // read together, so the bottom one matches the sides. Measured at 16dp
+  // against 20dp before this, which is the wrong kind of nearly-equal.
+  // Resting it keeps 4a's 14, where the cabinet handle hangs below it.
+  inputRowEven: {
+    marginBottom: 20,
   },
   input: {
     flex: 1,
