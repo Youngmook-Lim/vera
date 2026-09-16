@@ -74,6 +74,12 @@ const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 // with the keys down, which read as floating low; at 3 it lands near half.
 const SLACK_BELOW_WINDOW = 3;
 
+// Her window's own sides, and its bottom while the keyboard is up — where it is
+// squared off against itself the way the input box is. 3a's own 18, which is
+// two narrower than the input box's 20; that difference is the design's and is
+// not ours to even out.
+const WINDOW_MARGIN = 18;
+
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
@@ -461,7 +467,14 @@ export function Stage() {
             It hangs from the eye rather than sitting above the input row: the
             window is what her line grew into, so it belongs against her. */}
         <View testID="window-field" style={styles.windowField}>
-        <View style={[styles.window, hasBody ? styles.windowOpen : null]}>
+        <View
+          testID="her-window"
+          style={[
+            styles.window,
+            hasBody ? styles.windowOpen : null,
+            keyboardUp ? styles.windowEven : null,
+          ]}
+        >
           <View testID="status-strip" style={styles.strip}>
             <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
             <Text
@@ -544,7 +557,16 @@ export function Stage() {
         </View>
         </View>
 
-        <View testID="slack-below-window" style={styles.slackBelowWindow} />
+        {/* No slack under her while the keys are up. There is little enough of
+            it there that a share of it is a few pixels, and a few pixels ON TOP
+            of her bottom margin is a gap that changes with the length of her
+            reply and matches nothing. With the pool closed the gap under her
+            window is her bottom margin and nothing else, which is a number that
+            can be made to match her sides. */}
+        <View
+          testID="slack-below-window"
+          style={keyboardUp ? styles.slackNone : styles.slackBelowWindow}
+        />
       </View>
 
       {awake ? (
@@ -709,6 +731,16 @@ const styles = StyleSheet.create({
   slackBelowWindow: {
     flex: SLACK_BELOW_WINDOW,
   },
+  slackNone: {
+    flex: 0,
+  },
+  // Squared off against its own sides while the keys are up, for the reason the
+  // input box below it is: with the keyboard there, her window and the box are
+  // two surfaces stacked at the bottom of the screen and the space between them
+  // is read against the space beside them.
+  windowEven: {
+    marginBottom: WINDOW_MARGIN,
+  },
   // Not a pool — just a wrapper, so the window keeps its natural height and its
   // own ScrollView does the shrinking rather than a flex share forcing it.
   windowField: {
@@ -723,7 +755,7 @@ const styles = StyleSheet.create({
   // `margin:0 18px 14px; background:#17161a; border:1px solid #2c2a22;
   // border-radius:14px`
   window: {
-    marginHorizontal: 18,
+    marginHorizontal: WINDOW_MARGIN,
     marginBottom: 14,
     backgroundColor: palette.panelAlt,
     borderWidth: 1,

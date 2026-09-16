@@ -376,6 +376,38 @@ describe('Stage', () => {
       expect(lifted.marginBottom).toBe(lifted.marginHorizontal);
     });
 
+    // With the keys up her window and the input box are two surfaces stacked at
+    // the bottom of the screen, so the space between them is read against the
+    // space beside them. It could not be made to match while a share of the
+    // leftover height also landed there: that share changes with the length of
+    // her reply, so the gap changed with it.
+    it('closes the slack under her window and squares it off too', async () => {
+      keyboard(true);
+      awake({ log: [], line: 'Noted.' });
+      const view = await render(<Stage />);
+
+      expect(flat(view.getByTestId('slack-below-window').props.style).flex).toBe(0);
+
+      const window = flat(view.getByTestId('her-window').props.style);
+      expect(window.marginBottom).toBe(window.marginHorizontal);
+
+      await view.unmount();
+    });
+
+    // With the keys down the pool under her window is what keeps her off the
+    // bottom of a tall screen, and her window keeps 3a's own 14.
+    it('keeps the pool under her window while the keys are down', async () => {
+      keyboard(false);
+      awake({ log: [], line: 'Noted.' });
+      const view = await render(<Stage />);
+
+      expect(Number(flat(view.getByTestId('slack-below-window').props.style).flex))
+        .toBeGreaterThan(0);
+      expect(flat(view.getByTestId('her-window').props.style).marginBottom).toBe(14);
+
+      await view.unmount();
+    });
+
     // Resting it keeps 4a's own 14, which is where the cabinet handle hangs.
     it('keeps the design’s gap while the keys are down', async () => {
       keyboard(false);
