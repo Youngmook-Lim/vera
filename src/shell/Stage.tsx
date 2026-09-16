@@ -68,6 +68,11 @@ const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
 const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 
+// The input box's side margins, and its bottom one while the keyboard is up.
+// One constant so the three cannot drift apart, which is the whole point of
+// squaring it off.
+const INPUT_MARGIN = 20;
+
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
 // the optic itself.
@@ -536,7 +541,11 @@ export function Stage() {
               the handle is out of the tree while the keyboard is up, so no gap
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
-          <View testID="input-row" style={styles.inputRow}>
+          {/* Even on three sides once the keys are up — see inputRowEven. */}
+          <View
+            testID="input-row"
+            style={[styles.inputRow, keyboardUp ? styles.inputRowEven : null]}
+          >
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -792,7 +801,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    marginHorizontal: 20,
+    marginHorizontal: INPUT_MARGIN,
     marginBottom: 14,
     paddingVertical: 13,
     paddingHorizontal: 14,
@@ -804,6 +813,17 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: ms(11),
     color: palette.amber,
+  },
+  // With the keyboard up the box is the last thing on the screen and sits
+  // directly on the keys, so its three visible margins are read together: 20
+  // beside and 14 under makes it look dropped rather than placed. Matching the
+  // sides squares it off.
+  //
+  // Only while the keys are up. Resting, the box has the whole stage under it
+  // and 14 is 4a's own number, which is also the gap the cabinet handle hangs
+  // in below it.
+  inputRowEven: {
+    marginBottom: INPUT_MARGIN,
   },
   input: {
     flex: 1,

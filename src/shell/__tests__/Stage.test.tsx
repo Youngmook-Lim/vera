@@ -361,22 +361,31 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    // It sat flush on the keys for one commit. The handle is out of the tree
-    // either way, so no amount of gap here can expose it — which leaves the
-    // right gap as the one the stage already uses, rather than none.
-    it('keeps the same gap under the box whether the keyboard is up or not', async () => {
+    // It sat flush on the keys for one commit, which was tighter than anything
+    // else on the screen. It is not flush now and it is not the resting 14
+    // either: with the keys up the box is the last thing on the screen and its
+    // three visible margins are read together, so 20 beside and 14 under makes
+    // it look dropped rather than placed.
+    it('squares the box off against its own side margins', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      const lifted = StyleSheet.flatten(typing.getByTestId('input-row').props.style).marginBottom;
+      const lifted = flat(typing.getByTestId('input-row').props.style);
       await typing.unmount();
 
+      expect(lifted.marginBottom).toBe(lifted.marginHorizontal);
+      expect(lifted.marginBottom).toBeGreaterThan(0);
+    });
+
+    // Resting, the box has the whole stage under it and no keys to sit on, so
+    // it keeps 4a's own 14 — which is also the gap the cabinet handle hangs in.
+    it('keeps the design’s own gap while the keys are down', async () => {
       keyboard(false);
       const idle = await render(<Stage />);
-      const resting = StyleSheet.flatten(idle.getByTestId('input-row').props.style).marginBottom;
+      const resting = flat(idle.getByTestId('input-row').props.style);
       await idle.unmount();
 
-      expect(lifted).toBe(resting);
-      expect(lifted).toBeGreaterThan(0);
+      expect(resting.marginBottom).toBe(14);
+      expect(resting.marginBottom).not.toBe(resting.marginHorizontal);
     });
 
     // The box she is typed into must never be what disappears.
