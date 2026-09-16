@@ -6,7 +6,7 @@ import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
-import { ms, palette } from '../../core/theme';
+import { ms, palette, voice } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SEND_LATCH_MS, Stage, keyboardShape } from '../Stage';
 import { T } from '../strings';
@@ -63,18 +63,24 @@ describe('Stage', () => {
   // Her line used to be sized by a ladder — loud when short, small when long.
   // It sits in a bordered window now (3a) and takes one size whatever she says,
   // low enough that a reply under thirty words arrives whole.
+  //
+  // Read off voice() rather than restated here. The number is taste and moves;
+  // what this test is for is that it does not move with the LENGTH of the line,
+  // and a hardcoded copy just breaks every time the size is tuned.
   it('sets her line at one size however long it is', async () => {
+    const { fontSize } = voice('en');
+
     awake({ line: 'You returned.', shown: 'You returned.' });
     const short = await render(<Stage />);
     expect(short.getByTestId('her-line').props.style).toEqual(
-      expect.objectContaining({ fontSize: ms(15) }),
+      expect.objectContaining({ fontSize }),
     );
 
     const long = Array.from({ length: 34 }, () => 'word').join(' ');
     awake({ line: long, shown: long });
     const wordy = await render(<Stage />);
     expect(wordy.getByTestId('her-line').props.style).toEqual(
-      expect.objectContaining({ fontSize: ms(15) }),
+      expect.objectContaining({ fontSize }),
     );
   });
 

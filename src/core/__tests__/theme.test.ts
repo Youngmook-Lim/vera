@@ -1,4 +1,4 @@
-import { font, ms, palette, serif, serifItalic } from '../theme';
+import { font, ms, palette, serif, serifItalic, voice } from '../theme';
 
 test('ms scales mock px by 1.1 at half-dp precision', () => {
   expect(ms(10)).toBe(11);
@@ -36,4 +36,27 @@ test('token spot checks match the design doc 4a markup', () => {
   expect(palette.organism.hungry).toBe('#ff8a4a');
   expect(palette.advice.bg).toBe('#0f0f11');
   expect(palette.advice.ink).toBe('#e9e6df');
+});
+
+// One size per script, not a ladder. The ladder shrank a long reply to fit and
+// fought the window that grew around her words in 3a, so it went; what is left
+// is the pair of sizes the ladder bottomed out at, with latin raised one step
+// because it read small inside the frame.
+test('her voice is one size per script', () => {
+  expect(voice('en').fontSize).toBe(ms(16));
+  expect(voice('ko').fontSize).toBe(ms(14));
+  expect(voice().fontSize).toBe(voice('en').fontSize);
+});
+
+// Nanum Myeongjo's hangul sits optically larger than Instrument Serif's latin
+// at the same px, so Korean is set smaller and led looser to land the same
+// weight on the page. Asserted as a RELATIONSHIP: the two numbers are taste and
+// will move again, and it is the gap between them that carries the reason.
+test('hangul is set smaller than latin, and led looser', () => {
+  const en = voice('en');
+  const ko = voice('ko');
+
+  expect(ko.fontSize).toBeLessThan(en.fontSize);
+  expect(1 - ko.fontSize / en.fontSize).toBeGreaterThan(0.1);
+  expect(ko.lineHeight / ko.fontSize).toBeGreaterThan(en.lineHeight / en.fontSize);
 });

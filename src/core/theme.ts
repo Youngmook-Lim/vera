@@ -149,15 +149,19 @@ export const serif = (lang: Lang = 'en'): string =>
 // them weight. In 3a they live inside a bordered window, and a size that moved
 // under her fought the frame it was in.
 //
-// This is the ladder's old bottom rung: the size her longest replies were
-// already being set at. SOUL.md holds her under 30 words, which at this size is
-// about eight lines of the window's body — so a reply arrives whole and the
-// ScrollView behind it never has to move. Korean is 12% smaller with looser
-// leading, for the same reason the ladder carried two of everything: Nanum
-// Myeongjo's hangul sits optically larger than Instrument Serif's latin at the
-// same px (design doc, turn 5f).
+// It began as the ladder's old bottom rung — the size her longest replies were
+// already being set at — which read small in English once the window had grown
+// around it, so latin is up one to 16 (2026-09-16). SOUL.md holds her under 30
+// words, which at this size is still about eight lines of the window's body, so
+// a reply arrives whole and the ScrollView behind it never has to move.
+//
+// Korean stays at 14 with looser leading, for the reason the ladder carried two
+// of everything: Nanum Myeongjo's hangul sits optically larger than Instrument
+// Serif's latin at the same px (design doc, turn 5f). The note here has always
+// said hangul is set about 12% smaller, and at 15 against 14 it was only 6.7% —
+// so raising latin is what finally makes that true rather than aspirational.
 export const voice = (lang: Lang = 'en'): { fontSize: number; lineHeight: number } => {
-  const [size, leading] = lang === 'ko' ? [14, 1.68] : [15, 1.56];
+  const [size, leading] = lang === 'ko' ? [14, 1.68] : [16, 1.56];
   const fontSize = ms(size);
   return { fontSize, lineHeight: fontSize * leading };
 };
