@@ -1,11 +1,16 @@
 // src/shell/__tests__/Splash.test.tsx
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { DORMANT, FACES, faceFor } from '../../core/appIcon';
 import { EMOTIONS } from '../../vera/emotions';
+import { palette } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SPLASH_HOLD_MS, Splash, faceEmotion } from '../Splash';
+
+const flat = (style: unknown): Record<string, unknown> =>
+  Object.assign({}, ...[style].flat(Infinity).filter(Boolean) as object[]);
+
+type Rendered = Awaited<ReturnType<typeof render>>;
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 7, 31);
@@ -73,7 +78,7 @@ describe('Splash', () => {
   it('gives the wordmark a box too wide to clip', async () => {
     const view = await render(<Splash hasKey now={NOW} />);
 
-    const style = StyleSheet.flatten(view.getByText('V.E.R.A.').props.style);
+    const style = flat(view.getByText('V.E.R.A.').props.style);
     expect(style.alignSelf).toBe('stretch');
     expect(style.textAlign).toBe('center');
     expect(style.letterSpacing).toBeGreaterThan(0);
@@ -81,33 +86,42 @@ describe('Splash', () => {
     await view.unmount();
   });
 
-  // The wait, drawn. The hold is a known length, so the bar fills in step with
-  // it rather than looping — which is the one thing the thinking dots cannot do.
-  describe('the waking bar', () => {
+  // The wait, drawn: a ring of the app's own hairline with one arc of it lit in
+  // the day's colour.
+  describe('the waking spinner', () => {
+    const spinner = (view: Rendered) => flat(view.getByTestId('splash-spinner').props.style);
+
     it('is under her name, wearing the day’s own colour', async () => {
       const view = await render(<Splash hasKey now={NOW} />);
 
-      expect(view.getByTestId('splash-bar')).toBeTruthy();
-      const fill = StyleSheet.flatten(view.getByTestId('splash-bar-fill').props.style);
-      expect(fill.backgroundColor).toBe(EMOTIONS[faceEmotion(faceFor(NOW, true))].iris);
+      expect(spinner(view).borderTopColor).toBe(EMOTIONS[faceEmotion(faceFor(NOW, true))].iris);
 
       await view.unmount();
     });
 
-    // Dead eye, dead bar. Nothing on this screen is lit before there is a key.
+    // Dead eye, dead ring. Nothing on this screen is lit before there is a key.
     it('goes dead grey with no key', async () => {
       const view = await render(<Splash hasKey={false} now={NOW} />);
 
-      const fill = StyleSheet.flatten(view.getByTestId('splash-bar-fill').props.style);
-      expect(fill.backgroundColor).toBe(EMOTIONS.dormant.iris);
+      expect(spinner(view).borderTopColor).toBe(EMOTIONS.dormant.iris);
 
       await view.unmount();
     });
 
-    // One constant, because the bar has to fill over exactly the hold. Two
-    // copies would drift and the bar would finish early or be cut off
-    // mid-travel — and nothing but a device could see it happen.
-    it('is timed by the one hold the app waits out', () => {
+    // Three quarters of the ring stays the app's own line; only the leading arc
+    // is lit, which is what makes the rotation readable at all.
+    it('lights one arc and leaves the rest a hairline', async () => {
+      const view = await render(<Splash hasKey now={NOW} />);
+
+      const style = spinner(view);
+      expect(style.borderColor).toBe(palette.hairline);
+      expect(style.borderTopColor).not.toBe(palette.hairline);
+      expect(style.borderRadius).toBe(Number(style.width) / 2);
+
+      await view.unmount();
+    });
+
+    it('holds the day’s face long enough to be read', () => {
       expect(SPLASH_HOLD_MS).toBe(2000);
     });
   });
