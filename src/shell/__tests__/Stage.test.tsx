@@ -361,19 +361,19 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    // It sat flush on the keys for one commit, which was tighter than anything
-    // else on the screen. It is not flush now and it is not the resting 14
-    // either: with the keys up the box is the last thing on the screen and its
-    // three visible margins are read together, so 20 beside and 14 under makes
-    // it look dropped rather than placed.
-    it('squares the box off against its own side margins', async () => {
+    // Three values have been tried under here and the shape of the answer is
+    // that the box is sitting ON the keys, not floating in the stage: flush
+    // (too tight to read as a gap at all), 4a's resting 14, and the side
+    // margins' 20, which looked like the box had come loose from the keyboard.
+    // Tighter than the sides is the point, not equal to them.
+    it('closes the box down onto the keys', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
       const lifted = flat(typing.getByTestId('input-row').props.style);
       await typing.unmount();
 
-      expect(lifted.marginBottom).toBe(lifted.marginHorizontal);
       expect(lifted.marginBottom).toBeGreaterThan(0);
+      expect(lifted.marginBottom).toBeLessThan(Number(lifted.marginHorizontal));
     });
 
     // Resting, the box has the whole stage under it and no keys to sit on, so
@@ -385,7 +385,6 @@ describe('Stage', () => {
       await idle.unmount();
 
       expect(resting.marginBottom).toBe(14);
-      expect(resting.marginBottom).not.toBe(resting.marginHorizontal);
     });
 
     // The box she is typed into must never be what disappears.

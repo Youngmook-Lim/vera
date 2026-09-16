@@ -68,10 +68,13 @@ const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
 const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 
-// The input box's side margins, and its bottom one while the keyboard is up.
-// One constant so the three cannot drift apart, which is the whole point of
-// squaring it off.
-const INPUT_MARGIN = 20;
+const INPUT_MARGIN = 20; // the input box's sides, and 4a's own number
+
+// And what is left under it while the keyboard is up. Deliberately tighter than
+// the sides: the box is sitting ON the keys there, not floating in the stage,
+// and a gap that matches the sides reads as the box having come loose from
+// them. Tried at 14 (4a's resting gap) and at 20 (the sides) before this.
+const KEYBOARD_GAP = 8;
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
@@ -541,10 +544,10 @@ export function Stage() {
               the handle is out of the tree while the keyboard is up, so no gap
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
-          {/* Even on three sides once the keys are up — see inputRowEven. */}
+          {/* Closes down onto the keys once they are up — see inputRowTight. */}
           <View
             testID="input-row"
-            style={[styles.inputRow, keyboardUp ? styles.inputRowEven : null]}
+            style={[styles.inputRow, keyboardUp ? styles.inputRowTight : null]}
           >
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
@@ -814,16 +817,10 @@ const styles = StyleSheet.create({
     fontSize: ms(11),
     color: palette.amber,
   },
-  // With the keyboard up the box is the last thing on the screen and sits
-  // directly on the keys, so its three visible margins are read together: 20
-  // beside and 14 under makes it look dropped rather than placed. Matching the
-  // sides squares it off.
-  //
   // Only while the keys are up. Resting, the box has the whole stage under it
-  // and 14 is 4a's own number, which is also the gap the cabinet handle hangs
-  // in below it.
-  inputRowEven: {
-    marginBottom: INPUT_MARGIN,
+  // and keeps 4a's 14, which is also the gap the cabinet handle hangs in.
+  inputRowTight: {
+    marginBottom: KEYBOARD_GAP,
   },
   input: {
     flex: 1,
