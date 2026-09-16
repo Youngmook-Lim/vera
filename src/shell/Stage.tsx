@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   PanResponder,
   Pressable,
   ScrollView,
@@ -326,6 +327,12 @@ export function Stage() {
     setDraft('');
     if (forceEmotion(text)) return false; // TEMPORARY, see above
     void speak('subject_spoke', text);
+    // The line has gone, so hand the screen back. The keys cost the stage most
+    // of its height — the cabinet handle comes out of the tree entirely while
+    // they are up — and what is worth looking at now is her answer, not the
+    // empty box. Only on the path that actually sent: a refused send leaves the
+    // keyboard where it is, because the subject is still mid-thought.
+    Keyboard.dismiss();
     return true;
   };
 

@@ -1,6 +1,6 @@
 // src/shell/__tests__/Stage.test.tsx
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { Keyboard, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
@@ -9,6 +9,7 @@ import { useFacilityStore } from '../../core/store';
 import { ms, palette } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SEND_LATCH_MS, Stage } from '../Stage';
+import { T } from '../strings';
 
 // The send tests reach the store's speak(), which would otherwise reach the
 // network. Nothing in this file is allowed to leave the process.
@@ -397,6 +398,61 @@ describe('Stage', () => {
       await fireEvent.press(view.getByText('SEND'));
       expect(spoken).toHaveBeenCalledWith('subject_spoke', 'did you miss me');
       expect(useFacilityStore.getState().draft).toBe('');
+    });
+
+    // The keys cost the stage most of its height, and once the line is gone the
+    // thing worth looking at is her answer rather than an empty box.
+    describe('the keyboard', () => {
+      let dismiss: jest.SpyInstance;
+
+      beforeEach(() => {
+        dismiss = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+      });
+
+      afterEach(() => dismiss.mockRestore());
+
+      it('goes down once the line has gone', async () => {
+        awake({ draft: 'here it is' });
+        const view = await render(<Stage />);
+
+        await fireEvent.press(view.getByText('SEND'));
+
+        expect(dismiss).toHaveBeenCalled();
+        await view.unmount();
+      });
+
+      it('goes down on the return key too', async () => {
+        awake({ draft: 'here it is' });
+        const view = await render(<Stage />);
+
+        await fireEvent(view.getByPlaceholderText(T.en.ask), 'submitEditing');
+
+        expect(dismiss).toHaveBeenCalled();
+        await view.unmount();
+      });
+
+      // A refused send leaves it up: the subject is still mid-thought, and
+      // taking the keyboard away would make them open it again to finish.
+      //
+      // Driven through the RETURN KEY, not the button. SEND goes `disabled` on
+      // exactly these two cases and refuses touch, so a button press never
+      // reaches send() at all — a version of this test that pressed SEND
+      // passed against a send() that dismissed unconditionally, because
+      // nothing was calling send(). The return key has no such guard and is
+      // the only way in.
+      it('stays up when the return key sends nothing', async () => {
+        awake({ draft: '   ' });
+        const empty = await render(<Stage />);
+        await fireEvent(empty.getByPlaceholderText(T.en.ask), 'submitEditing');
+        expect(dismiss).not.toHaveBeenCalled();
+        await empty.unmount();
+
+        awake({ draft: 'again', thinking: true });
+        const busy = await render(<Stage />);
+        await fireEvent(busy.getByPlaceholderText(T.en.ask), 'submitEditing');
+        expect(dismiss).not.toHaveBeenCalled();
+        await busy.unmount();
+      });
     });
 
     it('refuses an empty box', async () => {
