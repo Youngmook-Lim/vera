@@ -600,9 +600,16 @@ const styles = StyleSheet.create({
     backgroundColor: palette.textGhost,
   },
   // `padding:15px 0 0`, centred
+  // 4a's 15, plus the tag pill's own vertical chrome (2px padding and 1px
+  // border, top and bottom). The logo used to end at a line of text and now
+  // ends at a bordered badge, so 15 measured from the badge's edge is 6px less
+  // air than 15 measured from a baseline — and the badge is the same KIND of
+  // object as the pill below it, which makes the shortfall read as crowding
+  // rather than as a small gap. The header row itself did not move: it is ~3px
+  // TALLER than before the badge, so this row sits slightly lower, not higher.
   pillRow: {
     alignItems: 'center',
-    paddingTop: 15,
+    paddingTop: 21,
   },
   pill: {
     flexDirection: 'row',
