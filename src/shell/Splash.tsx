@@ -47,7 +47,14 @@ import { Optic } from './Optic';
 // optic already reads it. A face is a key, and this file hands it over.
 
 const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
-const WORDMARK_BOTTOM = 54;
+
+// 2a put the wordmark at bottom:54 and at ms(10). This is the title card and
+// the only screen her name gets to be the subject of, so it is bigger, higher,
+// and carries the acronym's expansion underneath (2026-09-16). A deliberate
+// departure from the design, which is otherwise the authority on every pixel.
+const TITLE_BOTTOM = 96;
+const WORDMARK_PX = ms(15);
+const EXPANSION_PX = ms(7);
 
 // `faceFor` answers in the launcher's vocabulary ('Calm'), the optic reads
 // emotions.ts's ('calm'). The guard is not ceremony: faces.json is edited by
@@ -64,7 +71,16 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
   return (
     <View testID="splash" style={styles.splash}>
       <Optic emotion={emotion} size={OPTIC_PX} />
-      <Text style={[styles.wordmark, { fontFamily: font('mono', 600) }]}>V.E.R.A.</Text>
+      <View style={styles.title}>
+        <Text style={[styles.wordmark, { fontFamily: font('mono', 700) }]}>V.E.R.A.</Text>
+        {/* Hardcoded beside the wordmark rather than taken from T, for the same
+            reason the wordmark is: the acronym is English, so its expansion is
+            English, and a translation pair holding one identical string twice
+            would be a lie about there being two. */}
+        <Text style={[styles.expansion, { fontFamily: font('mono', 500) }]}>
+          Very Emotional Robot Assistant
+        </Text>
+      </View>
     </View>
   );
 }
@@ -79,13 +95,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: palette.iconBg,
   },
-  // `position:absolute;bottom:54px` — it hangs off the bottom rather than
-  // riding under the eye, so the eye stays centred on the screen.
-  wordmark: {
+  // Hangs off the bottom rather than riding under the eye, so the eye keeps the
+  // centre of the screen — 2a's arrangement, at 2a's proportions, just higher.
+  title: {
     position: 'absolute',
-    bottom: WORDMARK_BOTTOM,
-    fontSize: ms(10),
-    letterSpacing: ms(10) * 0.38,
-    color: palette.textDim,
+    bottom: TITLE_BOTTOM,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  // **The full width and textAlign, not a self-sized box.** letterSpacing in
+  // React Native adds its space after EVERY character including the last, and
+  // Android's measurement does not always account for the trailing one — so an
+  // absolutely positioned Text sized to its own content clipped the final
+  // period off `V.E.R.A.`. A box that spans the screen cannot clip, and
+  // textAlign does the centring the box used to do.
+  wordmark: {
+    alignSelf: 'stretch',
+    textAlign: 'center',
+    fontSize: WORDMARK_PX,
+    letterSpacing: WORDMARK_PX * 0.38,
+    color: palette.textSoft,
+  },
+  // Dim against the wordmark on purpose: two lines at one weight would read as
+  // a sentence rather than a name and a gloss on it.
+  expansion: {
+    alignSelf: 'stretch',
+    textAlign: 'center',
+    marginTop: 9,
+    fontSize: EXPANSION_PX,
+    letterSpacing: EXPANSION_PX * 0.2,
+    color: palette.textGhost,
   },
 });

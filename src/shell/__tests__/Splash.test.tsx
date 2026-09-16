@@ -1,5 +1,6 @@
 // src/shell/__tests__/Splash.test.tsx
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { DORMANT, FACES, faceFor } from '../../core/appIcon';
 import * as OpticModule from '../Optic';
@@ -51,6 +52,32 @@ describe('Splash', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+
+  // The title card is the one screen her name is the subject of, so it carries
+  // the acronym's expansion. The stage's logo deliberately does not.
+  it('spells the acronym out underneath it', async () => {
+    const view = await render(<Splash hasKey now={NOW} />);
+
+    expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+
+    await view.unmount();
+  });
+
+  // letterSpacing in React Native adds its space after EVERY character
+  // including the last, and Android's measurement does not always allow for
+  // the trailing one — so a self-sized absolute Text clipped the final period
+  // off `V.E.R.A.`. A full-width box cannot clip, and textAlign does the
+  // centring. Invisible to jsdom, so the assertion is on the mechanism.
+  it('gives the wordmark a box too wide to clip', async () => {
+    const view = await render(<Splash hasKey now={NOW} />);
+
+    const style = StyleSheet.flatten(view.getByText('V.E.R.A.').props.style);
+    expect(style.alignSelf).toBe('stretch');
+    expect(style.textAlign).toBe('center');
+    expect(style.letterSpacing).toBeGreaterThan(0);
+
+    await view.unmount();
   });
 
   // faces.json is hand-edited and shared with the config plugin. A name added
