@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardState } from 'react-native-keyboard-controller';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette } from '../../core/theme';
@@ -262,6 +262,55 @@ describe('Stage', () => {
     expect(view.queryByText('SUPPORTIVE V.E.R.A.')).toBeNull();
 
     await view.unmount();
+  });
+
+  // The eye sits on the midpoint between the pill row and the input box and
+  // stays there however much she has said. Two equal flex siblings do that: the
+  // pair used to be centred as a block, which lifted the eye about 130px the
+  // moment she spoke, because the window grows from a collapsed strip to 300px
+  // and centring pushes the top of a taller block upward.
+  //
+  // Layout is invisible to jsdom, so this asserts the mechanism. Both of these
+  // are empty-looking Views and are exactly what a tidy-up deletes.
+  describe('where the eye sits', () => {
+    const halves = (view: ReturnType<typeof render> extends Promise<infer R> ? R : never) => [
+      StyleSheet.flatten(view.getByTestId('optic-space-above').props.style),
+      StyleSheet.flatten(view.getByTestId('optic-space-below').props.style),
+    ];
+
+    it('is flanked by equal space above and below', async () => {
+      awake({ log: [], line: 'x'.repeat(400) });
+      const view = await render(<Stage />);
+
+      for (const half of halves(view)) expect(half.flex).toBe(1);
+
+      await view.unmount();
+    });
+
+    it('holds the midpoint whether or not she has spoken', async () => {
+      awake({ log: [], line: '' });
+      const silent = await render(<Stage />);
+      const before = halves(silent).map((h) => h.flex);
+      await silent.unmount();
+
+      awake({ log: [], line: 'She said a great deal, at length, and then some more.' });
+      const speaking = await render(<Stage />);
+      expect(halves(speaking).map((h) => h.flex)).toEqual(before);
+      await speaking.unmount();
+    });
+
+    // Her window is what her line grew into, so it hangs from the eye inside
+    // the lower half rather than sitting beside it. A window outside the halves
+    // would push the eye again.
+    it('hangs her window in the lower half', async () => {
+      awake({ log: [], line: 'Noted.' });
+      const view = await render(<Stage />);
+
+      expect(within(view.getByTestId('optic-space-below')).getByTestId('her-line')).toBeTruthy();
+      expect(within(view.getByTestId('optic-space-above')).queryByTestId('her-line')).toBeNull();
+
+      await view.unmount();
+    });
   });
 
   // With the keyboard up the stage has three things worth the height — the

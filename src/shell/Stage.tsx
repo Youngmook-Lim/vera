@@ -394,10 +394,21 @@ export function Stage() {
         </View>
       ) : null}
 
-      {/* The eye and her words ride together, centred in what is left between
-          the header and the input — which is where the eye sat before the
-          window existed, and where it stays. */}
+      {/* The EYE is centred in what is left between the pill row and the input,
+          and her window hangs under it (2026-09-16). It used to be the pair
+          that was centred, which meant the eye rose about 130px the moment she
+          said anything — the window grows from its collapsed strip to 300px,
+          the block gets taller, and centring pushes the top of it up. An eye
+          that moves whenever she speaks is the wrong kind of alive.
+
+          Two flex:1 siblings do it, one either side of the optic row, so the
+          optic lands on the midpoint whatever the window is holding. `centre`
+          shrinks with the keyboard — useKeyboardInset pads the stage's bottom
+          rather than translating it — so the eye re-centres in the smaller gap
+          on its own and needs nothing said about the keyboard here. */}
       <View style={styles.centre}>
+        <View testID="optic-space-above" style={styles.half} />
+
         <View style={styles.opticRow}>
           <View ref={opticBox} onLayout={measureOptic} collapsable={false}>
             <Optic
@@ -418,7 +429,10 @@ export function Stage() {
         </View>
 
         {/* Her words get an instrument of their own (3a): a status strip
-            carrying her state, and a body holding nothing but what she said. */}
+            carrying her state, and a body holding nothing but what she said.
+            It hangs from the eye rather than sitting above the input row: the
+            window is what her line grew into, so it belongs against her. */}
+        <View testID="optic-space-below" style={styles.half}>
         <View style={[styles.window, hasBody ? styles.windowOpen : null]}>
           <View testID="status-strip" style={styles.strip}>
             <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
@@ -499,6 +513,7 @@ export function Stage() {
               )}
             </ScrollView>
           ) : null}
+        </View>
         </View>
       </View>
 
@@ -648,7 +663,15 @@ const styles = StyleSheet.create({
   // margins.
   centre: {
     flex: 1,
-    justifyContent: 'center',
+    minHeight: 0,
+  },
+  // One either side of the optic row. Equal flex puts the eye on the midpoint
+  // between the pill row and the input, and the lower one is what her window
+  // hangs inside — so a long reply fills downward and the eye does not move.
+  // minHeight:0 on the lower one lets the window's own ScrollView shrink
+  // instead of forcing the half taller than its share.
+  half: {
+    flex: 1,
     minHeight: 0,
   },
   // `padding:22px 0 22px`, the eye centred in its own row
