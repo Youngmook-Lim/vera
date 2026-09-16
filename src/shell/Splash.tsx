@@ -56,10 +56,6 @@ import { Optic } from './Optic';
 
 const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
 
-// 2a put the wordmark at bottom:54 and at ms(10). This is the title card and
-// the only screen her name gets to be the subject of, so it is bigger, higher,
-// and carries the acronym's expansion underneath (2026-09-16). A deliberate
-// departure from the design, which is otherwise the authority on every pixel.
 // How long the day's face stays up once there is nothing left to wait for. The
 // eye is the whole point of the screen, and on a warm start fonts and hydration
 // together can finish inside 200ms — long enough to hide the wait, far too
@@ -69,9 +65,25 @@ const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
 // on; the number belongs with the thing it holds up.
 export const SPLASH_HOLD_MS = 2000;
 
-const TITLE_BOTTOM = 96;
+// 2a put the wordmark at bottom:54 and at ms(10). This is the title card and
+// the only screen her name gets to be the subject of, so it is bigger and
+// carries the acronym's expansion underneath (2026-09-16). A deliberate
+// departure from the design, which is otherwise the authority on every pixel.
 const WORDMARK_PX = ms(15);
-const EXPANSION_PX = ms(7);
+const EXPANSION_PX = ms(9);
+
+// The composition, as three pools of the leftover height rather than an eye
+// pinned to the middle and a title pinned to the bottom. Proportions travel —
+// the same reading on a short screen and a tall one, which an absolute offset
+// from the bottom edge does not give.
+//
+// 3 : 2 : 2 puts the eye's centre near 41% of the screen and the title block
+// near 77%, both above where dead centre and a bottom offset had them. An eye
+// on the exact half-line reads as low, because the mass of a face is read above
+// its middle.
+const ABOVE_EYE = 3;
+const BETWEEN = 2;
+const BELOW_TITLE = 2;
 const SPIN_PX = 20;
 const SPIN_MS = 900;
 
@@ -118,7 +130,12 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
 
   return (
     <View testID="splash" style={styles.splash}>
+      <View testID="splash-above-eye" style={styles.aboveEye} />
+
       <Optic emotion={emotion} size={OPTIC_PX} />
+
+      <View testID="splash-between" style={styles.between} />
+
       <View style={styles.title}>
         <Text style={[styles.wordmark, { fontFamily: font('mono', 700) }]}>V.E.R.A.</Text>
         {/* Hardcoded beside the wordmark rather than taken from T, for the same
@@ -130,6 +147,8 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
         </Text>
         <WakingSpinner colour={EMOTIONS[emotion].iris} />
       </View>
+
+      <View testID="splash-below-title" style={styles.belowTitle} />
     </View>
   );
 }
@@ -141,16 +160,21 @@ const styles = StyleSheet.create({
   splash: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: palette.iconBg,
   },
-  // Hangs off the bottom rather than riding under the eye, so the eye keeps the
-  // centre of the screen — 2a's arrangement, at 2a's proportions, just higher.
+  aboveEye: {
+    flex: ABOVE_EYE,
+  },
+  between: {
+    flex: BETWEEN,
+  },
+  belowTitle: {
+    flex: BELOW_TITLE,
+  },
+  // Stretched to the screen rather than sized to its contents, so the wordmark
+  // inside it has a full-width box to sit in — see the note on `wordmark`.
   title: {
-    position: 'absolute',
-    bottom: TITLE_BOTTOM,
-    left: 0,
-    right: 0,
+    alignSelf: 'stretch',
     alignItems: 'center',
   },
   // **The full width and textAlign, not a self-sized box.** letterSpacing in

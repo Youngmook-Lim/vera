@@ -126,6 +126,58 @@ describe('Splash', () => {
     });
   });
 
+  // The eye and the title take their natural heights and the leftover is pooled
+  // above the eye, between them, and below the title. Proportions rather than an
+  // absolute offset from the bottom edge, so the composition reads the same on a
+  // short screen and a tall one.
+  //
+  // Layout is invisible to jsdom, so this asserts the mechanism: three Views
+  // that look empty and are exactly what a tidy-up deletes.
+  describe('the composition', () => {
+    const pools = (view: Rendered) => ({
+      above: flat(view.getByTestId('splash-above-eye').props.style),
+      between: flat(view.getByTestId('splash-between').props.style),
+      below: flat(view.getByTestId('splash-below-title').props.style),
+    });
+
+    // The eye sits above the half-line, because the mass of a face reads above
+    // its middle and an eye on the exact centre looks low.
+    it('leaves more room above the eye than below the title', async () => {
+      const view = await render(<Splash hasKey now={NOW} />);
+
+      const { above, between, below } = pools(view);
+      expect(Number(above.flex)).toBeGreaterThan(Number(below.flex));
+      expect(Number(between.flex)).toBeGreaterThan(0);
+
+      await view.unmount();
+    });
+
+    // The title is its own block and is stretched to the screen, which is what
+    // gives the wordmark inside it a box too wide to clip.
+    it('keeps the name and its expansion together, under the eye', async () => {
+      const view = await render(<Splash hasKey now={NOW} />);
+
+      expect(view.getByText('V.E.R.A.')).toBeTruthy();
+      expect(view.getByText('Very Emotional Robot Assistant')).toBeTruthy();
+
+      await view.unmount();
+    });
+
+    // Bigger than it was at ms(7), and still clearly under the wordmark rather
+    // than beside it in weight.
+    it('sets the expansion smaller than the name but not tiny', async () => {
+      const view = await render(<Splash hasKey now={NOW} />);
+
+      const name = Number(flat(view.getByText('V.E.R.A.').props.style).fontSize);
+      const full = Number(flat(view.getByText('Very Emotional Robot Assistant').props.style).fontSize);
+
+      expect(full).toBeLessThan(name);
+      expect(full / name).toBeGreaterThan(0.5);
+
+      await view.unmount();
+    });
+  });
+
   // faces.json is hand-edited and shared with the config plugin. A name added
   // there with no emotion behind it must cost a dead eye on the first frame,
   // never a crash before anything has rendered.
