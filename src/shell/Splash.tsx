@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { faceFor } from '../core/appIcon';
 import { font, ms, palette } from '../core/theme';
-import { isEmotionKey, type EmotionKey } from '../vera/emotions';
+import { EMOTIONS, isEmotionKey, type EmotionKey } from '../vera/emotions';
 import { Optic } from './Optic';
 
 // The first frame of the app, and it is the launcher icon enlarged — same
@@ -52,9 +59,21 @@ const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
 // the only screen her name gets to be the subject of, so it is bigger, higher,
 // and carries the acronym's expansion underneath (2026-09-16). A deliberate
 // departure from the design, which is otherwise the authority on every pixel.
+// How long the day's face stays up once there is nothing left to wait for. The
+// eye is the whole point of the screen, and on a warm start fonts and hydration
+// together can finish inside 200ms — long enough to hide the wait, far too
+// short to read a face by.
+//
+// Lives here rather than in App.tsx because the bar below has to fill over
+// exactly this long: two copies of the number would drift and the bar would
+// finish early or get cut off mid-travel.
+export const SPLASH_HOLD_MS = 2000;
+
 const TITLE_BOTTOM = 96;
 const WORDMARK_PX = ms(15);
 const EXPANSION_PX = ms(7);
+const BAR_W = 132;
+const BAR_H = 2;
 
 // `faceFor` answers in the launcher's vocabulary ('Calm'), the optic reads
 // emotions.ts's ('calm'). The guard is not ceremony: faces.json is edited by
@@ -64,6 +83,29 @@ export const faceEmotion = (face: string): EmotionKey => {
   const key = face.toLowerCase();
   return isEmotionKey(key) ? key : 'dormant';
 };
+
+// The wait, drawn. The hold is a KNOWN length, so this fills in step with it
+// rather than looping the way the thinking dots do — those say "still going",
+// which is all they can say, and this can say how much longer. Linear easing
+// for the same reason: a bar that decelerates is describing something other
+// than the wait it is timing.
+//
+// It wears the day's iris, so the line under her name is the colour of the face
+// above it, and goes dead grey along with the eye when there is no key.
+function WakingBar({ colour }: { colour: string }) {
+  const grown = useSharedValue(0);
+  useEffect(() => {
+    grown.value = withTiming(1, { duration: SPLASH_HOLD_MS, easing: Easing.linear });
+    return () => cancelAnimation(grown);
+  }, [grown]);
+  const fill = useAnimatedStyle(() => ({ width: grown.value * BAR_W }));
+
+  return (
+    <View testID="splash-bar" style={styles.track}>
+      <Animated.View testID="splash-bar-fill" style={[styles.fill, { backgroundColor: colour }, fill]} />
+    </View>
+  );
+}
 
 export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: number }) {
   const emotion = faceEmotion(faceFor(now, hasKey));
@@ -80,6 +122,7 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
         <Text style={[styles.expansion, { fontFamily: font('mono', 500) }]}>
           Very Emotional Robot Assistant
         </Text>
+        <WakingBar colour={EMOTIONS[emotion].iris} />
       </View>
     </View>
   );
@@ -116,6 +159,20 @@ const styles = StyleSheet.create({
     fontSize: WORDMARK_PX,
     letterSpacing: WORDMARK_PX * 0.38,
     color: palette.textSoft,
+  },
+  // A hairline, because that is what this app draws when it wants a line: the
+  // conversation pill is made of them and the status strip is closed by one.
+  track: {
+    marginTop: 20,
+    width: BAR_W,
+    height: BAR_H,
+    borderRadius: BAR_H / 2,
+    backgroundColor: palette.hairline,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: BAR_H,
+    borderRadius: BAR_H / 2,
   },
   // Dim against the wordmark on purpose: two lines at one weight would read as
   // a sentence rather than a name and a gloss on it.

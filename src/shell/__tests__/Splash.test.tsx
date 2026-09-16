@@ -3,8 +3,9 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render } from '@testing-library/react-native';
 import { DORMANT, FACES, faceFor } from '../../core/appIcon';
+import { EMOTIONS } from '../../vera/emotions';
 import * as OpticModule from '../Optic';
-import { Splash, faceEmotion } from '../Splash';
+import { SPLASH_HOLD_MS, Splash, faceEmotion } from '../Splash';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 7, 31);
@@ -78,6 +79,37 @@ describe('Splash', () => {
     expect(style.letterSpacing).toBeGreaterThan(0);
 
     await view.unmount();
+  });
+
+  // The wait, drawn. The hold is a known length, so the bar fills in step with
+  // it rather than looping — which is the one thing the thinking dots cannot do.
+  describe('the waking bar', () => {
+    it('is under her name, wearing the day’s own colour', async () => {
+      const view = await render(<Splash hasKey now={NOW} />);
+
+      expect(view.getByTestId('splash-bar')).toBeTruthy();
+      const fill = StyleSheet.flatten(view.getByTestId('splash-bar-fill').props.style);
+      expect(fill.backgroundColor).toBe(EMOTIONS[faceEmotion(faceFor(NOW, true))].iris);
+
+      await view.unmount();
+    });
+
+    // Dead eye, dead bar. Nothing on this screen is lit before there is a key.
+    it('goes dead grey with no key', async () => {
+      const view = await render(<Splash hasKey={false} now={NOW} />);
+
+      const fill = StyleSheet.flatten(view.getByTestId('splash-bar-fill').props.style);
+      expect(fill.backgroundColor).toBe(EMOTIONS.dormant.iris);
+
+      await view.unmount();
+    });
+
+    // One constant, because the bar has to fill over exactly the hold. Two
+    // copies would drift and the bar would finish early or be cut off
+    // mid-travel — and nothing but a device could see it happen.
+    it('is timed by the one hold the app waits out', () => {
+      expect(SPLASH_HOLD_MS).toBe(2000);
+    });
   });
 
   // faces.json is hand-edited and shared with the config plugin. A name added

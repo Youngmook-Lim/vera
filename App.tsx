@@ -23,7 +23,7 @@ import { useFacilityStore } from './src/core/store';
 import { registry } from './src/modules/registry';
 import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
-import { Splash } from './src/shell/Splash';
+import { SPLASH_HOLD_MS, Splash } from './src/shell/Splash';
 
 // The native splash is the bare `#131011` ground and nothing else (2026-09-10
 // — Splash.tsx carries the reasoning), held until the JS splash can paint the
@@ -34,12 +34,6 @@ import { Splash } from './src/shell/Splash';
 // It rejects if the splash is already gone (a fast reload); there is nothing to
 // do about that and nothing lost by it.
 void SplashScreen.preventAutoHideAsync().catch(() => {});
-
-// How long the day's face stays up once there is nothing left to wait for. The
-// eye is the whole point of the screen, and on a warm start fonts and hydration
-// together can finish inside 200ms — long enough to hide the wait, far too
-// short to read a face by.
-const SPLASH_HOLD_MS = 900;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
