@@ -68,13 +68,6 @@ const HEADER_DOT_PX = 5;
 const STRIP_DOT_PX = 4;
 const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 
-const INPUT_MARGIN = 20; // the input box's sides, and 4a's own number
-
-// And what is left under it while the keyboard is up. Deliberately tighter than
-// the sides: the box is sitting ON the keys there, not floating in the stage,
-// and a gap that matches the sides reads as the box having come loose from
-// them. Tried at 14 (4a's resting gap) and at 20 (the sides) before this.
-const KEYBOARD_GAP = 8;
 
 // A single opacity breathe, reused for the header's pulsing dot and the
 // thinking indicator — the only two things on the stage that animate outside
@@ -544,11 +537,7 @@ export function Stage() {
               the handle is out of the tree while the keyboard is up, so no gap
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
-          {/* Closes down onto the keys once they are up — see inputRowTight. */}
-          <View
-            testID="input-row"
-            style={[styles.inputRow, keyboardUp ? styles.inputRowTight : null]}
-          >
+          <View testID="input-row" style={styles.inputRow}>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -703,9 +692,16 @@ const styles = StyleSheet.create({
     minHeight: 0,
     justifyContent: 'center',
   },
+  // Her window is CENTRED in its field, not pinned to the top of it. Pinned,
+  // every pixel the window did not use piled up in one place — under her — so a
+  // short reply left about 100dp of dead space between the bottom of her window
+  // and the top of the input box while the eye sat comfortably above. Centred,
+  // the leftover is split above and below her, and each field now does the same
+  // thing with what it holds: the eye centred in one, her words in the other.
   windowField: {
     flex: 1,
     minHeight: 0,
+    justifyContent: 'center',
   },
   // `padding:22px 0 22px`, the eye centred in its own row
   opticRow: {
@@ -804,7 +800,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    marginHorizontal: INPUT_MARGIN,
+    marginHorizontal: 20,
     marginBottom: 14,
     paddingVertical: 13,
     paddingHorizontal: 14,
@@ -816,11 +812,6 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: ms(11),
     color: palette.amber,
-  },
-  // Only while the keys are up. Resting, the box has the whole stage under it
-  // and keeps 4a's 14, which is also the gap the cabinet handle hangs in.
-  inputRowTight: {
-    marginBottom: KEYBOARD_GAP,
   },
   input: {
     flex: 1,

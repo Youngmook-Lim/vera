@@ -323,6 +323,20 @@ describe('Stage', () => {
       await speaking.unmount();
     });
 
+    // Each field centres what it holds. Her window pinned to the top of its
+    // field piled every unused pixel into one place — under her — so a short
+    // reply left about 100dp of dead space above the input box.
+    it('centres her window in its field rather than pinning it to the top', async () => {
+      awake({ log: [], line: 'Noted.' });
+      const view = await render(<Stage />);
+
+      const { optic, window } = fields(view);
+      expect(window.justifyContent).toBe('center');
+      expect(window.justifyContent).toBe(optic.justifyContent);
+
+      await view.unmount();
+    });
+
     // Her window lives below the seam and the eye above it, so a long reply
     // fills downward and never moves her.
     it('keeps the eye and her window in separate fields', async () => {
@@ -361,30 +375,26 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    // Three values have been tried under here and the shape of the answer is
-    // that the box is sitting ON the keys, not floating in the stage: flush
-    // (too tight to read as a gap at all), 4a's resting 14, and the side
-    // margins' 20, which looked like the box had come loose from the keyboard.
-    // Tighter than the sides is the point, not equal to them.
-    it('closes the box down onto the keys', async () => {
+    // It sat flush on the keys for one commit. The handle is out of the tree
+    // either way, so no amount of gap here can expose it — which leaves the
+    // right gap as the one the stage already uses, rather than none.
+    //
+    // It was also briefly 20 with the keys up, to match the box's own sides,
+    // and then 8, on a misreading of which gap was too wide. The wide one was
+    // the one INSIDE the lower field, under her window — see windowField.
+    it('keeps the same gap under the box whether the keyboard is up or not', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      const lifted = flat(typing.getByTestId('input-row').props.style);
+      const lifted = flat(typing.getByTestId('input-row').props.style).marginBottom;
       await typing.unmount();
 
-      expect(lifted.marginBottom).toBeGreaterThan(0);
-      expect(lifted.marginBottom).toBeLessThan(Number(lifted.marginHorizontal));
-    });
-
-    // Resting, the box has the whole stage under it and no keys to sit on, so
-    // it keeps 4a's own 14 — which is also the gap the cabinet handle hangs in.
-    it('keeps the design’s own gap while the keys are down', async () => {
       keyboard(false);
       const idle = await render(<Stage />);
-      const resting = flat(idle.getByTestId('input-row').props.style);
+      const resting = flat(idle.getByTestId('input-row').props.style).marginBottom;
       await idle.unmount();
 
-      expect(resting.marginBottom).toBe(14);
+      expect(lifted).toBe(resting);
+      expect(lifted).toBeGreaterThan(0);
     });
 
     // The box she is typed into must never be what disappears.
