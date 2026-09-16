@@ -29,7 +29,7 @@ import { ModePicker } from './ModePicker';
 import { Optic } from './Optic';
 import { gazeFor } from './opticGeometry';
 import { useKeyboardState } from 'react-native-keyboard-controller';
-import { useKeyboardInset } from './useKeyboardInset';
+import { useKeyboardInset, useKeyboardProgress } from './useKeyboardInset';
 import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
 import { ThinkingDots } from './ThinkingDots';
@@ -74,11 +74,49 @@ const WINDOW_MAX_PX = 300; // 3a: "the window keeps roughly 300px"
 // with the keys down, which read as floating low; at 3 it lands near half.
 const SLACK_BELOW_WINDOW = 3;
 
+// The gaps under her window and under the input box: 3a's own numbers at rest,
+// each box's own side margin once the keys are up and the two are stacked
+// surfaces whose spacing is read against the space beside them.
 // Her window's own sides, and its bottom while the keyboard is up — where it is
 // squared off against itself the way the input box is. 3a's own 18, which is
 // two narrower than the input box's 20; that difference is the design's and is
 // not ours to even out.
 const WINDOW_MARGIN = 18;
+
+const WINDOW_GAP_DOWN = 14;
+const INPUT_GAP_DOWN = 14;
+const INPUT_MARGIN_SIDE = 20;
+
+// Everything the keyboard changes the SHAPE of, as one function of how far it
+// has travelled. `progress` is 0 with the keys down and 1 with them fully up,
+// and every value here moves continuously between the two — which is the whole
+// point. These used to switch on a boolean from the JS thread, so they all
+// changed in a single frame at the START of the keyboard's travel while the
+// stage's padding was still sliding underneath them: layout jumped, then the
+// screen slid, and the pair read as a jolt.
+//
+// Pure and exported, because the wiring above it is not testable. The animated
+// styles run on the UI thread and jest's keyboard mock leaves progress at 0
+// forever, so what the tests can hold is this: the two ends and the fact that
+// it is a ramp between them rather than a step. Whether the ramp actually
+// reaches the screen is a device question.
+//
+// A worklet so the animated styles can call it where they run — and every
+// constant it reads is declared ABOVE it for that reason. The worklet plugin
+// serialises a closure at the point of DEFINITION, so a `const` below this
+// would be captured undefined and every value here would come out NaN. It did,
+// once, and only a test caught it: on the device a NaN margin renders as zero
+// and looks like a spacing choice somebody made.
+export const keyboardShape = (progress: number) => {
+  'worklet';
+
+  return {
+    windowGap: WINDOW_GAP_DOWN + (WINDOW_MARGIN - WINDOW_GAP_DOWN) * progress,
+    inputGap: INPUT_GAP_DOWN + (INPUT_MARGIN_SIDE - INPUT_GAP_DOWN) * progress,
+    belowWindowFlex: SLACK_BELOW_WINDOW * (1 - progress),
+  };
+};
+
 
 
 // A single opacity breathe, reused for the header's pulsing dot and the
@@ -178,6 +216,14 @@ export function Stage() {
   // cannot decide what to render. This is the same library's JS-side view of
   // the same keyboard, and it is what lets the handle come out of the tree.
   const keyboardUp = useKeyboardState((s) => s.isVisible);
+  // Everything that changes SHAPE as the keys arrive rides this rather than the
+  // boolean above, so it lands on the same frames the stage's padding does. The
+  // boolean is still what decides whether the cabinet handle can be touched,
+  // which is not a shape and cannot be half-true.
+  const kb = useKeyboardProgress();
+  const windowGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).windowGap }));
+  const inputGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).inputGap }));
+  const belowWindow = useAnimatedStyle(() => ({ flex: keyboardShape(kb.value).belowWindowFlex }));
 
   const awake = Boolean(apiKey);
   const t = T[lang];
@@ -467,13 +513,9 @@ export function Stage() {
             It hangs from the eye rather than sitting above the input row: the
             window is what her line grew into, so it belongs against her. */}
         <View testID="window-field" style={styles.windowField}>
-        <View
+        <Animated.View
           testID="her-window"
-          style={[
-            styles.window,
-            hasBody ? styles.windowOpen : null,
-            keyboardUp ? styles.windowEven : null,
-          ]}
+          style={[styles.window, hasBody ? styles.windowOpen : null, windowGap]}
         >
           <View testID="status-strip" style={styles.strip}>
             <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
@@ -554,19 +596,16 @@ export function Stage() {
               )}
             </ScrollView>
           ) : null}
-        </View>
+        </Animated.View>
         </View>
 
-        {/* No slack under her while the keys are up. There is little enough of
-            it there that a share of it is a few pixels, and a few pixels ON TOP
-            of her bottom margin is a gap that changes with the length of her
-            reply and matches nothing. With the pool closed the gap under her
-            window is her bottom margin and nothing else, which is a number that
-            can be made to match her sides. */}
-        <View
-          testID="slack-below-window"
-          style={keyboardUp ? styles.slackNone : styles.slackBelowWindow}
-        />
+        {/* The pool under her window, closing as the keys arrive. There is
+            little enough slack there with them up that a share of it is a few
+            pixels — and a few pixels ON TOP of her bottom margin is a gap that
+            changes with the length of her reply and matches nothing. Closed,
+            the gap under her window is her bottom margin and nothing else,
+            which is a number, so it can be made to match her sides. */}
+        <Animated.View testID="slack-below-window" style={belowWindow} />
       </View>
 
       {awake ? (
@@ -576,10 +615,7 @@ export function Stage() {
               the handle is out of the tree while the keyboard is up, so no gap
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
-          <View
-            testID="input-row"
-            style={[styles.inputRow, keyboardUp ? styles.inputRowEven : null]}
-          >
+          <Animated.View testID="input-row" style={[styles.inputRow, inputGap]}>
             <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
             <TextInput
               style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
@@ -614,7 +650,7 @@ export function Stage() {
                 {t.send}
               </Text>
             </Pressable>
-          </View>
+          </Animated.View>
 
           {/* With the keyboard up the stage has three things worth the height
               — the eye, her window, and the box being typed into — and the
@@ -725,22 +761,6 @@ const styles = StyleSheet.create({
   slack: {
     flex: 1,
   },
-  // And the rest under her, which is what keeps her near the middle of a tall
-  // screen instead of floating down it. Raising this lifts her window and
-  // lowers the eye; lowering it does the reverse.
-  slackBelowWindow: {
-    flex: SLACK_BELOW_WINDOW,
-  },
-  slackNone: {
-    flex: 0,
-  },
-  // Squared off against its own sides while the keys are up, for the reason the
-  // input box below it is: with the keyboard there, her window and the box are
-  // two surfaces stacked at the bottom of the screen and the space between them
-  // is read against the space beside them.
-  windowEven: {
-    marginBottom: WINDOW_MARGIN,
-  },
   // Not a pool — just a wrapper, so the window keeps its natural height and its
   // own ScrollView does the shrinking rather than a flex share forcing it.
   windowField: {
@@ -756,7 +776,6 @@ const styles = StyleSheet.create({
   // border-radius:14px`
   window: {
     marginHorizontal: WINDOW_MARGIN,
-    marginBottom: 14,
     backgroundColor: palette.panelAlt,
     borderWidth: 1,
     borderColor: palette.border,
@@ -844,8 +863,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    marginHorizontal: 20,
-    marginBottom: 14,
+    marginHorizontal: INPUT_MARGIN_SIDE,
     paddingVertical: 13,
     paddingHorizontal: 14,
     backgroundColor: palette.panel,
@@ -856,13 +874,6 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: ms(11),
     color: palette.amber,
-  },
-  // With the keys up the box sits on them and its three visible margins are
-  // read together, so the bottom one matches the sides. Measured at 16dp
-  // against 20dp before this, which is the wrong kind of nearly-equal.
-  // Resting it keeps 4a's 14, where the cabinet handle hangs below it.
-  inputRowEven: {
-    marginBottom: 20,
   },
   input: {
     flex: 1,

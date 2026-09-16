@@ -8,7 +8,7 @@ import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette } from '../../core/theme';
 import * as OpticModule from '../Optic';
-import { SEND_LATCH_MS, Stage } from '../Stage';
+import { SEND_LATCH_MS, Stage, keyboardShape } from '../Stage';
 import { T } from '../strings';
 
 // The send tests reach the store's speak(), which would otherwise reach the
@@ -362,61 +362,11 @@ describe('Stage', () => {
       await idle.unmount();
     });
 
-    // With the keys up the box sits on them and its three visible margins are
-    // read together. It was 16dp under against 20dp beside, which is the wrong
-    // kind of nearly-equal; it matches now. It sat flush for one commit before
-    // that, and at 8 for another, on a misreading of which gap was too wide —
-    // the wide one was above the input box, not below it.
-    it('squares the box off against its own sides with the keys up', async () => {
-      keyboard(true);
-      const typing = await render(<Stage />);
-      const lifted = flat(typing.getByTestId('input-row').props.style);
-      await typing.unmount();
-
-      expect(lifted.marginBottom).toBe(lifted.marginHorizontal);
-    });
-
-    // With the keys up her window and the input box are two surfaces stacked at
-    // the bottom of the screen, so the space between them is read against the
-    // space beside them. It could not be made to match while a share of the
-    // leftover height also landed there: that share changes with the length of
-    // her reply, so the gap changed with it.
-    it('closes the slack under her window and squares it off too', async () => {
-      keyboard(true);
-      awake({ log: [], line: 'Noted.' });
-      const view = await render(<Stage />);
-
-      expect(flat(view.getByTestId('slack-below-window').props.style).flex).toBe(0);
-
-      const window = flat(view.getByTestId('her-window').props.style);
-      expect(window.marginBottom).toBe(window.marginHorizontal);
-
-      await view.unmount();
-    });
-
-    // With the keys down the pool under her window is what keeps her off the
-    // bottom of a tall screen, and her window keeps 3a's own 14.
-    it('keeps the pool under her window while the keys are down', async () => {
-      keyboard(false);
-      awake({ log: [], line: 'Noted.' });
-      const view = await render(<Stage />);
-
-      expect(Number(flat(view.getByTestId('slack-below-window').props.style).flex))
-        .toBeGreaterThan(0);
-      expect(flat(view.getByTestId('her-window').props.style).marginBottom).toBe(14);
-
-      await view.unmount();
-    });
-
-    // Resting it keeps 4a's own 14, which is where the cabinet handle hangs.
-    it('keeps the design’s gap while the keys are down', async () => {
-      keyboard(false);
-      const idle = await render(<Stage />);
-      const resting = flat(idle.getByTestId('input-row').props.style);
-      await idle.unmount();
-
-      expect(resting.marginBottom).toBe(14);
-    });
+    // What the keyboard changes the SHAPE of is driven from its progress and
+    // asserted against `keyboardShape` at the bottom of this file, not here:
+    // those styles run on the UI thread, and jest's keyboard mock holds
+    // progress at 0 whatever isVisible says. What stays in this block is the
+    // things that are still a JS-side decision.
 
     // The box she is typed into must never be what disappears.
     it('keeps the input itself', async () => {
@@ -814,5 +764,40 @@ describe('the long-conversation mark', () => {
     const view = await render(<Stage />);
     expect(view.queryByTestId('long-warning')).toBeNull();
     await view.unmount();
+  });
+});
+
+// Everything the keyboard changes the shape of, as one function of how far it
+// has travelled. The values used to switch on a boolean, so they all moved in a
+// single frame at the START of the keyboard's travel while the stage's padding
+// was still sliding: layout jumped, then the screen slid, and the pair read as
+// a jolt rather than a transition.
+//
+// This is the testable half. The wiring — three useAnimatedStyle calls reading
+// the keyboard's progress — runs on the UI thread, and jest's keyboard mock
+// holds progress at 0 forever, so whether the ramp reaches the screen is a
+// device question. What can be held here is both ends and the ramp between.
+describe('keyboardShape', () => {
+  it('rests on the design’s own numbers with the keys down', () => {
+    expect(keyboardShape(0)).toEqual({ windowGap: 14, inputGap: 14, belowWindowFlex: 3 });
+  });
+
+  // Each box squared against ITS OWN sides — her window's 18, the input box's
+  // 20 — and the pool under her closed, so the gap under her window is her own
+  // margin and nothing else.
+  it('squares both boxes off and closes the pool with the keys up', () => {
+    expect(keyboardShape(1)).toEqual({ windowGap: 18, inputGap: 20, belowWindowFlex: 0 });
+  });
+
+  // The point of the whole exercise: a ramp, not a step.
+  it('moves continuously between the two', () => {
+    expect(keyboardShape(0.5)).toEqual({ windowGap: 16, inputGap: 17, belowWindowFlex: 1.5 });
+
+    let previous = keyboardShape(0).belowWindowFlex;
+    for (let i = 1; i <= 10; i += 1) {
+      const next = keyboardShape(i / 10).belowWindowFlex;
+      expect(next).toBeLessThan(previous);
+      previous = next;
+    }
   });
 });

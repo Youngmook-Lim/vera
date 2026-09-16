@@ -30,3 +30,16 @@ export function useKeyboardInset() {
     return { paddingBottom: Math.max(insets.bottom, lifted) };
   });
 }
+
+// The same keyboard, as a number between 0 and 1, for everything on the stage
+// that has to CHANGE SHAPE as the keys arrive rather than merely move out of
+// their way.
+//
+// Those used to key off `useKeyboardState().isVisible`, which is a boolean on
+// the JS thread: it flips once, at the start, while the padding above is still
+// travelling — so the layout jumped and then the stage slid, which read as a
+// jolt rather than a transition. Anything driven from here lands on the same
+// frames as the padding does.
+export function useKeyboardProgress() {
+  return useReanimatedKeyboardAnimation().progress;
+}
