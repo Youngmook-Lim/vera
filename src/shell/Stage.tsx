@@ -114,6 +114,12 @@ export const keyboardShape = (progress: number) => {
     windowGap: WINDOW_GAP_DOWN + (WINDOW_MARGIN - WINDOW_GAP_DOWN) * progress,
     inputGap: INPUT_GAP_DOWN + (INPUT_MARGIN_SIDE - INPUT_GAP_DOWN) * progress,
     belowWindowFlex: SLACK_BELOW_WINDOW * (1 - progress),
+    // 1 with the keys down, 0 with them up. The cabinet handle closes WITH the
+    // keyboard rather than being unmounted by it: unmounting is a discrete
+    // change, and `isVisible` flips at the END of the keyboard's travel, so on
+    // the way down the stage finished sliding and then the handle appeared and
+    // shoved everything above it up a frame later.
+    handleOpen: 1 - progress,
   };
 };
 
@@ -224,6 +230,18 @@ export function Stage() {
   const windowGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).windowGap }));
   const inputGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).inputGap }));
   const belowWindow = useAnimatedStyle(() => ({ flex: keyboardShape(kb.value).belowWindowFlex }));
+
+  // The handle's height is set by its own contents — a bar, a gap and a line of
+  // type — so the collapse needs it measured before it has a number to travel
+  // from. Left unconstrained until that arrives, so it is never briefly
+  // invisible on the first frame.
+  const [handleH, setHandleH] = useState(0);
+  const handleCollapse = useAnimatedStyle(() => {
+    const { handleOpen } = keyboardShape(kb.value);
+    return handleH === 0
+      ? { opacity: handleOpen }
+      : { height: handleH * handleOpen, opacity: handleOpen };
+  }, [handleH]);
 
   const awake = Boolean(apiKey);
   const t = T[lang];
@@ -655,15 +673,31 @@ export function Stage() {
           {/* With the keyboard up the stage has three things worth the height
               — the eye, her window, and the box being typed into — and the
               cabinet handle is not one of them. Nothing is lost: the handle is
-              a swipe target, and it cannot be reached past the keys anyway. */}
-          {keyboardUp ? null : (
-            <View style={styles.drawer} {...handlePan.panHandlers}>
+              a swipe target, and it cannot be reached past the keys anyway.
+              It stays MOUNTED and closes to nothing, rather than leaving the
+              tree, so that it travels with the keyboard instead of appearing
+              after it. `pointerEvents` is what actually makes it unreachable,
+              and that is still a boolean, because being touchable is not a
+              thing that can be half-true. */}
+          <Animated.View
+            testID="cabinet-handle"
+            style={[styles.drawerClip, handleCollapse]}
+            pointerEvents={keyboardUp ? 'none' : 'auto'}
+          >
+            <View
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0 && h !== handleH) setHandleH(h);
+              }}
+              style={styles.drawer}
+              {...handlePan.panHandlers}
+            >
               <View style={styles.handleBar} />
               <Text style={[styles.handleLabel, { fontFamily: font('mono', 500, lang) }]}>
                 {t.cabinet}
               </Text>
             </View>
-          )}
+          </Animated.View>
         </>
       ) : (
         <KeyGate />
@@ -907,6 +941,12 @@ const styles = StyleSheet.create({
     color: palette.textFaint,
   },
   // `padding:4px 0 14px; gap:8px`
+  // Clips the handle while it is closing. Its own height is animated; the
+  // contents keep theirs and are cropped, which is what makes the collapse look
+  // like the keyboard sliding over it rather than the type shrinking.
+  drawerClip: {
+    overflow: 'hidden',
+  },
   drawer: {
     alignItems: 'center',
     gap: 8,

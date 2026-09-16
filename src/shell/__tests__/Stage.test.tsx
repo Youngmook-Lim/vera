@@ -356,14 +356,21 @@ describe('Stage', () => {
     beforeEach(() => awake());
     afterEach(() => keyboard(false));
 
-    it('hides the cabinet handle, and brings it back afterwards', async () => {
+    // It used to leave the tree. That is a discrete change, and `isVisible`
+    // flips at the END of the keyboard's travel, so on the way down the stage
+    // finished sliding and then the handle appeared and shoved everything above
+    // it up a frame later. It stays mounted and closes to nothing now, on the
+    // same progress the rest of the stage rides — so what jest can still see is
+    // that it cannot be TOUCHED, which is the half that is still a boolean.
+    it('puts the cabinet handle out of reach, and brings it back afterwards', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      expect(typing.queryByText('CABINET')).toBeNull();
+      expect(typing.getByTestId('cabinet-handle').props.pointerEvents).toBe('none');
       await typing.unmount();
 
       keyboard(false);
       const idle = await render(<Stage />);
+      expect(idle.getByTestId('cabinet-handle').props.pointerEvents).toBe('auto');
       expect(idle.getByText('CABINET')).toBeTruthy();
       await idle.unmount();
     });
@@ -785,19 +792,22 @@ describe('the long-conversation mark', () => {
 // device question. What can be held here is both ends and the ramp between.
 describe('keyboardShape', () => {
   it('rests on the design’s own numbers with the keys down', () => {
-    expect(keyboardShape(0)).toEqual({ windowGap: 14, inputGap: 14, belowWindowFlex: 3 });
+    expect(keyboardShape(0))
+      .toEqual({ windowGap: 14, inputGap: 14, belowWindowFlex: 3, handleOpen: 1 });
   });
 
   // Each box squared against ITS OWN sides — her window's 18, the input box's
   // 20 — and the pool under her closed, so the gap under her window is her own
   // margin and nothing else.
   it('squares both boxes off and closes the pool with the keys up', () => {
-    expect(keyboardShape(1)).toEqual({ windowGap: 18, inputGap: 20, belowWindowFlex: 0 });
+    expect(keyboardShape(1))
+      .toEqual({ windowGap: 18, inputGap: 20, belowWindowFlex: 0, handleOpen: 0 });
   });
 
   // The point of the whole exercise: a ramp, not a step.
   it('moves continuously between the two', () => {
-    expect(keyboardShape(0.5)).toEqual({ windowGap: 16, inputGap: 17, belowWindowFlex: 1.5 });
+    expect(keyboardShape(0.5))
+      .toEqual({ windowGap: 16, inputGap: 17, belowWindowFlex: 1.5, handleOpen: 0.5 });
 
     let previous = keyboardShape(0).belowWindowFlex;
     for (let i = 1; i <= 10; i += 1) {
