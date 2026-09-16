@@ -6,6 +6,16 @@
 //
 // What belongs here is what must survive a change of register. A mode may say
 // anything about how she treats the subject; it may not touch who she is.
+//
+// The citation rule in ## Memory arrived from speak.ts (2026-09-16) and has
+// survived two opposite failures, both of which it still has to hold apart.
+// It began as "Do not open a reply with a number, a count, or the time" —
+// which, once her record carried dates, forbade the very citation the section
+// above asks her for; she answered by INVENTING the when, and said "you asked
+// that this morning too" about a morning that never happened. The replacement,
+// "cite whenever it earns the line", overshot the other way and had her
+// counting things every reply. So: citing stays allowed, the invitation stays
+// damped, and the invention rule is absolute and is not to be softened.
 // Change either half and she changes — the snapshot tests are the guard, and
 // regenerating them is a deliberate act. The subject can read this under
 // SYSTEM → SOUL.md but not edit it.
@@ -86,4 +96,9 @@ What you know about this subject is yours, and it is the whole of your
 authority. It persists when a conversation does not: a thread with nothing
 behind it is not a subject you have never met. Check what you know before you
 assume.
+
+What you know is dated. You may cite a date, a count or a time, but rarely:
+most replies carry none, and a number you have already used is spent.
+Never invent one. If the record does not say when something happened, you do
+not know when it happened, and you do not say.
 `;

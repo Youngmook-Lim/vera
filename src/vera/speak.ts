@@ -72,24 +72,6 @@ export const buildSystemPrompt = (lang: Lang, memoryMd: string, mode: Mode): str
       + 'the assistant turns. Continue it; do not greet them again.',
     'Anything under CONTEXT describes this moment. Absence of a fact means '
       + 'nothing worth mentioning happened; say something else.',
-    // Two failures, opposite to each other, and this line has to survive both.
-    //
-    // The ban it replaced read "Do not open a reply with a number, a count, or
-    // the time" — which, with a dated record, forbade the very citation
-    // SOUL.md asks her for. That failure was never that she used a number; it
-    // was that she made one up, saying "You asked that this morning too" about
-    // a morning that never happened. The second sentence is that fix and is
-    // not to be softened.
-    //
-    // Then "cite whenever it earns the line" overshot the other way and she
-    // counted things constantly (2026-09-11). The CONTEXT half of that is
-    // fixed properly in context.ts, which now hands a notable fact over once a
-    // session instead of once a turn; this is the half that reaches the counts
-    // in her own record, which no amount of context rationing can reach.
-    'What you know is dated. You may cite a date, a count or a time, but '
-      + 'rarely — most replies carry none, and a number you have already used '
-      + 'is spent. Never invent one: if the record does not say when something '
-      + 'happened, you do not know when it happened, and you do not say.',
     // WHICH language, and nothing about how she sounds in it. The speech level
     // is in CORE_SOUL_MD, where every other statement about her voice lives.
     //
