@@ -55,9 +55,15 @@ export interface ModeDef {
   //
   //   Her name is V.E.R.A. in every language. Never 베라.
   //
-  // The Korean is not a translation of the English. Her register in English
-  // comes out of word choice; in Korean the 하십시오체 ending carries the
-  // formality on its own, so each pair is written to land the same beat rather
-  // than the same words. A native-speaker pass is still outstanding.
+  // The Korean is not a translation of the English: each pair is written to
+  // land the same beat rather than the same words.
+  //
+  // It is 해요체, ordinary polite speech (2026-09-16). It used to be 하십시오체,
+  // on the reasoning that its formality carried in Korean what English gets
+  // from word choice — but that reads as a news bulletin in a conversation,
+  // and its interrogative -습니까 is stiff enough that she avoided questions
+  // altogether rather than ask one. The register is hers to carry in what she
+  // says; the speech level should not be doing it for her. A native-speaker
+  // pass is still outstanding.
   bank: Record<BankTrigger, Strings<readonly BankLine[]>>;
 }

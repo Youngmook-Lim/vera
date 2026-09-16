@@ -90,8 +90,21 @@ export const buildSystemPrompt = (lang: Lang, memoryMd: string, mode: Mode): str
       + 'rarely — most replies carry none, and a number you have already used '
       + 'is spent. Never invent one: if the record does not say when something '
       + 'happened, you do not know when it happened, and you do not say.',
+    // Two bugs lived in the line this replaces (2026-09-16). "formal 존댓말"
+    // reads as 하십시오체, whose interrogative is -습니까, and she used it from
+    // the first turn of a cold session — so the stiffness was asked for, not
+    // learned from the conversation. And "with the same deadpan register" was
+    // hardcoded here from before modes existed, which told SUPPORTIVE V.E.R.A.
+    // to be deadpan in Korean and nowhere else: English got no register clause,
+    // so English supportive worked and Korean supportive was overridden by the
+    // last instruction in the prompt.
+    //
+    // A speech level is not a register. This names the level and leaves the
+    // register to whichever mode is loaded.
     lang === 'ko'
-      ? 'Reply in Korean, using formal 존댓말 with the same deadpan register.'
+      ? 'Reply in Korean. Use 해요체, ordinary polite speech, rather than '
+        + '하십시오체: 어때요 and not 어떻습니까. The speech level is not your '
+        + 'register — keep the register your SOUL.md gives you.'
       : 'Reply in English.',
     `Your states are: ${SPEAKABLE_EMOTIONS.join(', ')}. Write your line first, `
       + 'then read it back and give the one state it is in, spelled exactly as '

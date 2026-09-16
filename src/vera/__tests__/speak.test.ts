@@ -104,8 +104,18 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('never say it');
   });
 
-  it('asks for korean in the same deadpan register', () => {
-    expect(buildSystemPrompt('ko', MEMORY_HEADING, 'default')).toContain('존댓말');
+  // A speech level, not a register. The line this replaces asked for "formal
+  // 존댓말 with the same deadpan register", which produced -습니까 from a cold
+  // start and told the supportive mode to be deadpan in Korean alone.
+  it('names the korean speech level and leaves the register to the mode', () => {
+    const ko = buildSystemPrompt('ko', MEMORY_HEADING, 'supportive');
+    expect(ko).toContain('해요체');
+    // Named as the thing NOT to use, with the contrast spelled out, because
+    // "not 하십시오체" alone leaves the model to guess what the alternative is.
+    expect(ko).toContain('rather than 하십시오체');
+    expect(ko).toContain('어떻습니까');
+    // The register belongs to the mode. Hardcoding one here overrode it.
+    expect(ko).not.toContain('deadpan');
   });
 
   // Activation is answered from the bank now, so nothing is ever generated
