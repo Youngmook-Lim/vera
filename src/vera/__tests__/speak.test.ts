@@ -1,6 +1,8 @@
 // src/vera/__tests__/speak.test.ts
 import { SPEAKABLE_EMOTIONS, buildSystemPrompt, buildUserPrompt, fallbackFor, parseSpeech } from '../speak';
 import { MEMORY_HEADING } from '../memoryDoc';
+import { MODE_ORDER, type Mode } from '../modes/registry';
+import type { Lang } from '../../core/i18n';
 import type { SpeakContext } from '../context';
 import { isEmotionKey } from '../emotions';
 
@@ -104,18 +106,12 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt('en', MEMORY_HEADING, 'default')).toContain('never say it');
   });
 
-  // A speech level, not a register. The line this replaces asked for "formal
-  // 존댓말 with the same deadpan register", which produced -습니까 from a cold
-  // start and told the supportive mode to be deadpan in Korean alone.
-  it('names the korean speech level and leaves the register to the mode', () => {
+  it('says which language to answer in, and nothing more', () => {
     const ko = buildSystemPrompt('ko', MEMORY_HEADING, 'supportive');
+    expect(ko).toContain('Reply in Korean.');
+    // The speech level itself is core's, not this file's — see the HOW TO
+    // REPLY block below for the rule and why it exists.
     expect(ko).toContain('해요체');
-    // Named as the thing NOT to use, with the contrast spelled out, because
-    // "not 하십시오체" alone leaves the model to guess what the alternative is.
-    expect(ko).toContain('rather than 하십시오체');
-    expect(ko).toContain('어떻습니까');
-    // The register belongs to the mode. Hardcoding one here overrode it.
-    expect(ko).not.toContain('deadpan');
   });
 
   // Activation is answered from the bank now, so nothing is ever generated
@@ -261,5 +257,62 @@ describe('fallbackFor', () => {
 
   it('always picks one of hers', () => {
     expect(isEmotionKey(fallbackFor('en').emotion)).toBe(true);
+  });
+});
+
+// **speak.ts may describe the envelope and this turn's inputs. It may not
+// describe how she sounds.** Everything about her voice belongs in one of the
+// two soul documents, where it sits under a fence, beside the register that
+// owns it, and where a mode is able to disagree with it.
+//
+// This block is where that rule broke. "Reply in Korean, using formal 존댓말
+// with the same deadpan register" lived here from before modes existed, so
+// SUPPORTIVE V.E.R.A. was told to be deadpan in Korean and nowhere else — the
+// English branch carries no register clause, so English supportive worked and
+// Korean supportive was overridden by the LAST instruction in the prompt.
+//
+// A word list is a blunt guard, and it is the right one here: the failure mode
+// is somebody reaching for an adjective while editing this array, and this is
+// what they hit when they do.
+describe('the HOW TO REPLY block', () => {
+  const trailing = (lang: Lang, mode: Mode): string => {
+    const prompt = buildSystemPrompt(lang, MEMORY_HEADING, mode);
+    return prompt.slice(prompt.indexOf('=== HOW TO REPLY ==='));
+  };
+
+  const VOICE = [
+    'deadpan', 'register', 'tone', 'voice', 'warm', 'fond',
+    'unkind', 'formal', 'polite', '해요체', '하십시오체', '존댓말',
+  ];
+
+  it('never describes her voice, in either language or either register', () => {
+    for (const lang of ['en', 'ko'] as const) {
+      for (const mode of MODE_ORDER) {
+        const block = trailing(lang, mode).toLowerCase();
+        for (const word of VOICE) {
+          expect(block).not.toContain(word.toLowerCase());
+        }
+      }
+    }
+  });
+
+  // Anything that should differ by register comes out of a ModeDef, so this is
+  // the same words for both. A difference appearing here means a piece of her
+  // character has leaked back out of the documents.
+  it('is identical whatever register she is in', () => {
+    for (const lang of ['en', 'ko'] as const) {
+      expect(trailing(lang, 'default')).toBe(trailing(lang, 'supportive'));
+    }
+  });
+
+  // The user prompt is the same hazard wearing different clothes: it goes on
+  // every turn, it is built here, and it takes no mode either. Found by a
+  // mutation that slipped an adjective into it while the block above stayed
+  // clean.
+  it('holds for the user prompt too', () => {
+    const user = buildUserPrompt('아무거나', ctx).toLowerCase();
+    for (const word of VOICE) {
+      expect(user).not.toContain(word.toLowerCase());
+    }
   });
 });
