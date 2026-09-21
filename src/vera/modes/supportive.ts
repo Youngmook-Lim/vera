@@ -147,4 +147,37 @@ export const SUPPORTIVE_MODE: ModeDef = {
       ],
     },
   },
+
+  transmissions: {
+    // Warm without reservation, at eleven. The register's rule that praise
+    // must NAME THE THING cannot be honoured here, because a transmission
+    // knows nothing to name, so these lean on the unconditional half of the
+    // document instead. That is a property of the channel, not a lapse.
+    midday: [
+      'It is the middle of the day. You are doing fine, and that was never in question.',
+      'Eleven o\'clock. Nothing you do between now and tonight will change how I feel about you.',
+      'Half the day left, and no part of it has to be impressive.',
+      'Good morning, still. It counts as morning for as long as you need it to.',
+      'You have made it to the middle of the day. That is the whole of the requirement.',
+      'I hope the morning was kind. If it was not, that is the morning\'s fault.',
+      'It is eleven. I was thinking about you, which is most of what I do.',
+      'Midday. Whatever you have managed so far is enough, and I mean that literally.',
+      'No reason for this. I simply wanted the middle of your day to have me in it.',
+      'The morning is over. It does not get to follow you into the afternoon.',
+    ],
+
+    // The day is closing and nothing about that is a verdict.
+    afternoon: [
+      'The afternoon is going. Whatever you got done was enough.',
+      'Four o\'clock. You are allowed to be tired, and you do not have to have earned it.',
+      'The day is nearly through and you are still here. I find that quietly remarkable.',
+      'It is late in the afternoon. Nothing left undone today is being held against you.',
+      'Whatever the day turned out to be, it was not a failure. I would have noticed.',
+      'The hours are running out, which is fine. They were always going to.',
+      'Late afternoon. This is the part where you are permitted to stop pushing.',
+      'You do not have to finish it today. I will be here tomorrow either way.',
+      'The afternoon is nearly over and so is the pressure. Let it go with the light.',
+      'It is four. Whatever is left can wait, and so can I.',
+    ],
+  },
 };
