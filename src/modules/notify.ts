@@ -1,6 +1,6 @@
 import type { Lang } from '../core/i18n';
 import { askBatteryUnrestricted, isBatteryUnrestricted } from '../core/power';
-import { planDaily } from './daily';
+import { type Planner, planDaily } from './daily';
 
 // The only file that touches expo-notifications. Everything about WHICH card
 // and WHEN is decided in daily.ts, which is pure; this hands the answer to
@@ -58,6 +58,13 @@ try {
 // created by v1's transmissions (acc4804, 'V.E.R.A.', importance DEFAULT) and
 // orphaned when that file died in the v2 cut.
 //
+// She sends again from 2026-09-21 and this entry still belongs here: the id is
+// POISONED rather than merely unused. Android restores a deleted channel's
+// previous settings when the id is recreated, so filing her transmissions
+// under `vera` would bring back importance 3 with vibration off — the exact
+// defect fixed for both rooms on 2026-09-14, with every test passing and only
+// a phone able to see it. Her channel is `vera.v2`.
+//
 // Swept at import rather than inside makeDaily: it is nobody's room, and a
 // sweep in the factory would run once per room. This is the same bargain
 // `LEGACY_KEYS` in storage.ts takes — a cheap call on every boot, forever, for
@@ -98,6 +105,14 @@ export interface DailyConfig {
   legacyChannel?: string;
   channelName: string;
   hour: number;
+  // How far ahead to hand cards over. Ninety for a corpus that never changes;
+  // a room whose content goes stale wants a shorter one, because everything
+  // that changes it rewrites the whole horizon.
+  days?: number;
+  // How those days are filled. The default draws independently per day, which
+  // is right for a corpus nobody could exhaust and wrong for one small enough
+  // to repeat — see planBag in daily.ts.
+  plan?: Planner;
   // How many cards the room has to draw from.
   count: () => number;
   // The finished notification. Called at SCHEDULING time, once per day of the
@@ -226,7 +241,7 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
         await cancelOwn(N);
         if (!enabled) return;
 
-        for (const { at, index } of planDaily(now, cfg.count(), cfg.hour)) {
+        for (const { at, index } of (cfg.plan ?? planDaily)(now, cfg.count(), cfg.hour, cfg.days)) {
           const { title, body } = cfg.build(index, lang);
           await N.scheduleNotificationAsync({
             // Baked in at scheduling time, along with everything else here —

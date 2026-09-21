@@ -10,6 +10,7 @@ import { maskKey, providerFor } from '../vera/providers';
 import { BatteryRow } from './BatteryRow';
 import { soulConstName } from '../vera/modes/registry';
 import { PrefRow } from './PrefRow';
+import { TransmissionRow } from './TransmissionRow';
 import { T } from './strings';
 
 // The subject's own control room: her two files, the language switch, and
@@ -150,6 +151,12 @@ export function SystemScreen() {
               thing that governs every room's notifications. It sits above the
               rooms because it is the reason theirs work. */}
           <BatteryRow />
+
+          {/* Hers, so it sits above the rooms' — and below BATTERY, which is
+              the reason any of them arrive on time. Named here rather than
+              contributed through ModuleDef.Settings: that hook exists so the
+              shell never names a MODULE, and she is not one. */}
+          <TransmissionRow />
 
           {/* Rooms contribute their own rows. The shell names no module — the
               same promise registry.ts makes about Cabinet and ScreenRouter. */}

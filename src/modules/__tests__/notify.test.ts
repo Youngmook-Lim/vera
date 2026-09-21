@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import Power from '../../../modules/power/src/PowerModule';
+import { PLAN_DAYS } from '../daily';
 import { makeDaily } from '../notify';
 
 const mocked = Notifications as unknown as Record<string, jest.Mock>;
@@ -223,5 +224,35 @@ describe('the battery exemption, asked for at the toggle', () => {
 
     await expect(daily.request()).resolves.toBe(false);
     expect(power.requestIgnoreBatteryOptimizations).not.toHaveBeenCalled();
+  });
+});
+
+// Both default to what the rooms already do, so a room naming neither is
+// unchanged by their existence. A corpus small enough to repeat brings its own
+// planner; one whose content goes stale brings its own horizon.
+describe('the horizon and the draw', () => {
+  it('are the room’s to choose', async () => {
+    const plan = jest.fn(() => [{ at: new Date(2026, 8, 22, 11), index: 0 }]);
+    const chooser = makeDaily({
+      room: 'chooser',
+      channel: 'chooser.v1',
+      channelName: 'CHOOSER',
+      hour: 11,
+      days: 14,
+      plan,
+      count: () => 10,
+      build: () => ({ title: 'C', body: 'a line' }),
+    });
+
+    await chooser.sync(true, 'en', new Date(2026, 8, 21, 8, 0));
+
+    expect(plan).toHaveBeenCalledWith(expect.any(Date), 10, 11, 14);
+  });
+
+  // The rooms name neither, and must go on getting ninety days of planDaily.
+  it('fall back to ninety days, drawn a day at a time', async () => {
+    await daily.sync(true, 'en', new Date(2026, 8, 21, 8, 0));
+
+    expect(mocked.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
   });
 });

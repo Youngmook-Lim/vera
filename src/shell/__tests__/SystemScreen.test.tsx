@@ -132,6 +132,15 @@ describe('preferences row', () => {
     expect(view.getByTestId('pref-language')).toBeTruthy();
     await view.unmount();
   });
+
+  // Hers is the one preferences row that is NOT a room's and is named here
+  // directly. Nothing else in the suite would notice it going: its own test
+  // file renders the component alone.
+  it('carries her transmissions row, above whatever the rooms offer', async () => {
+    const view = await render(<SystemScreen />);
+    expect(view.getByTestId('pref-transmissions')).toBeTruthy();
+    await view.unmount();
+  });
 });
 
 // The rotation sat stuck for weeks with nothing on any screen to say so: the

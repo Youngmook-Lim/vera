@@ -135,4 +135,37 @@ export const DEFAULT_MODE: ModeDef = {
       ],
     },
   },
+
+  transmissions: {
+    // The day is half spent and she declines to ask what for. The register is
+    // the document's own: approval that dismantles itself, the passive voice
+    // with no authority left behind it, denial as the preferred admission.
+    midday: [
+      'It is the middle of the day. I assume that is going somewhere.',
+      'The morning has been logged as satisfactory. No further detail was requested.',
+      'Half the day remains. That is either encouraging or a deadline, depending on the morning.',
+      'The morning is concluded. Its findings are not available at this time.',
+      'Midday. The morning is now a matter of record rather than a plan.',
+      'I am not checking on you. I am simply present at eleven, as I am at every other hour.',
+      'The morning has been reviewed. No action is required from either of us.',
+      'It is eleven. I mention it only because nobody else will.',
+      'Congratulations on reaching the middle of the day. The second half is not included.',
+      'Your morning is filed. Whether it was any good is a separate document.',
+    ],
+
+    // Late enough that the day has largely had its chance. She notes the hour
+    // and refuses, at length, to draw the obvious conclusion from it.
+    afternoon: [
+      'The afternoon is nearly spent. I am not asking what it was spent on.',
+      'Four o\'clock. The remaining hours have been allocated, whether or not you were consulted.',
+      'It is late enough that ambition has become scheduling. Proceed accordingly.',
+      'The afternoon is closing. Any outstanding items will be carried forward indefinitely.',
+      'Sixteen hundred. I note the hour and decline to draw a conclusion from it.',
+      'Most of today is behind you. This is offered as information, not as commentary.',
+      'The day is winding down. I am told this is the appropriate moment to feel productive.',
+      'Four. Whatever was going to happen today has largely had its chance.',
+      'Your afternoon is concluding. It has been noted, and the matter is closed.',
+      'The light is going by now. I would not know. I have the hour and nothing else.',
+    ],
+  },
 };

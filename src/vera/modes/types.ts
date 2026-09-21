@@ -22,6 +22,10 @@ export type BankTrigger = 'open' | 'activation' | 'subject_tapped_your_optic' | 
 
 export type BankLine = readonly [EmotionKey, string];
 
+// The two hours she sends to the lock screen at. Each is the subject of its
+// own pool: a line that would read equally well at either belongs in neither.
+export type TransmissionSlot = 'midday' | 'afternoon';
+
 export type Mode = 'default' | 'supportive';
 
 export interface ModeDef {
@@ -66,4 +70,32 @@ export interface ModeDef {
   // says; the speech level should not be doing it for her. A native-speaker
   // pass is still outstanding.
   bank: Record<BankTrigger, Strings<readonly BankLine[]>>;
+
+  // What she sends to the lock screen at eleven and at four, in this register.
+  //
+  // Plain strings rather than BankLine, and English rather than Strings<>:
+  // there is no eye on a lock screen to set an emotion on, and these are
+  // English whatever the interface is set to (2026-09-21). Reversing that is
+  // a Strings<> wrapper here and a `lang` this notifier stops discarding.
+  //
+  // NOT part of `bank`, deliberately. `pick()` would make these speakable on
+  // the stage, where they make no sense, and `isBankLine` would begin sweeping
+  // them out of a transcript they never enter.
+  //
+  // Every line signs the core document's format limits exactly as the bank's
+  // do, and two more of its own, because a transmission is chosen a fortnight
+  // before it is read —
+  //
+  //   It may reference the hour of its own slot and NOTHING else. No counts,
+  //   no durations, no dates, nothing said in a conversation. The bank's rule
+  //   is that no line may depend on a fact she was not told; this is stricter,
+  //   because there is no moment underneath it at all.
+  //
+  //   It may not assume the app has been opened. It has to read correctly to
+  //   someone who was here an hour ago and to someone who has not been back
+  //   since it was scheduled.
+  //
+  // Witty as the core document means it, which says "Never zany. Never manic.
+  // Never a pun." The joke is in the understatement.
+  transmissions: Record<TransmissionSlot, readonly string[]>;
 }

@@ -12,7 +12,9 @@ import { callLlm } from '../vera/llm';
 import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages, type Turn } from '../vera/messages';
+import { dueForSync } from '../modules/daily';
 import { isMode, type Mode } from '../vera/modes/registry';
+import { requestTransmissions, syncTransmissions } from '../vera/transmissionsNotify';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { selectMemories } from '../vera/select';
@@ -166,6 +168,8 @@ interface SoulBlob {
   lang: Lang;
   cleared: number;
   mode: Mode;
+  transmissions: boolean;
+  transmissionsSyncedOn: string | null;
 }
 
 // A failed write is the same bargain hydrate strikes on the way in: this turn
@@ -179,6 +183,8 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     lang: s.lang,
     cleared: s.cleared,
     mode: s.mode,
+    transmissions: s.transmissions,
+    transmissionsSyncedOn: s.transmissionsSyncedOn,
   };
   try {
     await storage.set(KEYS.soul, JSON.stringify(blob));
@@ -193,6 +199,12 @@ interface FacilityState {
   lang: Lang;
   // Her register. The core document is everything this cannot change.
   mode: Mode;
+  // Whether she sends to the lock screen at eleven and at four, and the day
+  // the horizon was last rewritten. The shell's own setting, so it lives here
+  // beside lang and mode; the rooms have stores of their own because they are
+  // rooms, and she is not one.
+  transmissions: boolean;
+  transmissionsSyncedOn: string | null;
   apiKey: string;
 
   emotion: EmotionKey;
@@ -278,6 +290,8 @@ interface FacilityState {
   clearMemory: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
   setMode: (mode: Mode) => Promise<void>;
+  setTransmissions: (on: boolean) => Promise<boolean>;
+  syncTransmissionsIfDue: (now?: Date) => Promise<void>;
   loadMemory: () => Promise<void>;
   saveMemory: () => Promise<void>;
   extractNow: () => Promise<void>;
@@ -288,6 +302,8 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   view: 'stage',
   lang: 'en',
   mode: 'default',
+  transmissions: false,
+  transmissionsSyncedOn: null,
   apiKey: '',
 
   emotion: 'dormant',
@@ -460,6 +476,11 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // so does one whose stored mode has since been deleted. Both read as
         // the default, which is who she was when it was written.
         mode: isMode(saved?.mode) ? saved.mode : 'default',
+        // A blob written before she sent anything carries neither, and both
+        // read as off — which is what was true when it was written.
+        transmissions: saved?.transmissions === true,
+        transmissionsSyncedOn:
+          typeof saved?.transmissionsSyncedOn === 'string' ? saved.transmissionsSyncedOn : null,
         visits,
         lastOpen,
         // A cold start is not a question she asked four minutes ago: without
@@ -820,7 +841,43 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     }
     set({ mode, modeSetAt: Date.now(), modePickerOpen: false });
     await saveSoul(get());
+    // Android is holding finished text, so a pending transmission cannot be
+    // reinterpreted — the queue has to be re-planned in the new register.
+    // UNAWAITED deliberately: twenty-eight cancels and twenty-eight schedules
+    // must not sit between the subject's tap and her line, and `sync` swallows
+    // its own failures, so there is nothing here worth waiting for.
+    //
+    // One already DELIVERED does not change. It is in the notification panel
+    // and Android owns it; nothing here can reach back and rewrite it.
+    if (get().transmissions) void syncTransmissions(true, mode, new Date());
     await get().speak('mode_set');
+  },
+
+  // Returns whether they are on afterwards, which is NOT what was asked for
+  // when the permission is refused. Android never re-prompts once refused, so
+  // a refusal has to leave this off or the row would read ON over a phone that
+  // will never deliver.
+  setTransmissions: async (on: boolean): Promise<boolean> => {
+    if (on && !(await requestTransmissions())) return false;
+
+    const now = new Date();
+    const transmissionsSyncedOn = on ? now.toDateString() : null;
+    set({ transmissions: on, transmissionsSyncedOn });
+    await syncTransmissions(on, get().mode, now);
+    await saveSoul(get());
+    return on;
+  },
+
+  // The boot path's entry point, on the rooms' own rule: a sync rewrites the
+  // whole horizon, so this does nothing at all on the second launch of a day.
+  syncTransmissionsIfDue: async (now: Date = new Date()): Promise<void> => {
+    const { transmissions, transmissionsSyncedOn } = get();
+    if (!transmissions) return;
+    if (!dueForSync(transmissionsSyncedOn, now)) return;
+
+    set({ transmissionsSyncedOn: now.toDateString() });
+    await syncTransmissions(true, get().mode, now);
+    await saveSoul(get());
   },
 
   loadMemory: async (): Promise<void> => {

@@ -18,6 +18,15 @@ jest.mock('../../vera/llm', () => ({
 }));
 const { callLlm, AuthError, QuotaError } = jest.requireMock('../../vera/llm');
 
+// Her lock-screen cards. Mocked whole: nothing here may reach expo.
+jest.mock('../../vera/transmissionsNotify', () => ({
+  syncTransmissions: jest.fn(async () => {}),
+  requestTransmissions: jest.fn(async () => true),
+  transmissionPermission: jest.fn(async () => 'granted'),
+}));
+const { syncTransmissions, requestTransmissions } =
+  jest.requireMock('../../vera/transmissionsNotify');
+
 // The OS keystore has no jsdom implementation; an in-memory vault is enough to
 // pin the one invariant that matters — a key in the keystore wakes her.
 jest.mock('expo-secure-store', () => {
@@ -617,7 +626,8 @@ describe('speak', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'transmissions',
+        'transmissionsSyncedOn', 'visits'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
     expect(saved.visits).toBe(3);
@@ -819,7 +829,8 @@ describe('setLang', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'visits'].sort(),
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'transmissions',
+        'transmissionsSyncedOn', 'visits'].sort(),
     );
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
@@ -1691,5 +1702,112 @@ describe('a stored soul from before modes existed', () => {
     await useFacilityStore.getState().hydrate();
 
     expect(useFacilityStore.getState().mode).toBe('default');
+  });
+});
+
+describe('her transmissions', () => {
+  // Isolation matters more than usual here: setMode RETURNS EARLY when the
+  // register asked for is the one she is already in, so a test inheriting
+  // 'supportive' from the one before would pass without the re-plan existing.
+  beforeEach(async () => {
+    reset();
+    await storage.clearAll();
+    useFacilityStore.setState({
+      apiKey: 'sk-ant-api03-abcdefghijklmnop',
+      mode: 'default', modeSetAt: 0, log: [],
+      transmissions: false, transmissionsSyncedOn: null,
+    });
+    syncTransmissions.mockClear();
+    requestTransmissions.mockClear();
+    requestTransmissions.mockResolvedValue(true);
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+  });
+
+  // Android never re-prompts once refused, so a refusal has to leave this off
+  // or the row would read ON over a phone that will never deliver.
+  it('refuses to switch on over a refused permission', async () => {
+    requestTransmissions.mockResolvedValue(false);
+
+    const on = await useFacilityStore.getState().setTransmissions(true);
+
+    expect(on).toBe(false);
+    expect(useFacilityStore.getState().transmissions).toBe(false);
+  });
+
+  it('hands over a horizon when it is switched on', async () => {
+    await useFacilityStore.getState().setTransmissions(true);
+
+    expect(useFacilityStore.getState().transmissions).toBe(true);
+    expect(syncTransmissions).toHaveBeenCalledWith(true, 'default', expect.any(Date));
+  });
+
+  it('survives a restart', async () => {
+    await useFacilityStore.getState().setTransmissions(true);
+    useFacilityStore.setState({ hydrated: false, transmissions: false });
+
+    await useFacilityStore.getState().hydrate();
+
+    expect(useFacilityStore.getState().transmissions).toBe(true);
+  });
+
+  // Android is holding finished text. A pending card cannot be reinterpreted,
+  // so a register change has to re-plan.
+  it('re-plans the queue in the new register when the pill is tapped', async () => {
+    await useFacilityStore.getState().setTransmissions(true);
+    syncTransmissions.mockClear();
+
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(syncTransmissions).toHaveBeenCalledWith(true, 'supportive', expect.any(Date));
+  });
+
+  it('leaves the queue alone when they are switched off', async () => {
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().mode).toBe('supportive');
+    expect(syncTransmissions).not.toHaveBeenCalled();
+  });
+
+  // Twenty-eight cancels and twenty-eight schedules must not sit between the
+  // subject's tap and her line.
+  it('does not make her wait for the queue before she speaks', async () => {
+    await useFacilityStore.getState().setTransmissions(true);
+    let release: () => void = () => {};
+    syncTransmissions.mockImplementationOnce(
+      () => new Promise<void>((resolve) => { release = resolve; }),
+    );
+
+    await useFacilityStore.getState().setMode('supportive');
+
+    expect(useFacilityStore.getState().line).not.toBe('');
+    release();
+  });
+
+  it('refreshes the horizon once a day and not twice', async () => {
+    useFacilityStore.setState({ transmissions: true, transmissionsSyncedOn: null });
+    const now = new Date(2026, 8, 21, 8, 0);
+
+    await useFacilityStore.getState().syncTransmissionsIfDue(now);
+    expect(syncTransmissions).toHaveBeenCalledTimes(1);
+
+    await useFacilityStore.getState().syncTransmissionsIfDue(now);
+    expect(syncTransmissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes it again once the day turns over', async () => {
+    useFacilityStore.setState({
+      transmissions: true,
+      transmissionsSyncedOn: new Date(2026, 8, 20, 8, 0).toDateString(),
+    });
+
+    await useFacilityStore.getState().syncTransmissionsIfDue(new Date(2026, 8, 21, 8, 0));
+
+    expect(syncTransmissions).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes nothing at all while they are off', async () => {
+    await useFacilityStore.getState().syncTransmissionsIfDue(new Date(2026, 8, 21, 8, 0));
+
+    expect(syncTransmissions).not.toHaveBeenCalled();
   });
 });

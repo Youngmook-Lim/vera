@@ -82,6 +82,11 @@ export default function App() {
         else offs.push(off);
       }
 
+      // Hers. Not a room, so it is not on the registry and this file names
+      // it — the same reason SystemScreen carries her row directly. Behind
+      // dueForSync, so it does nothing on the second launch of a day.
+      await useFacilityStore.getState().syncTransmissionsIfDue();
+
       await useFacilityStore.getState().greetOnce();
       // Anything left on the queue by a killed session (continuity §4.2).
       void useFacilityStore.getState().extractNow();
