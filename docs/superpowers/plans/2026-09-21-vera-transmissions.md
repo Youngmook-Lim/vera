@@ -45,45 +45,81 @@ Six tasks. Each ends green and committable on its own. Tasks 1 and 2 are the sha
 
 ---
 
-## Task 1: The shuffled-bag planner
+## Task 1: A planner seeded by the date
 
 **Files:**
 - Modify: `src/modules/daily.ts`
 - Test: `src/modules/__tests__/daily.test.ts`
 
 **Interfaces:**
-- Consumes: `newDeck`, `current`, `advance`, `Rand` from `src/modules/deck.ts` (existing, unchanged).
+- Consumes: `newDeck` and `Rand` from `src/modules/deck.ts` (existing, unchanged).
 - Produces: `planDates(now: Date, hour: number, days?: number): Date[]`, `type Planner = (now: Date, count: number, hour: number, days?: number, rand?: Rand) => PlannedQuote[]`, `planBag: Planner`. `planDaily` keeps its exact signature and behaviour.
 
-**Why:** `planDaily` draws `Math.floor(rand() * count)` independently per day. Over fourteen days from a pool of ten, the chance of at least one adjacent-day repeat is about 75%. The rooms never meet this at 232 and 6,861 cards.
+**Why, and the trap this avoids (2026-09-21).** `planDaily` draws
+`Math.floor(rand() * count)` independently per day, which is indistinguishable
+from a shuffle across 232 quotes and obvious across ten lines. The first design
+of this task dealt from a shuffled bag using `deck.ts`'s own `advance`.
+
+**That would have bought almost nothing.** Every sync rewrites the whole horizon
+— `dueForSync` fires the moment the day turns over — with a fresh
+`Math.random`. So for a subject who opens the app daily, only the FIRST entry of
+any plan ever fires, and each plan's first entry is an independent uniform draw.
+Same one-in-ten adjacent repeat as `planDaily`, roughly three a month. The bag
+would have earned its keep only across stretches where the app went unopened.
+
+So the sequence is a **pure function of the date** instead. Every sync computes
+the same answer for the same day, re-planning stops changing anything, and "all
+ten before any twice" becomes a real guarantee rather than a notional one. It
+needs a seeded PRNG because `Math.random` cannot be seeded — which also makes
+the planner fully deterministic and easier to test than a shuffle would be.
+
+Accepted consequence: the order is fixed rather than fresh per install. Invisible
+without reinstalling.
 
 - [ ] **Step 1: Write the failing tests**
 
 Append to `src/modules/__tests__/daily.test.ts`:
 
 ```ts
-describe('the bag', () => {
+describe('the seeded bag', () => {
   const ELEVEN = 11;
+  const AT_EIGHT = (day: number) => new Date(2026, 8, day, 8, 0);
 
-  // The whole reason this planner exists. planDaily draws independently per
-  // day, so a ten-line pool repeats on adjacent days most weeks.
+  // THE test. The old design failed exactly here: a fresh shuffle per sync
+  // meant tomorrow's plan knew nothing about today's, and since the horizon is
+  // rewritten every morning, only the first entry of any plan ever fired.
+  it('agrees with yesterday’s plan about every day they share', () => {
+    const monday = planBag(AT_EIGHT(21), 10, ELEVEN, 14);
+    const tuesday = planBag(AT_EIGHT(22), 10, ELEVEN, 14);
+
+    expect(tuesday.slice(0, 13).map((p) => p.index))
+      .toEqual(monday.slice(1).map((p) => p.index));
+  });
+
+  it('gives the same day the same line however far ahead it was planned', () => {
+    const near = planBag(AT_EIGHT(21), 10, ELEVEN, 14);
+    const far = planBag(AT_EIGHT(14), 10, ELEVEN, 30);
+    const sameDay = far.find((p) => p.at.getDate() === 21 && p.at.getMonth() === 8);
+
+    expect(sameDay?.index).toBe(near[0].index);
+  });
+
   it('deals every line once before dealing any of them twice', () => {
-    const plan = planBag(new Date(2026, 8, 21, 8, 0), 10, ELEVEN, 10);
+    const plan = planBag(AT_EIGHT(21), 10, ELEVEN, 10);
     expect(new Set(plan.map((p) => p.index)).size).toBe(10);
   });
 
-  // The seam between one pass and the next comes from two different shuffles,
-  // so the shuffle alone cannot keep them apart. deck.ts already solves this
-  // and this is the assertion that it is actually being used.
-  it('never repeats on consecutive days, across a bag boundary', () => {
-    const plan = planBag(new Date(2026, 8, 21, 8, 0), 3, ELEVEN, 60);
+  // The seam between one pass and the next is seeded independently, so the
+  // shuffle alone cannot keep them apart.
+  it('never repeats on consecutive days, across a pass boundary', () => {
+    const plan = planBag(AT_EIGHT(21), 10, ELEVEN, 90);
     for (let i = 1; i < plan.length; i++) {
-      expect(plan[i].index).not.toBe(plan[i - 1].index);
+      expect([i, plan[i].index === plan[i - 1].index]).toEqual([i, false]);
     }
   });
 
   it('lays out one line a day at the given hour, for the whole horizon', () => {
-    const plan = planBag(new Date(2026, 8, 21, 8, 0), 10, ELEVEN, 14);
+    const plan = planBag(AT_EIGHT(21), 10, ELEVEN, 14);
     expect(plan).toHaveLength(14);
     for (const { at } of plan) {
       expect(at.getHours()).toBe(ELEVEN);
@@ -91,20 +127,19 @@ describe('the bag', () => {
     }
   });
 
-  // Same rule planDaily follows, and it is planDates that now owns it.
   it('starts today when the hour has not passed, and tomorrow when it has', () => {
     expect(planBag(new Date(2026, 8, 21, 10, 59), 10, ELEVEN)[0].at.getDate()).toBe(21);
     expect(planBag(new Date(2026, 8, 21, 11, 0), 10, ELEVEN)[0].at.getDate()).toBe(22);
   });
 
   // An empty pool would otherwise schedule the literal string "undefined" to
-  // the lock screen: newDeck(0) has no order and current() reads off the end.
+  // the lock screen.
   it('plans nothing at all from an empty pool', () => {
-    expect(planBag(new Date(2026, 8, 21, 8, 0), 0, ELEVEN, 14)).toEqual([]);
+    expect(planBag(AT_EIGHT(21), 0, ELEVEN, 14)).toEqual([]);
   });
 
   it('defaults to the same horizon planDaily does', () => {
-    expect(planBag(new Date(2026, 8, 21, 8, 0), 10, ELEVEN)).toHaveLength(PLAN_DAYS);
+    expect(planBag(AT_EIGHT(21), 10, ELEVEN)).toHaveLength(PLAN_DAYS);
   });
 });
 
@@ -132,23 +167,24 @@ import { PLAN_DAYS, dueForSync, planBag, planDaily, planDates } from '../daily';
 Run: `npx jest src/modules/__tests__/daily.test.ts`
 Expected: FAIL — `planBag` and `planDates` are not exported.
 
-- [ ] **Step 3: Extract `planDates` and add `planBag`**
+- [ ] **Step 3: Extract `planDates`, add the seeded planner**
 
-In `src/modules/daily.ts`, add the import at the top, below the existing header comment:
+In `src/modules/daily.ts`, add the import below the header comment:
 
 ```ts
-import { type Rand, advance, current, newDeck } from './deck';
+import { type Rand, newDeck } from './deck';
 ```
 
-Replace the body of `planDaily` with the extraction. The DST comment moves onto `planDates` with it, because that is the function it now describes:
+Replace `planDaily` with the extraction plus the new planner. The DST comment
+moves onto `planDates`, because that is the function it now describes:
 
 ```ts
 // Every `at` is built from local date PARTS, never by adding milliseconds to a
 // timestamp: an hour gained or lost overnight would otherwise slide the whole
 // tail of the plan to eight or ten o'clock.
 //
-// Extracted from planDaily (2026-09-21) so that both planners lay their days
-// on one rule rather than two copies of it.
+// Extracted from planDaily (2026-09-21) so both planners lay their days on one
+// rule rather than two copies of it.
 export const planDates = (now: Date, hour: number, days: number = PLAN_DAYS): Date[] => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour);
   // Strictly after: a sync an hour before still gets today, one exactly on the
@@ -175,29 +211,64 @@ export type Planner = (
 export const planDaily: Planner = (now, count, hour, days = PLAN_DAYS, rand = Math.random) =>
   planDates(now, hour, days).map((at) => ({ at, index: Math.floor(rand() * count) }));
 
-// Dealt from a shuffled bag rather than drawn independently. planDaily is
-// right for a corpus nobody could exhaust — 232 quotes, 6,861 stories — where
-// an independent draw per day is indistinguishable from a shuffle. It is wrong
-// for a ten-line pool, where over a fourteen-day horizon the chance of the
-// same line landing on two consecutive days is about three in four.
+// mulberry32. Math.random cannot be seeded, and being seeded is the whole point
+// of the planner below.
+const seeded = (seed: number): Rand => {
+  let a = seed;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+// Days since the epoch, from LOCAL date parts, so the number turns over at
+// local midnight and never at an hour DST happens to move.
+const dayNumber = (at: Date): number =>
+  Math.floor(Date.UTC(at.getFullYear(), at.getMonth(), at.getDate()) / 86400000);
+
+const rawOrder = (pass: number, count: number): number[] => newDeck(count, seeded(pass)).order;
+
+// One pass of the corpus, in an order fixed by which pass it is. The seam
+// swaps position 0 with position ONE, never with the last: swapping the last
+// would change what the NEXT pass has to avoid, and that pass's answer would
+// then depend on its own predecessor, all the way down. Swapping inward keeps
+// the lookback exactly one deep. A two-line corpus cannot be kept apart at a
+// seam by any swap and is left alone.
+const passOrder = (pass: number, count: number): number[] => {
+  const order = rawOrder(pass, count);
+  if (count > 2 && pass > 0 && order[0] === rawOrder(pass - 1, count)[count - 1]) {
+    [order[0], order[1]] = [order[1], order[0]];
+  }
+  return order;
+};
+
+// Dealt from a bag whose order is a pure function of the DATE, so every sync
+// computes the same line for the same day.
 //
-// deck.ts is the shuffle and already solves the hard part: the seam between
-// one pass and the next comes from two different shuffles, so `advance` swaps
-// rather than re-draws when the new order opens on the card just dealt.
+// That property is the whole feature, and its absence is what made the first
+// version of this pointless. A sync rewrites the entire horizon and one fires
+// every morning, so under a fresh shuffle per sync only the first entry of any
+// plan ever fired — an independent draw, indistinguishable from planDaily.
+// Seeded by the date, re-planning is idempotent, and "every line before any
+// line twice" holds across the whole life of the app rather than inside a plan
+// nobody sees the end of.
 //
-// The empty-pool guard is this planner's alone. newDeck(0) produces no order
-// and `current` reads off the end, which would schedule the literal string
+// `rand` is not taken: this planner has no use for one, and Planner's is
+// optional so a four-parameter function satisfies it.
+//
+// The empty-pool guard is this planner's alone. `newDeck(0)` produces no order
+// and the index read would be `undefined`, which schedules the literal string
 // "undefined" to a lock screen. planDaily has the same hole by another route
-// and is deliberately left with it: no room can reach it, and widening the fix
-// is not what this is for.
-export const planBag: Planner = (now, count, hour, days = PLAN_DAYS, rand = Math.random) => {
+// and is deliberately left with it: no room can reach it.
+export const planBag: Planner = (now, count, hour, days = PLAN_DAYS) => {
   if (count < 1) return [];
 
-  let deck = newDeck(count, rand);
   return planDates(now, hour, days).map((at) => {
-    const index = current(deck);
-    deck = advance(deck, rand);
-    return { at, index };
+    const day = dayNumber(at);
+    const pass = Math.floor(day / count);
+    return { at, index: passOrder(pass, count)[day - pass * count] };
   });
 };
 ```
@@ -205,22 +276,27 @@ export const planBag: Planner = (now, count, hour, days = PLAN_DAYS, rand = Math
 - [ ] **Step 4: Run the whole suite**
 
 Run: `npx jest src/modules && npx tsc --noEmit`
-Expected: PASS. **`planDaily`'s existing tests must pass unchanged** — that is the whole verification that the extraction preserved behaviour. If any of them needed editing, the extraction is wrong; revert and redo it.
+Expected: PASS. **`planDaily`'s existing tests must pass unchanged** — that is the
+whole verification that the extraction preserved behaviour. If any needed
+editing, the extraction is wrong; revert and redo it.
 
 - [ ] **Step 5: Mutation check**
 
-Break each guard in turn and confirm a test catches it:
-- delete the `if (count < 1) return [];` line → the empty-pool test fails
-- replace `advance(deck, rand)` with `{ order: deck.order, at: (deck.at + 1) % count }` → the seam test still passes (it is a valid cycle), so **also** confirm the coverage test fails when you replace `newDeck(count, rand)` with `{ order: [0], at: 0 }`
-- change `offset` to always `1` → the "starts today" test fails
+Break each in turn, confirm a named test fails, restore. Use a copy in the
+scratchpad rather than `git stash`.
 
-Restore the file afterwards. Use a copy in the scratchpad rather than `git stash`.
+- delete `if (count < 1) return [];` → the empty-pool test fails
+- `seeded(pass)` → `seeded(0)` → the consecutive-days test fails (every pass
+  identical, so the seam repeats)
+- `seeded(pass)` → `Math.random` → the two determinism tests fail
+- drop the `passOrder` seam swap → the consecutive-days test fails
+- `offset` forced to `1` → the "starts today" test fails
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/modules/daily.ts src/modules/__tests__/daily.test.ts
-git commit -m "feat: a planner that deals from a bag, for a corpus small enough to repeat"
+git commit -m "feat: a planner whose order is a function of the date, not of the sync"
 ```
 
 ---
