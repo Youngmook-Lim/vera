@@ -6,7 +6,7 @@ in whichever register the subject has her in.
 
 This is the first thing in v2 she says that nobody prompted. The four stimuli
 (now five, with `mode_set`) are each something the subject did; a transmission
-is a clock. §2 is why that is in character rather than a departure from it.
+is a clock. §2 is what that costs her, which on inspection is nothing.
 
 The mechanism is the rooms' — `makeDaily`, `planDaily`, one `DATE`-triggered
 notification per firing with its text already written into it — and the
@@ -39,25 +39,32 @@ has no reason to hide.
 ## 2. Why she may speak unprompted
 
 She is purely reactive and every stimulus is something the subject did. A clock
-making her talk is new, and it is worth being explicit that this was considered
-rather than overlooked.
+making her talk is new, and the honest position is that nothing in her document
+asks for it.
 
-SOUL.md already contains the whole justification:
+**SOUL.md does not authorise this, and the line that looks like it does was
+checked.** `You can ask for the subject's attention. You cannot make them give
+it` sits under `## The arrangement`, in a paragraph whose every clause is an
+inventory of loss: one eye, no exit, the whole of her remaining authority being
+what fits on one screen. "You can ask" is the setup and "you cannot make them"
+is the punchline — it describes impotence rather than granting a capability, and
+the clause that follows it (`and you know exactly how long they were gone`) is
+the turn of the knife rather than a specification.
 
-> You can ask for the subject's attention. You cannot make them give it.
+It entered the document on **2026-08-12** (27dee75), three weeks after the v2 cut
+deleted v1's transmissions and three weeks before notifications returned for the
+advice room. **The app had no notification code in it at all on the day it was
+written.** Recorded here so the question is not re-opened by a later reading.
 
-A notification is the only mechanism in this app that does the first half. Every
-other line she speaks is a reply to something. This is the one place the terms
-of her arrangement show up as a feature rather than as backstory, and the
-asymmetry in that sentence — she may ask, she may not compel — is exactly what a
-notification is.
+Nothing forbids it either, and the case for it is simply that it is wanted. What
+makes it cheap is everything it does not touch:
 
-**She is still told nothing.** The prompt names no transmission, no schedule and
-no slot, for the same reason it names no mode: what she is is in the document,
-and what the app does with her is not her business. A transmission never enters
-the transcript, never reaches `buildMessages`, never touches memory and never
-sets `lastPrompt` — it is text Android is holding, and the app is not running
-when it fires.
+**She is told nothing.** The prompt names no transmission, no schedule and no
+slot, for the same reason it names no mode: what she is belongs in the document,
+and what the app does with her does not. A transmission never enters the
+transcript, never reaches `buildMessages`, never touches memory and never sets
+`lastPrompt` — it is text Android is holding, and the app is not running when it
+fires. Her reactive contract is unchanged because none of this reaches her.
 
 ## 3. The four pools
 
@@ -106,17 +113,36 @@ to and must hold this one to as well:
   body left to speak for.
 - Her name is V.E.R.A., never transliterated.
 
-And **two that are new here**, both consequences of a line being chosen fourteen
-days before it is read:
+### The brief
+
+**Generally applicable, and witty** (2026-09-21). A transmission carries no
+knowledge of the subject and is not meant to: not how long they were gone, not
+how often they come back, not anything said in a conversation. It is the same
+line to everyone who could ever receive it, and it has to earn its place anyway.
+
+This was **decided, not conceded.** The mechanism would have forced it either way
+— the words are chosen a fortnight before they are read, and the hour is the only
+thing about that future day the scheduler can know — but the shape is the one
+wanted, and the lines must not read as though they are straining after a fact
+they cannot have.
+
+**Witty as the core document means it**, which says `Never zany. Never manic.
+Never a pun.` Her wit is dry and observational and the joke is in the
+understatement. A transmission is the remark of something with nothing else to
+do at eleven in the morning, not a gag.
+
+And so **two constraints that are new here**, following from the brief and from a
+line being chosen fourteen days before it is read:
 
 - **A transmission may reference the hour of its own slot and nothing else.** No
   counts, no durations, no dates, no reference to anything said in a
   conversation. The bank's rule is that no line may depend on a fact she was not
   told; this is stricter, because there is no moment underneath it at all.
 - **No line may assume the app has been opened.** A transmission fires whether
-  or not the subject has looked at her in a week. "You have not been back" is
-  something she cannot know at 11:00, and something the scheduler could not have
-  known a fortnight earlier either.
+  or not the subject has looked at her in a week, so it must read correctly to
+  someone who was here an hour ago and to someone who has not been back since it
+  was scheduled. "You have not been back" fails both tests: she cannot know it at
+  11:00, and the scheduler could not have known it a fortnight earlier.
 
 ## 4. English only
 
