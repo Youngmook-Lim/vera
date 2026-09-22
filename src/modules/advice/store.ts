@@ -3,8 +3,10 @@ import { create } from 'zustand';
 import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
 import { dueForSync } from '../daily';
+import { type Deck, newDeck } from '../deck';
 import { type Favorites, toggle } from '../favorites';
 import { requestDaily, syncDaily } from './notify';
+import { QUOTES } from './quotes';
 import { type Stored, parse, serialize } from './stored';
 
 // The cards you kept, owned by the room that shows them. She is not told this
@@ -25,6 +27,18 @@ const save = async (stored: Stored): Promise<void> => {
 
 interface AdviceState extends Stored {
   hydrated: boolean;
+  // The pass through the book. It lives here rather than in the screen's own
+  // useState (2026-09-22) so that walking out of the room and back in does not
+  // reshuffle — a half-finished pass is worth keeping, and starting over meant
+  // seeing a card again long before the other 231 had been dealt.
+  //
+  // NOT in `Stored`, deliberately, so it is never written to disk: `serialize`
+  // picks its fields by name, and the deck dies with the process. An app
+  // restart is the one boundary that still resets the shuffle.
+  deck: Deck;
+  // An updater rather than a value, so every call site reads exactly as it did
+  // when this was useState.
+  setDeck: (next: (deck: Deck) => Deck) => void;
   hydrate: () => Promise<void>;
   toggleFavorite: (quote: string) => Promise<void>;
   setDaily: (on: boolean, lang: Lang) => Promise<boolean>;
@@ -38,6 +52,9 @@ let inFlight: Promise<void> | null = null;
 
 export const useAdviceStore = create<AdviceState>((set, get) => ({
   hydrated: false,
+  // Shuffled once, when this module is first imported — which is app start.
+  deck: newDeck(QUOTES.length),
+  setDeck: (next) => set((s) => ({ deck: next(s.deck) })),
   favorites: new Set<string>(),
   daily: false,
   syncedOn: null,

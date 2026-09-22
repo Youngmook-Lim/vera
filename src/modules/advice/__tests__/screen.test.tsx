@@ -6,6 +6,7 @@ import { storage } from '../../../core/storage';
 import { useFacilityStore } from '../../../core/store';
 import { advice } from '../index';
 import { QUOTES, SOURCE } from '../quotes';
+import { newDeck } from '../../deck';
 import { useAdviceStore } from '../store';
 import { EMOTIONS } from '../../../vera/emotions';
 
@@ -17,7 +18,12 @@ const marked = (node: { props: { accessibilityState?: { selected?: boolean } } }
 beforeEach(async () => {
   useFacilityStore.setState({ view: 'mod01', lang: 'en', emotion: 'calm' });
   await storage.clearAll();
-  useAdviceStore.setState({ hydrated: true, favorites: new Set() });
+  // The deck outlives a render now, so it outlives a TEST too unless it is
+  // put back. Without this a pass advanced by one test is where the next one
+  // starts.
+  useAdviceStore.setState({
+    hydrated: true, favorites: new Set(), deck: newDeck(QUOTES.length),
+  });
 });
 
 describe('Module 02', () => {
@@ -63,6 +69,46 @@ describe('Module 02', () => {
 
     expect(view.getByTestId('advice-counter').props.children).toBe('004 / 232');
     await view.unmount();
+  });
+
+  // The once-per-pass guarantee, at the SCREEN. deck.test.ts pins it for the
+  // pure module, but nothing here checked that the room actually walks the
+  // shuffled order — a deck reshuffled on every deal would still advance, still
+  // show a card, and still pass every other test in this file.
+  //
+  // Asserted against the order captured BEFORE any press, which is what makes
+  // it deterministic: a reshuffle mid-pass changes the order out from under it.
+  it('walks the shuffle in order, dealing no quote twice', async () => {
+    const view = await render(<Screen />);
+    const order = useAdviceStore.getState().deck.order;
+
+    const seen = [view.getByTestId('advice-quote').props.children];
+    for (let i = 1; i < 8; i++) {
+      await fireEvent.press(view.getByTestId('advice-card'));
+      seen.push(view.getByTestId('advice-quote').props.children);
+    }
+
+    expect(seen).toEqual(order.slice(0, 8).map((i) => QUOTES[i]));
+    expect(new Set(seen).size).toBe(8);
+    await view.unmount();
+  });
+
+  // A pass you did not finish is worth keeping (2026-09-22). Asserted on the
+  // deck itself rather than on the card, because a fresh shuffle would land on
+  // the same quote once in 232 and this must not flake.
+  it('keeps the pass when you leave the room and come back', async () => {
+    const view = await render(<Screen />);
+    await fireEvent.press(view.getByTestId('advice-card'));
+    const left = useAdviceStore.getState().deck;
+    expect(left.at).toBe(1);
+    await view.unmount();
+
+    const again = await render(<Screen />);
+
+    expect(useAdviceStore.getState().deck.order).toEqual(left.order);
+    expect(useAdviceStore.getState().deck.at).toBe(1);
+    expect(again.getByTestId('advice-quote').props.children).toBe(QUOTES[left.order[1]]);
+    await again.unmount();
   });
 
   it('lists the book in the order the book puts it', async () => {

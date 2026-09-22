@@ -3,8 +3,10 @@ import { create } from 'zustand';
 import type { Lang } from '../../core/i18n';
 import { KEYS, storage } from '../../core/storage';
 import { dueForSync } from '../daily';
+import { type Deck, newDeck } from '../deck';
 import { type Favorites, toggle } from '../favorites';
 import { requestNightly, syncNightly } from './notify';
+import { STORIES } from './stories';
 import { type Stored, parse, serialize } from './stored';
 
 // The stories you kept and whether the turn is withheld, owned by the room
@@ -25,6 +27,19 @@ const save = async (stored: Stored): Promise<void> => {
 
 interface HorrorState extends Stored {
   hydrated: boolean;
+  // The pass through the shelf. It lives here rather than in the screen's own
+  // useState (2026-09-22) so that walking out of the room and back in does not
+  // reshuffle — a half-finished pass is worth keeping, and starting over meant
+  // seeing a story again long before the other 6,860 had been dealt.
+  //
+  // NOT in `Stored`, deliberately, so it is never written to disk: `serialize`
+  // picks its fields by name, and a 6,861-entry order has no business in a
+  // blob. The deck dies with the process, and an app restart is the one
+  // boundary that still resets the shuffle.
+  deck: Deck;
+  // An updater rather than a value, so every call site reads exactly as it did
+  // when this was useState.
+  setDeck: (next: (deck: Deck) => Deck) => void;
   hydrate: () => Promise<void>;
   toggleFavorite: (key: string) => Promise<void>;
   setHidden: (hidden: boolean) => Promise<void>;
@@ -39,6 +54,9 @@ let inFlight: Promise<void> | null = null;
 
 export const useHorrorStore = create<HorrorState>((set, get) => ({
   hydrated: false,
+  // Shuffled once, when this module is first imported — which is app start.
+  deck: newDeck(STORIES.length),
+  setDeck: (next) => set((st) => ({ deck: next(st.deck) })),
   favorites: new Set<string>(),
   hidden: true,
   nightly: false,

@@ -7,7 +7,7 @@ import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
 import { font, ms, palette, serif } from '../../core/theme';
 import type { ModuleDef } from '../types';
-import { advance, current, goTo, newDeck } from '../deck';
+import { advance, current, goTo } from '../deck';
 import { displayOrder } from '../favorites';
 import { compactScore, storyKey } from './card';
 import { SOURCE, STORIES } from './stories';
@@ -113,9 +113,12 @@ export function HorrorScreen() {
   // the same as the advice room, and for the same reasons set out there.
   const accent = EMOTIONS[emotion].iris;
 
-  // The deck lives for as long as the room is open. Nothing is written down:
-  // a pass you did not finish is not a thing worth keeping.
-  const [deck, setDeck] = useState(() => newDeck(STORIES.length));
+  // The deck lives in the room's store, so it lives as long as the APP does
+  // rather than as long as the room is open (2026-09-22). Nothing is written
+  // down — it is not in `Stored`, and a 6,861-entry order has no business in a
+  // blob — so an app restart is the one thing that reshuffles.
+  const deck = useHorrorStore((s) => s.deck);
+  const setDeck = useHorrorStore((s) => s.setDeck);
   const [listing, setListing] = useState(false);
   const [favoritesFirst, setFavoritesFirst] = useState(false);
   // Whether THIS card has been turned over. Never persisted and never carried

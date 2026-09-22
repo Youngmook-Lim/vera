@@ -4,6 +4,7 @@ import { useFacilityStore } from '../../../core/store';
 import { storage } from '../../../core/storage';
 import { HorrorScreen, horror } from '..';
 import { STORIES } from '../stories';
+import { newDeck } from '../../deck';
 import { useHorrorStore } from '../store';
 
 jest.mock('expo-secure-store', () => {
@@ -22,13 +23,58 @@ jest.mock('expo-secure-store', () => {
 beforeEach(async () => {
   useFacilityStore.setState({ view: 'mod02', lang: 'en', emotion: 'calm', pendingStory: null });
   await storage.clearAll();
-  useHorrorStore.setState({ hydrated: true, favorites: new Set(), hidden: true });
+  // The deck outlives a render now, so it outlives a TEST too unless it is
+  // put back.
+  useHorrorStore.setState({
+    hydrated: true, favorites: new Set(), hidden: true, deck: newDeck(STORIES.length),
+  });
 });
 
 // The counter had no test at all until 2026-09-22, which is how the two rooms
 // came to disagree about what it means: the advice room reported how far
 // through the shuffle you were while this one reported the story's own number.
 // This room was right and the advice room moved. Pinned in both now.
+// The once-per-pass guarantee, at the SCREEN. deck.test.ts pins it for the
+// pure module; this is the room actually walking the shuffled order.
+describe('dealing through the shelf', () => {
+  it('walks the shuffle in order, dealing no story twice', async () => {
+    // Withholding off, so one tap is one deal rather than a reveal.
+    useHorrorStore.setState({ hidden: false });
+    const view = await render(<HorrorScreen />);
+    const order = useHorrorStore.getState().deck.order;
+
+    const seen = [view.getByTestId('horror-setup').props.children];
+    for (let i = 1; i < 8; i++) {
+      await fireEvent.press(view.getByTestId('horror-card'));
+      seen.push(view.getByTestId('horror-setup').props.children);
+    }
+
+    expect(seen).toEqual(order.slice(0, 8).map((i) => STORIES[i].setup));
+    expect(new Set(seen).size).toBe(8);
+    await view.unmount();
+  });
+});
+
+// A pass you did not finish is worth keeping (2026-09-22).
+describe('leaving the room', () => {
+  it('does not reshuffle the shelf', async () => {
+    const view = await render(<HorrorScreen />);
+    await fireEvent.press(view.getByTestId('horror-card'));
+    await fireEvent.press(view.getByTestId('horror-card'));
+    const left = useHorrorStore.getState().deck;
+    expect(left.at).toBe(1);
+    await view.unmount();
+
+    const again = await render(<HorrorScreen />);
+
+    expect(useHorrorStore.getState().deck.order).toEqual(left.order);
+    expect(useHorrorStore.getState().deck.at).toBe(1);
+    expect(again.getByTestId('horror-setup').props.children)
+      .toBe(STORIES[left.order[1]].setup);
+    await again.unmount();
+  });
+});
+
 describe('the counter', () => {
   const counterFor = (setup: string) =>
     `${String(STORIES.findIndex((st) => st.setup === setup) + 1).padStart(4, '0')} / ${STORIES.length}`;

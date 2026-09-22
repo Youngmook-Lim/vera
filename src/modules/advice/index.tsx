@@ -7,7 +7,7 @@ import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
 import { font, ms, palette, serif, serifItalic } from '../../core/theme';
 import type { ModuleDef } from '../types';
-import { advance, current, goTo, newDeck } from '../deck';
+import { advance, current, goTo } from '../deck';
 import { displayOrder } from '../favorites';
 import { QUOTES, SOURCE } from './quotes';
 import { useFavorites } from './store';
@@ -107,13 +107,19 @@ export function AdviceScreen() {
   // its own.
   const accent = EMOTIONS[emotion].iris;
 
-  // The deck lives for as long as the room is open. Nothing is written down:
-  // a pass you did not finish is not a thing worth keeping, and she is told
-  // about none of this either way.
-  const [deck, setDeck] = useState(() => newDeck(QUOTES.length));
+  // The deck lives in the room's store, so it lives as long as the APP does
+  // rather than as long as the room is open (2026-09-22). Walking out at card
+  // forty and back in used to start a fresh shuffle, which meant seeing a
+  // quote again long before the other 231 had been dealt — the once-per-pass
+  // guarantee held, but almost nothing held it. Nothing is written down: the
+  // deck is not in `Stored`, so an app restart is the one thing that reshuffles.
+  // She is told about none of this either way.
+  const deck = useAdviceStore((s) => s.deck);
+  const setDeck = useAdviceStore((s) => s.setDeck);
   const [listing, setListing] = useState(false);
   // A way of looking at the list rather than a thing you own, so it is not in
-  // the store and it starts off every time the room does — like the reshuffle.
+  // the store and it starts off every time the room does. The deck no longer
+  // keeps it company in that: a sort is about one visit, a pass is not.
   const [favoritesFirst, setFavoritesFirst] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
 
