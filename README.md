@@ -114,8 +114,4 @@ npx eas-cli@latest build -p android --profile development
 
 After a React Native version bump, add `--clear-cache` or the APK crashes on launch.
 
-## Why this cannot ship
-
-**This is a personal build and is not shippable as it stands.** The horror corpus is 6,861 pieces of fiction by as many people, none of whom were asked; Reddit's terms leave copyright with the authors. Shipping would mean replacing it with a licensed collection or an original deck.
-
 Incubated in the [brainstorming](https://github.com/Youngmook-Lim/brainstorming) idea vault.
