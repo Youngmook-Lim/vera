@@ -129,8 +129,9 @@ export function HorrorScreen() {
 
   // A story a notification asked for. Taken once and cleared, so walking back
   // into the room later deals an ordinary card. goTo moves the position within
-  // this pass rather than starting a new one, so the counter stays truthful —
-  // and it arrives REVEALED whatever the withholding says, because the tap on
+  // this pass rather than starting a new one, so arriving here does not throw
+  // away the rest of the shuffle — and it arrives REVEALED whatever the
+  // withholding says, because the tap on
   // the notification was the asking and there is nothing left to withhold.
   useEffect(() => {
     if (pendingStory == null) return;

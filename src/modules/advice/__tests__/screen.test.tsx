@@ -33,15 +33,35 @@ describe('Module 02', () => {
     await view.unmount();
   });
 
-  it('deals a different card on a tap, and counts the pass', async () => {
+  // The counter is the card's OWN number in the book, not how far through the
+  // shuffle you are (2026-09-22) — so it matches the numeral on that card's row
+  // in the list, and it matches what the horror room has always shown. It is
+  // derived from the quote on screen rather than hardcoded, because the deck is
+  // shuffled fresh on every mount and no fixed number could be right twice.
+  const counterFor = (quote: string) =>
+    `${String(QUOTES.indexOf(quote) + 1).padStart(3, '0')} / 232`;
+
+  it('deals a different card on a tap, and numbers each by the book', async () => {
     const view = await render(<Screen />);
-    const first = view.getByTestId('advice-quote').props.children;
-    expect(view.getByTestId('advice-counter').props.children).toBe('001 / 232');
+    const first = view.getByTestId('advice-quote').props.children as string;
+    expect(view.getByTestId('advice-counter').props.children).toBe(counterFor(first));
 
     await fireEvent.press(view.getByTestId('advice-card'));
 
-    expect(view.getByTestId('advice-quote').props.children).not.toBe(first);
-    expect(view.getByTestId('advice-counter').props.children).toBe('002 / 232');
+    const second = view.getByTestId('advice-quote').props.children as string;
+    expect(second).not.toBe(first);
+    expect(view.getByTestId('advice-counter').props.children).toBe(counterFor(second));
+    await view.unmount();
+  });
+
+  // Tap the row numbered 004 and the card says 004. The two surfaces disagreed
+  // in this room until the counter stopped reporting the shuffle position.
+  it('carries the list row’s own numeral onto the card', async () => {
+    const view = await render(<Screen />);
+    await fireEvent.press(view.getByTestId('mode-list'));
+    await fireEvent.press(view.getByTestId('advice-row-3'));
+
+    expect(view.getByTestId('advice-counter').props.children).toBe('004 / 232');
     await view.unmount();
   });
 

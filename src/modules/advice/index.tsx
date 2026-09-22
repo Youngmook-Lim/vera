@@ -121,7 +121,8 @@ export function AdviceScreen() {
 
   // A card a notification asked for. Taken once and cleared, so walking back
   // into the room later deals an ordinary card. goTo moves the position within
-  // this pass rather than starting a new one, so the counter stays truthful.
+  // this pass rather than starting a new one, so arriving here does not throw
+  // away the rest of the shuffle and re-deal cards already seen.
   useEffect(() => {
     if (pendingQuote == null) return;
     setDeck((d) => goTo(d, pendingQuote));
@@ -274,7 +275,7 @@ export function AdviceScreen() {
                 testID="advice-counter"
                 style={[styles.counter, { color: accent, fontFamily: font('mono', 500) }]}
               >
-                {`${pad3(deck.at + 1)} / ${QUOTES.length}`}
+                {`${pad3(card + 1)} / ${QUOTES.length}`}
               </Text>
               <Star
                 testID="advice-star"

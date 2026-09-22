@@ -25,6 +25,43 @@ beforeEach(async () => {
   useHorrorStore.setState({ hydrated: true, favorites: new Set(), hidden: true });
 });
 
+// The counter had no test at all until 2026-09-22, which is how the two rooms
+// came to disagree about what it means: the advice room reported how far
+// through the shuffle you were while this one reported the story's own number.
+// This room was right and the advice room moved. Pinned in both now.
+describe('the counter', () => {
+  const counterFor = (setup: string) =>
+    `${String(STORIES.findIndex((st) => st.setup === setup) + 1).padStart(4, '0')} / ${STORIES.length}`;
+
+  it('numbers a story by where it lives, not by how far through the deck you are', async () => {
+    const view = await render(<HorrorScreen />);
+    const first = view.getByTestId('horror-setup').props.children as string;
+
+    expect(view.getByTestId('horror-counter').props.children).toBe(counterFor(first));
+
+    await fireEvent.press(view.getByTestId('horror-card'));
+    await fireEvent.press(view.getByTestId('horror-card'));
+
+    const second = view.getByTestId('horror-setup').props.children as string;
+    expect(second).not.toBe(first);
+    expect(view.getByTestId('horror-counter').props.children).toBe(counterFor(second));
+
+    await view.unmount();
+  });
+
+  // Tap the row numbered 0004 and the card says 0004.
+  it('carries the list row’s own numeral onto the card', async () => {
+    const view = await render(<HorrorScreen />);
+    await fireEvent.press(view.getByTestId('mode-list'));
+    await fireEvent.press(view.getByTestId('horror-row-3'));
+
+    expect(view.getByTestId('horror-counter').props.children)
+      .toBe(`0004 / ${STORIES.length}`);
+
+    await view.unmount();
+  });
+});
+
 describe('the card', () => {
   it('withholds the turn behind a redaction, and the hint says which tap you are on', async () => {
     const view = await render(<HorrorScreen />);
