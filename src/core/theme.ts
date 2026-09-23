@@ -83,6 +83,20 @@ export const palette = {
   // greys — the same darkness with blood left in it — and one colour the
   // advice room has no use for: the bar that stands in for a withheld second
   // sentence.
+  // Module 03. Quiet and cool — the lane the warm advice room and the
+  // near-black horror room leave open. A note you wrote to yourself should
+  // not look like a warning. The accent is read from her emotion at render,
+  // as both rooms' are.
+  notes: {
+    bg: '#0b0d0f',
+    card: '#111417',
+    cardBorder: '#1e242a',
+    rule: '#191e23',
+    ink: '#dde4ea',
+    inkSoft: '#8d979f',
+    inkDim: '#5d666d',
+    inkGhost: '#394147',
+  },
   horror: {
     bg: '#0a0909',
     card: '#121011',

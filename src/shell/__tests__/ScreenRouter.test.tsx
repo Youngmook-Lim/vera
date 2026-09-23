@@ -103,7 +103,7 @@ test('the cabinet is an overlay, not a view', async () => {
   useFacilityStore.setState({ view: 'stage', cabinetOpen: true });
   const { getByText, getByTestId } = await render(<ScreenRouter />);
   // The drawer's own header, not the stage's handle label — both say CABINET.
-  expect(getByText('02 / 06 · CLOSE')).toBeTruthy();
+  expect(getByText('03 / 06 · CLOSE')).toBeTruthy();
   // The stage is still underneath it. Anchored on the optic, not her line: the
   // window holding her words collapses to its status strip when she has not
   // said anything yet, and this stage has an empty transcript. The eye is on

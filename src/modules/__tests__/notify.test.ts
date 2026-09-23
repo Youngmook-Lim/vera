@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import Power from '../../../modules/power/src/PowerModule';
 import { PLAN_DAYS } from '../daily';
-import { makeDaily } from '../notify';
+import { ensureChannel, makeDaily } from '../notify';
 
 const mocked = Notifications as unknown as Record<string, jest.Mock>;
 const power = Power as unknown as Record<string, jest.Mock>;
@@ -254,5 +254,31 @@ describe('the horizon and the draw', () => {
     await daily.sync(true, 'en', new Date(2026, 8, 21, 8, 0));
 
     expect(mocked.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
+  });
+});
+
+// Module 03 does not use makeDaily at all — a note's text never varies, so it
+// uses repeating WEEKLY triggers rather than a dated horizon. It needs this
+// rule and nothing else from this file, and a second hand-rolled copy of it is
+// how both rooms shipped silent.
+describe('the channel rule, on its own', () => {
+  it('is HIGH and vibrates, for a caller that is not a room', async () => {
+    await ensureChannel({ channel: 'solo.v1', channelName: 'SOLO' });
+
+    const [id, options] = mocked.setNotificationChannelAsync.mock.calls[0];
+    expect(id).toBe('solo.v1');
+    expect(options.name).toBe('SOLO');
+    expect(options.importance).toBe(Notifications.AndroidImportance.HIGH);
+    expect(options.enableVibrate).toBe(true);
+  });
+
+  it('takes an old channel away when one is named', async () => {
+    await ensureChannel({ channel: 'solo.v2', channelName: 'SOLO', legacyChannel: 'solo.v1' });
+    expect(mocked.deleteNotificationChannelAsync).toHaveBeenCalledWith('solo.v1');
+  });
+
+  it('never deletes the channel it just made', async () => {
+    await ensureChannel({ channel: 'solo.v1', channelName: 'SOLO', legacyChannel: 'solo.v1' });
+    expect(mocked.deleteNotificationChannelAsync).not.toHaveBeenCalledWith('solo.v1');
   });
 });

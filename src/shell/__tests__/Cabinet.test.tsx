@@ -11,7 +11,7 @@ describe('Cabinet', () => {
   it('counts what is allocated', async () => {
     const view = await render(<Cabinet />);
     expect(view.getByText('CABINET')).toBeTruthy();
-    expect(view.getByText('02 / 06 · CLOSE')).toBeTruthy();
+    expect(view.getByText('03 / 06 · CLOSE')).toBeTruthy();
   });
 
   it('opens the first room', async () => {
@@ -32,13 +32,19 @@ describe('Cabinet', () => {
     expect(useFacilityStore.getState().view).toBe('mod02');
   });
 
-  it('shows the four unfurnished rooms as numerals, and they do nothing', async () => {
+  it('shows the three unfurnished rooms as numerals, and they do nothing', async () => {
     const view = await render(<Cabinet />);
-    for (const slot of ['03', '04', '05', '06']) {
+    for (const slot of ['04', '05', '06']) {
       expect(view.getByText(slot)).toBeTruthy();
     }
-    await fireEvent.press(view.getByText('03'));
+    await fireEvent.press(view.getByText('04'));
     expect(useFacilityStore.getState().view).toBe('stage');
+  });
+
+  it('opens the third room', async () => {
+    const view = await render(<Cabinet />);
+    await fireEvent.press(view.getByTestId('tile-mod03'));
+    expect(useFacilityStore.getState().view).toBe('mod03');
   });
 
   // Every slot is the same square now — there is no feature row, so no tile
@@ -59,7 +65,7 @@ describe('Cabinet', () => {
 
   it('closes on the close control', async () => {
     const view = await render(<Cabinet />);
-    await fireEvent.press(view.getByText('02 / 06 · CLOSE'));
+    await fireEvent.press(view.getByText('03 / 06 · CLOSE'));
     expect(useFacilityStore.getState().cabinetOpen).toBe(false);
   });
 });
