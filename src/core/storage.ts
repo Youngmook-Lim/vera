@@ -16,6 +16,7 @@ export const KEYS = {
   organism: 'facility.mod.organism',
   advice: 'facility.mod.advice',
   horror: 'facility.mod.horror',
+  notes: 'facility.mod.notes',
 } as const;
 
 // Both module keys used to name the slot their room sat in — and rooms move.
