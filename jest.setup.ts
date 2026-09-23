@@ -64,7 +64,10 @@ jest.mock('expo-notifications', () => ({
   // Android's 3 and 4 natively. Worth spelling out, because a mock carrying the
   // AOSP numbers reads as correct and is not.
   AndroidImportance: { DEFAULT: 5, HIGH: 6 },
-  SchedulableTriggerInputTypes: { DATE: 'date' },
+  // DATE is what both rooms and her transmissions use: their content varies,
+  // so each firing is its own dated notification. WEEKLY is module 03's, whose
+  // content does not vary and so may repeat forever (2026-09-23).
+  SchedulableTriggerInputTypes: { DATE: 'date', WEEKLY: 'weekly' },
   setNotificationChannelAsync: jest.fn(async () => {}),
   // A room that has moved channel has to be able to take its old one away.
   deleteNotificationChannelAsync: jest.fn(async () => {}),
