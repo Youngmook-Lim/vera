@@ -274,6 +274,12 @@ interface FacilityState {
   pendingStory: number | null;
   openStory: (index: number) => void;
 
+  // The same, for module 03. A STRING rather than an index: this room's corpus
+  // is the subject's own and has no fixed order, so a note is identified by
+  // the id its notifications carry.
+  pendingNote: string | null;
+  openNote: (id: string) => void;
+
   setView: (view: View) => void;
   setDraft: (draft: string) => void;
   setCabinet: (open: boolean) => void;
@@ -338,6 +344,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   pendingQuote: null,
   pendingStory: null,
+  pendingNote: null,
 
   // The notification's way in. It closes the cabinet because the tap did not
   // come through it — and on a dormant stage there is no cabinet to come
@@ -353,6 +360,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // this one card.
   openStory: (index: number): void => {
     set({ view: 'mod02', pendingStory: index, cabinetOpen: false });
+  },
+
+  openNote: (id: string): void => {
+    set({ view: 'mod03', pendingNote: id, cabinetOpen: false });
   },
 
   setView: (view) => set({ view, cabinetOpen: false }),
