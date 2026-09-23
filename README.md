@@ -54,23 +54,25 @@ Six slots behind the drawer. Rooms are rooms in her building, not screens in her
 
 - **01 · EXCELLENT ADVICE** — 232 highlights from Kevin Kelly's *Excellent Advice for Living*. One card at a time or the whole list, with a star on each. The room is lit in whatever she is wearing, so walking in after she was alarmed gives you a red room.
 - **02 · TWO SENTENCE HORROR** — 6,861 stories from r/TwoSentenceHorror. The second sentence is withheld behind a redaction until you tap, and whether you want to be spoiled is a standing preference rather than a setting for one card.
-- **03–06** — empty. Specimen-03, a terrarium with its own hunger, is benched rather than deleted: every file is still on disk and still tested.
+- **03 · NOTES TO MYSELF** — the one room whose corpus you write. A note, a time, and the weekdays it should arrive on; it lands on the lock screen in your own words until you switch it off, and tapping it opens the note as a card.
+- **04–06** — empty. Specimen-03, a terrarium with its own hunger, is benched rather than deleted: every file is still on disk and still tested.
 
 Both rooms deal from a shuffled deck that gives you every card before it repeats any. **The pass survives leaving the room** and is reset only by restarting the app.
 
 ## What arrives when you are not looking
 
-Three sources, all off by default, each its own switch under `SYSTEM → PREFERENCES`.
+Four sources, all off by default. Three have a switch under `SYSTEM → PREFERENCES`; the fourth is per-note, inside module 03.
 
 | | when | what |
 |---|---|---|
 | **EXCELLENT ADVICE** | 09:00 | one highlight, and the book under it |
 | **TWO SENTENCE HORROR** | 22:00 | the setup, with the turn redacted — tapping opens it already turned over |
+| **NOTES TO MYSELF** | whenever you said | your own note, repeating on the weekdays you chose |
 | **TRANSMISSIONS** | 11:00 and 16:00 | **her**, unprompted, in your chosen register |
 
 The transmissions are the only ones in her own voice. Forty authored lines, twenty to a register, split across the two hours — and each carries nothing about you at all. They are chosen a fortnight before they are read, so the hour of the slot is the only thing about that day she can possibly know.
 
-> There is no background work of any kind. Nothing of ours is awake at nine, so every card is handed to Android with its text already written into it, and the queue is rewritten whenever the app opens. Stop opening it for long enough and the cards stop.
+> There is no background work of any kind. Nothing of ours is awake at nine, so every card is handed to Android with its text already written into it. The three whose content *changes* are dated, and the queue is rewritten whenever the app opens — stop opening it for long enough and those stop. **Your notes do not**: their text never varies, so they repeat weekly and go on arriving whether you open the app again or not.
 
 **One thing no code here can fix.** On Samsung, Freecess holds a frozen app's alarms past their hour — a ten o'clock story arrived at 03:00 — and `Battery → Unrestricted` is the whole of the fix. The `BATTERY` row says plainly which way it is set, and switching any of these on offers you the dialog.
 
