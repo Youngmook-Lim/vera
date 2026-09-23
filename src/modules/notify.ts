@@ -83,6 +83,51 @@ try {
   // no native module, or a build too old to have the call
 }
 
+export interface ChannelConfig {
+  channel: string;
+  channelName: string;
+  legacyChannel?: string;
+}
+
+// HIGH, not DEFAULT, and vibration asked for by name. Android peeks — shows a
+// pop-up rather than only a status-bar icon — from importance 4 up, and
+// expo's DEFAULT is 3; vibration is off unless `enableVibrate` is actually
+// present, since the native side applies it only `if (args.containsKey(...))`.
+// Measured on the phone: both room channels sat at mImportance=3 with
+// mVibrationEnabled=false, while expo's fallback channel — where every card
+// landed before the rooms named a channel of their own — sat beside them at 4
+// with vibration on. Naming the right channel made the cards quieter, which
+// is the whole of what this puts back.
+//
+// The old channel goes in the same breath. Android will not raise an existing
+// channel's importance — PreferencesHelper.createNotificationChannel applies a
+// new one only when it is LOWER, and never touches vibration at all — and
+// recreating a deleted id restores its old settings rather than resetting
+// them. So the id had to change, and the id it changed from would otherwise
+// sit in Android's notification settings as a switch governing nothing.
+// Standalone rather than a closure inside makeDaily (2026-09-23), because
+// module 03 needs this rule and does NOT use makeDaily: a note's text never
+// varies, so it schedules repeating WEEKLY triggers instead of a dated
+// horizon. `DailyConfig` satisfies ChannelConfig structurally, so the rooms'
+// call site changes only in what it passes.
+export const ensureChannel = async (cfg: ChannelConfig): Promise<void> => {
+  const N = load();
+  if (!N) return;
+
+  await N.setNotificationChannelAsync(cfg.channel, {
+    name: cfg.channelName,
+    importance: N.AndroidImportance.HIGH,
+    enableVibrate: true,
+    vibrationPattern: [0, 250, 250, 250],
+  });
+  // Never the channel just created: a room that set both to the same string
+  // would delete its own live channel here and go silent, with every test
+  // still passing and nothing but a device to notice.
+  if (cfg.legacyChannel && cfg.legacyChannel !== cfg.channel) {
+    await N.deleteNotificationChannelAsync(cfg.legacyChannel);
+  }
+};
+
 export type PermissionState = 'granted' | 'blocked' | 'ask';
 
 // What travels inside every notification this app schedules. `room` is what
@@ -143,37 +188,6 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
     return null;
   };
 
-  // HIGH, not DEFAULT, and vibration asked for by name. Android peeks — shows a
-  // pop-up rather than only a status-bar icon — from importance 4 up, and
-  // expo's DEFAULT is 3; vibration is off unless `enableVibrate` is actually
-  // present, since the native side applies it only `if (args.containsKey(...))`.
-  // Measured on the phone: both room channels sat at mImportance=3 with
-  // mVibrationEnabled=false, while expo's fallback channel — where every card
-  // landed before the rooms named a channel of their own — sat beside them at 4
-  // with vibration on. Naming the right channel made the cards quieter, which
-  // is the whole of what this puts back.
-  //
-  // The old channel goes in the same breath. Android will not raise an existing
-  // channel's importance — PreferencesHelper.createNotificationChannel applies a
-  // new one only when it is LOWER, and never touches vibration at all — and
-  // recreating a deleted id restores its old settings rather than resetting
-  // them. So the id had to change, and the id it changed from would otherwise
-  // sit in Android's notification settings as a switch governing nothing.
-  const ensureChannel = async (N: Notifs): Promise<void> => {
-    await N.setNotificationChannelAsync(cfg.channel, {
-      name: cfg.channelName,
-      importance: N.AndroidImportance.HIGH,
-      enableVibrate: true,
-      vibrationPattern: [0, 250, 250, 250],
-    });
-    // Never the channel just created: a room that set both to the same string
-    // would delete its own live channel here and go silent, with every test
-    // still passing and nothing but a device to notice.
-    if (cfg.legacyChannel && cfg.legacyChannel !== cfg.channel) {
-      await N.deleteNotificationChannelAsync(cfg.legacyChannel);
-    }
-  };
-
   // Only this room's. Reading the queue and cancelling by identifier is more
   // work than cancelAllScheduledNotificationsAsync, and it is the whole reason
   // this file exists: a sync fires whenever its own toggle is flipped, at any
@@ -211,7 +225,7 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
       try {
         // The channel has to exist before the prompt, or the permission is
         // granted against nothing.
-        await ensureChannel(N);
+        await ensureChannel(cfg);
         const { granted } = await N.requestPermissionsAsync();
 
         // Permission is not delivery. Samsung's Freecess holds a frozen app's
@@ -237,7 +251,7 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
       const N = load();
       if (!N) return;
       try {
-        await ensureChannel(N);
+        await ensureChannel(cfg);
         await cancelOwn(N);
         if (!enabled) return;
 
