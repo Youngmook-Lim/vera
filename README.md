@@ -12,7 +12,7 @@ She is a live model, not a script.
 
 ## The stage
 
-One eye, one line, one box to type in, and a drawer.
+One eye, one line, and one box to type in with the cabinet's own button beside it.
 
 The **optic** is drawn with Skia and carries nine emotional states — lids, drift, blink and catchlight all come out of a pure geometry module, so what she is feeling changes how she looks rather than being announced. Her line arrives in a bordered **window** headed by a status strip: a pulsing iris dot, the emotion she is in, and one live word — `TRANSMITTING` while the typewriter is still drawing, `COMPLETE` once it stops, an animated ellipsis while she is only thinking.
 
@@ -50,7 +50,7 @@ She speaks **English or Korean**, and the Korean is not a translation — each l
 
 ## The cabinet
 
-Six slots behind the drawer. Rooms are rooms in her building, not screens in her app: the shell owns the tile, the bleed, one exit and her dot, and everything past the threshold belongs to the room.
+Six slots, behind a square of dots next to the input box — press it and a sheet rises over the stage. Rooms are rooms in her building, not screens in her app: the shell owns the tile, the bleed, one exit and her dot, and everything past the threshold belongs to the room.
 
 - **01 · EXCELLENT ADVICE** — 232 highlights from Kevin Kelly's *Excellent Advice for Living*. One card at a time or the whole list, with a star on each. The room is lit in whatever she is wearing, so walking in after she was alarmed gives you a red room.
 - **02 · TWO SENTENCE HORROR** — 6,861 stories from r/TwoSentenceHorror. The second sentence is withheld behind a redaction until you tap, and whether you want to be spoiled is a standing preference rather than a setting for one card.
@@ -95,7 +95,7 @@ A key from an unlisted provider is refused at the gate — the accepted cost of 
 - [`CLAUDE.md`](CLAUDE.md) — the working brief: what exists, why it is the way it is, and every gotcha that cost a day
 - [`docs/architecture.md`](docs/architecture.md) — stack, structure, mechanics, deployment
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — the design docs, one per feature
-- [`design/`](design/) — the original handoff. `The Facility - Overhaul.dc.html` is the v2 prototype and the authority on every pixel
+- [`design/`](design/) — the original handoff. `The Facility - Overhaul.dc.html` is the v2 prototype and the authority on every pixel; `Vera Final.dc.html` supersedes it on the cabinet, and carries a light theme that is not built
 - `src/` — `core/` (pure logic + state) · `vera/` (her brain) · `shell/` (her surface) · `modules/` (the rooms)
 
 Everything that decides anything is a pure module with no React in it and its own tests. Components render and dispatch, nothing more.
@@ -104,7 +104,7 @@ Everything that decides anything is a pure module with no React in it and its ow
 
 ```sh
 npm install
-npm test && npx tsc --noEmit    # both are the gate — 860 tests, 63 suites
+npm test && npx tsc --noEmit    # both are the gate — 956 tests, 70 suites
 npx expo start                  # needs an EAS dev build, not Expo Go
 ```
 
