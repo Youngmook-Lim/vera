@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,14 +33,14 @@ import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
 import { ThinkingDots } from './ThinkingDots';
 
-// Nothing on the stage but her: an eye, a label, one line of dialogue, one
-// input, and a drawer handle. Everything below is in service of that.
+// Nothing on the stage but her: an eye, a label, one line of dialogue, and one
+// input with the cabinet's own button beside it. Everything below is in service
+// of that.
 
 const OPTIC_PX = 158;
 const LOOK_MS = 420; // the design's own pupil transition
 const HOLD_MS = 2600; // how long she keeps looking where you touched
 const RELEASE_MS = 900; // and how unhurriedly she gives it up
-const DRAWER_DRAG_PX = 22; // upward travel on the handle that counts as "open" (spec: >22px)
 
 // How long SEND holds its lit state after your finger leaves. Long enough that
 // a quick tap is visible, short enough that it never reads as "still working".
@@ -87,6 +86,28 @@ const WINDOW_GAP_DOWN = 14;
 const INPUT_GAP_DOWN = 14;
 const INPUT_MARGIN_SIDE = 20;
 
+// The cabinet's button, `1d`. A 48px square and the 8 between it and the input
+// box beside it — one number, because what collapses with the keyboard is the
+// clip holding both, and half a gap left behind would be a margin nothing sits
+// in.
+const DOCK_PX = 48;
+const DOCK_GAP_PX = 8;
+const DOCK_TRACK_PX = DOCK_PX + DOCK_GAP_PX;
+
+// The six dots it is drawn with: a picture of the cabinet's own 3x2 grid, in
+// three tiers that brighten together when the drawer opens.
+//
+// The tiers are NOT a count of furnished rooms, though against three furnished
+// rooms they read exactly like one. The design hardwires them and its own
+// cabinet shows all three rooms while the second dot is still dim — so this is
+// a gradient, top-left brightest, and slot 04 filling changes nothing here.
+export const dockDots = (open: boolean): readonly string[] => {
+  const mid = open ? palette.amber : palette.hairlineDim;
+  const rest = open ? palette.amberEdge : palette.hairline;
+  // The lead dot is the one thing that does not move: amber in both states.
+  return [palette.amber, mid, mid, rest, rest, rest];
+};
+
 // Everything the keyboard changes the SHAPE of, as one function of how far it
 // has travelled. `progress` is 0 with the keys down and 1 with them fully up,
 // and every value here moves continuously between the two — which is the whole
@@ -114,12 +135,22 @@ export const keyboardShape = (progress: number) => {
     windowGap: WINDOW_GAP_DOWN + (WINDOW_MARGIN - WINDOW_GAP_DOWN) * progress,
     inputGap: INPUT_GAP_DOWN + (INPUT_MARGIN_SIDE - INPUT_GAP_DOWN) * progress,
     belowWindowFlex: SLACK_BELOW_WINDOW * (1 - progress),
-    // 1 with the keys down, 0 with them up. The cabinet handle closes WITH the
-    // keyboard rather than being unmounted by it: unmounting is a discrete
+    // 1 with the keys down, 0 with them up. The cabinet's button closes WITH
+    // the keyboard rather than being unmounted by it: unmounting is a discrete
     // change, and `isVisible` flips at the END of the keyboard's travel, so on
-    // the way down the stage finished sliding and then the handle appeared and
-    // shoved everything above it up a frame later.
-    handleOpen: 1 - progress,
+    // the way down the stage finished sliding and then the handle this replaced
+    // appeared and shoved everything above it up a frame later.
+    //
+    // It scales a WIDTH, where the handle scaled a height. That is the one way
+    // the button is simpler than what it replaces: 56 is a constant, so nothing
+    // has to be measured before the collapse has a number to travel from — and
+    // because it is a constant, the multiplication can live HERE, where it is
+    // reachable by a test, rather than inside the worklet where it is not.
+    // Handed back already multiplied for exactly that reason: the animated
+    // style does no arithmetic of its own, so there is none of it that only a
+    // device can check.
+    dockOpen: 1 - progress,
+    dockWidth: DOCK_TRACK_PX * (1 - progress),
   };
 };
 
@@ -220,28 +251,24 @@ export function Stage() {
   const keyboardInset = useKeyboardInset();
   // The inset is a shared value on the UI thread: it can move the stage but it
   // cannot decide what to render. This is the same library's JS-side view of
-  // the same keyboard, and it is what lets the handle come out of the tree.
+  // the same keyboard, and it is what puts the cabinet's button out of reach.
   const keyboardUp = useKeyboardState((s) => s.isVisible);
   // Everything that changes SHAPE as the keys arrive rides this rather than the
   // boolean above, so it lands on the same frames the stage's padding does. The
-  // boolean is still what decides whether the cabinet handle can be touched,
+  // boolean is still what decides whether the cabinet's button can be touched,
   // which is not a shape and cannot be half-true.
   const kb = useKeyboardProgress();
   const windowGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).windowGap }));
   const inputGap = useAnimatedStyle(() => ({ marginBottom: keyboardShape(kb.value).inputGap }));
   const belowWindow = useAnimatedStyle(() => ({ flex: keyboardShape(kb.value).belowWindowFlex }));
 
-  // The handle's height is set by its own contents — a bar, a gap and a line of
-  // type — so the collapse needs it measured before it has a number to travel
-  // from. Left unconstrained until that arrives, so it is never briefly
-  // invisible on the first frame.
-  const [handleH, setHandleH] = useState(0);
-  const handleCollapse = useAnimatedStyle(() => {
-    const { handleOpen } = keyboardShape(kb.value);
-    return handleH === 0
-      ? { opacity: handleOpen }
-      : { height: handleH * handleOpen, opacity: handleOpen };
-  }, [handleH]);
+  // The button collapses sideways, into the room the input box then takes. Its
+  // track is a constant, so unlike the handle it replaced there is nothing to
+  // measure first and no first frame where the width is unknown.
+  const dockCollapse = useAnimatedStyle(() => {
+    const { dockOpen, dockWidth } = keyboardShape(kb.value);
+    return { width: dockWidth, opacity: dockOpen };
+  });
 
   const awake = Boolean(apiKey);
   const t = T[lang];
@@ -361,19 +388,12 @@ export function Stage() {
     if (restTimer.current) clearTimeout(restTimer.current);
   }, []);
 
-  // The drawer handle answers to either a tap or an upward drag past 22px —
-  // one responder covers both, since claiming it mid-drag would otherwise
-  // fight a Pressable's own touch handling.
-  const handlePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderRelease: (_evt, g) => {
-        if (cabinetOpen) return;
-        const isTap = Math.abs(g.dx) < 4 && Math.abs(g.dy) < 4;
-        if (isTap || g.dy < -DRAWER_DRAG_PX) setCabinet(true);
-      },
-    }),
-  ).current;
+  // The drawer used to answer a tap OR an upward drag past 22px, which took a
+  // PanResponder to cover both without fighting a Pressable's own touch
+  // handling. `1d` is a button: it answers a tap, and it toggles, because it
+  // stays visible under the floating sheet and a second press on the thing that
+  // opened it has nothing else it could mean.
+  const toggleCabinet = () => setCabinet(!cabinetOpen);
 
   // TEMPORARY — a bench for the optic, dev builds only. Typing an emotion's
   // exact name ('amused', 'suspicious', …) forces that state instead of
@@ -634,68 +654,72 @@ export function Stage() {
               here can expose it, and flush against the keys is tighter than
               anything else on this screen. */}
           <Animated.View testID="input-row" style={[styles.inputRow, inputGap]}>
-            <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
-            <TextInput
-              style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
-              value={draft}
-              onChangeText={setDraft}
-              placeholder={t.ask}
-              placeholderTextColor={palette.textFaint}
-              onSubmitEditing={() => void send()}
-            />
-            {/* `lit` comes last so it wins over `inert`: a successful send
-                empties the box and starts her thinking, which makes the button
-                inert on the very frame it is confirming the press. The order
-                gives you the tap, then the refusal, rather than neither. */}
-            <Pressable
-              testID="send"
-              onPress={onSendPress}
-              disabled={!sendable}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.sendButton,
-                !sendable && styles.sendButtonInert,
-                (pressed || latched) && styles.sendButtonLit,
-              ]}
+            {/* The cabinet's button. It closes sideways with the keyboard
+                rather than leaving the tree, for the reason the handle it
+                replaced did: `isVisible` flips at the END of the keyboard's
+                travel, so anything unmounted by it arrives a frame after the
+                layout that made room for it. `pointerEvents` is what actually
+                puts it out of reach — a clipped, zero-width button would still
+                take a touch — and that stays a boolean, because being
+                touchable is not a thing that can be half-true. */}
+            <Animated.View
+              testID="cabinet-dock"
+              style={[styles.dockClip, dockCollapse]}
+              pointerEvents={keyboardUp ? 'none' : 'auto'}
             >
-              <Text
-                style={[
-                  styles.send,
-                  !sendable && styles.sendInert,
-                  { fontFamily: font('mono', 500, lang) },
+              <Pressable
+                testID="cabinet-dock-button"
+                onPress={toggleCabinet}
+                accessibilityLabel={t.cabinet}
+                style={[styles.dock, cabinetOpen && styles.dockLit]}
+              >
+                <View style={styles.dockGrid}>
+                  {dockDots(cabinetOpen).map((color, i) => (
+                    <View
+                      key={i}
+                      testID={`dock-dot-${i}`}
+                      style={[styles.dockDot, { backgroundColor: color }]}
+                    />
+                  ))}
+                </View>
+              </Pressable>
+            </Animated.View>
+
+            <View style={styles.inputBox}>
+              <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
+              <TextInput
+                style={[styles.input, { fontFamily: font('mono', 500, lang) }]}
+                value={draft}
+                onChangeText={setDraft}
+                placeholder={t.ask}
+                placeholderTextColor={palette.textFaint}
+                onSubmitEditing={() => void send()}
+              />
+              {/* `lit` comes last so it wins over `inert`: a successful send
+                  empties the box and starts her thinking, which makes the button
+                  inert on the very frame it is confirming the press. The order
+                  gives you the tap, then the refusal, rather than neither. */}
+              <Pressable
+                testID="send"
+                onPress={onSendPress}
+                disabled={!sendable}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.sendButton,
+                  !sendable && styles.sendButtonInert,
+                  (pressed || latched) && styles.sendButtonLit,
                 ]}
               >
-                {t.send}
-              </Text>
-            </Pressable>
-          </Animated.View>
-
-          {/* With the keyboard up the stage has three things worth the height
-              — the eye, her window, and the box being typed into — and the
-              cabinet handle is not one of them. Nothing is lost: the handle is
-              a swipe target, and it cannot be reached past the keys anyway.
-              It stays MOUNTED and closes to nothing, rather than leaving the
-              tree, so that it travels with the keyboard instead of appearing
-              after it. `pointerEvents` is what actually makes it unreachable,
-              and that is still a boolean, because being touchable is not a
-              thing that can be half-true. */}
-          <Animated.View
-            testID="cabinet-handle"
-            style={[styles.drawerClip, handleCollapse]}
-            pointerEvents={keyboardUp ? 'none' : 'auto'}
-          >
-            <View
-              onLayout={(e) => {
-                const h = e.nativeEvent.layout.height;
-                if (h > 0 && h !== handleH) setHandleH(h);
-              }}
-              style={styles.drawer}
-              {...handlePan.panHandlers}
-            >
-              <View style={styles.handleBar} />
-              <Text style={[styles.handleLabel, { fontFamily: font('mono', 500, lang) }]}>
-                {t.cabinet}
-              </Text>
+                <Text
+                  style={[
+                    styles.send,
+                    !sendable && styles.sendInert,
+                    { fontFamily: font('mono', 500, lang) },
+                  ]}
+                >
+                  {t.send}
+                </Text>
+              </Pressable>
             </View>
           </Animated.View>
         </>
@@ -893,17 +917,67 @@ const styles = StyleSheet.create({
   },
   // A card, not a hairline rule: `margin:0 20px 14px; padding:13px 14px;
   // background:#1a1913; border:1px solid #2c2a22; border-radius:12px`
+  // `display:flex;align-items:stretch;margin:0 20px <inputGap>`. It holds the
+  // cabinet's button and the box, and nothing else: `stretch` is what makes the
+  // button exactly as tall as the box beside it without either being told a
+  // height. There is no `gap` here on purpose — the 8 belongs to the button's
+  // own track, so that it collapses WITH it rather than being left behind as a
+  // margin with nothing on one side of it.
   inputRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginHorizontal: INPUT_MARGIN_SIDE,
+  },
+  // `flex:1;min-width:0` — what the whole row used to be.
+  inputBox: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    marginHorizontal: INPUT_MARGIN_SIDE,
     paddingVertical: 13,
     paddingHorizontal: 14,
     backgroundColor: palette.panel,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 12,
+  },
+  // The clip the collapse animates. `overflow:hidden` is what turns a shrinking
+  // width into the button sliding out of view rather than being squashed.
+  dockClip: {
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  // `width:48px;margin-right:8px;border-radius:12px` — the box's own radius, so
+  // the two read as one control split in two rather than two controls.
+  dock: {
+    width: DOCK_PX,
+    marginRight: DOCK_GAP_PX,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+  },
+  // The drawer open. SEND's idiom — the wash inside the edge — which is what
+  // every lit control in the shell is drawn with.
+  dockLit: {
+    backgroundColor: palette.amberWash,
+    borderColor: palette.amberEdge,
+  },
+  // `grid-template-columns:repeat(3,4px);gap:2.5px`, which RN has no grid for:
+  // six 4px children wrapping at three across is the same 17x10.5 block.
+  dockGrid: {
+    width: 4 * 3 + 2.5 * 2,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2.5,
+  },
+  dockDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 1,
   },
   chevron: {
     fontSize: ms(11),
@@ -941,27 +1015,4 @@ const styles = StyleSheet.create({
     color: palette.textFaint,
   },
   // `padding:4px 0 14px; gap:8px`
-  // Clips the handle while it is closing. Its own height is animated; the
-  // contents keep theirs and are cropped, which is what makes the collapse look
-  // like the keyboard sliding over it rather than the type shrinking.
-  drawerClip: {
-    overflow: 'hidden',
-  },
-  drawer: {
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 4,
-    paddingBottom: 14,
-  },
-  handleBar: {
-    width: 56,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.border,
-  },
-  handleLabel: {
-    fontSize: ms(7),
-    letterSpacing: ms(7) * 0.26,
-    color: palette.textGhostest,
-  },
 });
