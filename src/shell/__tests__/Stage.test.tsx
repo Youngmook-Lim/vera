@@ -8,7 +8,7 @@ import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
 import { ms, palette, voice } from '../../core/theme';
 import * as OpticModule from '../Optic';
-import { SEND_LATCH_MS, Stage, keyboardShape } from '../Stage';
+import { SEND_LATCH_MS, Stage, dockDots, keyboardShape } from '../Stage';
 import { T } from '../strings';
 
 // The send tests reach the store's speak(), which would otherwise reach the
@@ -356,22 +356,23 @@ describe('Stage', () => {
     beforeEach(() => awake());
     afterEach(() => keyboard(false));
 
-    // It used to leave the tree. That is a discrete change, and `isVisible`
-    // flips at the END of the keyboard's travel, so on the way down the stage
-    // finished sliding and then the handle appeared and shoved everything above
-    // it up a frame later. It stays mounted and closes to nothing now, on the
-    // same progress the rest of the stage rides — so what jest can still see is
-    // that it cannot be TOUCHED, which is the half that is still a boolean.
-    it('puts the cabinet handle out of reach, and brings it back afterwards', async () => {
+    // The handle used to leave the tree. That is a discrete change, and
+    // `isVisible` flips at the END of the keyboard's travel, so on the way down
+    // the stage finished sliding and then the handle appeared and shoved
+    // everything above it up a frame later. The dock that replaced it stays
+    // mounted and closes to nothing on the same progress the rest of the stage
+    // rides — so what jest can still see is that it cannot be TOUCHED, which is
+    // the half that is still a boolean.
+    it('puts the cabinet dock out of reach, and brings it back afterwards', async () => {
       keyboard(true);
       const typing = await render(<Stage />);
-      expect(typing.getByTestId('cabinet-handle').props.pointerEvents).toBe('none');
+      expect(typing.getByTestId('cabinet-dock').props.pointerEvents).toBe('none');
       await typing.unmount();
 
       keyboard(false);
       const idle = await render(<Stage />);
-      expect(idle.getByTestId('cabinet-handle').props.pointerEvents).toBe('auto');
-      expect(idle.getByText('CABINET')).toBeTruthy();
+      expect(idle.getByTestId('cabinet-dock').props.pointerEvents).toBe('auto');
+      expect(idle.getByTestId('cabinet-dock-button')).toBeTruthy();
       await idle.unmount();
     });
 
@@ -390,11 +391,15 @@ describe('Stage', () => {
     });
   });
 
-  it('gives a dormant stage no input and no drawer', async () => {
+  // The dock rides in the input row, so a stage with no input has no door to
+  // the cabinet either. That is the same as it ever was — the handle was inside
+  // the same `awake` branch — and it is what a notification tapped on a dormant
+  // stage relies on: the room opens, the cabinet is not reachable behind it.
+  it('gives a dormant stage no input and no cabinet dock', async () => {
     useFacilityStore.setState({ apiKey: '', emotion: 'dormant', log: [] });
     const view = await render(<Stage />);
     expect(view.queryByPlaceholderText('say something to her')).toBeNull();
-    expect(view.queryByText('CABINET')).toBeNull();
+    expect(view.queryByTestId('cabinet-dock')).toBeNull();
   });
 
   // The stage is the home view, so its input is the app's primary one: SEND has
@@ -790,10 +795,119 @@ describe('the long-conversation mark', () => {
 // the keyboard's progress — runs on the UI thread, and jest's keyboard mock
 // holds progress at 0 forever, so whether the ramp reaches the screen is a
 // device question. What can be held here is both ends and the ramp between.
+// `1d`: the swipe handle under the stage became a button beside the input box.
+// The swipe went with it — the handle answered a tap OR an upward drag past
+// 22px, and the button answers a tap and nothing else.
+describe('the cabinet dock', () => {
+  beforeEach(() => awake());
+
+  it('opens the cabinet', async () => {
+    const view = await render(<Stage />);
+    await fireEvent.press(view.getByTestId('cabinet-dock-button'));
+    expect(useFacilityStore.getState().cabinetOpen).toBe(true);
+  });
+
+  // The design's own runtime toggles: `view === 'cabinet' ? 'stage' : 'cabinet'`.
+  // The button stays visible under the floating sheet, so a second press on the
+  // thing that opened it has to mean something, and closing is the only thing
+  // it can mean.
+  it('closes the cabinet when it is already open', async () => {
+    awake({ cabinetOpen: true });
+    const view = await render(<Stage />);
+    await fireEvent.press(view.getByTestId('cabinet-dock-button'));
+    expect(useFacilityStore.getState().cabinetOpen).toBe(false);
+  });
+
+  // The 48 and the 8 are what `DOCK_TRACK_PX` is built out of, so the collapse
+  // travels the wrong distance if either moves. The 8 rides on the BUTTON
+  // rather than as a `gap` on the row, so that it collapses with it instead of
+  // being left behind as a margin with nothing on one side.
+  it('carries its own gap, so the track adds up', async () => {
+    const view = await render(<Stage />);
+    expect(flat(view.getByTestId('cabinet-dock-button').props.style)).toMatchObject({
+      width: 48,
+      marginRight: 8,
+    });
+    // `align-items:stretch` is what makes the button exactly as tall as the box
+    // beside it. Centred, it would collapse to its dots.
+    expect(flat(view.getByTestId('input-row').props.style).alignItems).toBe('stretch');
+    // And the clip is what turns a shrinking width into the button sliding out
+    // of sight rather than being squashed on its way there.
+    expect(flat(view.getByTestId('cabinet-dock').props.style).overflow).toBe('hidden');
+    await view.unmount();
+  });
+
+  it('fills with light while the drawer is open', async () => {
+    const shut = await render(<Stage />);
+    expect(flat(shut.getByTestId('cabinet-dock-button').props.style)).toMatchObject({
+      backgroundColor: palette.panel,
+      borderColor: palette.border,
+    });
+    await shut.unmount();
+
+    awake({ cabinetOpen: true });
+    const open = await render(<Stage />);
+    expect(flat(open.getByTestId('cabinet-dock-button').props.style)).toMatchObject({
+      backgroundColor: palette.amberWash,
+      borderColor: palette.amberEdge,
+    });
+    await open.unmount();
+  });
+
+  // Six dots in three tiers, and the tiers are what the button says. Asserted
+  // through the rendered dots rather than through `dockDots` alone, because a
+  // hardcoded list would satisfy the pure test and leave the function dead.
+  it('draws its six dots from dockDots', async () => {
+    const view = await render(<Stage />);
+    const drawn = [0, 1, 2, 3, 4, 5].map(
+      (i) => flat(view.getByTestId(`dock-dot-${i}`).props.style).backgroundColor,
+    );
+    expect(drawn).toEqual(dockDots(false));
+    await view.unmount();
+
+    awake({ cabinetOpen: true });
+    const open = await render(<Stage />);
+    const lit = [0, 1, 2, 3, 4, 5].map(
+      (i) => flat(open.getByTestId(`dock-dot-${i}`).props.style).backgroundColor,
+    );
+    expect(lit).toEqual(dockDots(true));
+    await open.unmount();
+  });
+});
+
+// A picture of the cabinet's own 3×2 grid, in three tiers. The tiers are NOT a
+// count of furnished rooms, though with three rooms filled they read like one —
+// the design hardwires them, and its own cabinet shows all three rooms while
+// dot 2 is still dim. They are a gradient, so slot 04 filling changes nothing.
+describe('dockDots', () => {
+  it('rests in three tiers, brightest first', () => {
+    expect(dockDots(false)).toEqual([
+      palette.amber,
+      palette.hairlineDim, palette.hairlineDim,
+      palette.hairline, palette.hairline, palette.hairline,
+    ]);
+  });
+
+  // The whole top row goes amber and the bottom row goes amber at the edge's
+  // own strength: the icon fills with light rather than changing shape.
+  it('fills with light when the drawer is open', () => {
+    expect(dockDots(true)).toEqual([
+      palette.amber, palette.amber, palette.amber,
+      palette.amberEdge, palette.amberEdge, palette.amberEdge,
+    ]);
+  });
+
+  // The lead dot is the one thing that does not move between the two states.
+  it('keeps its lead dot amber either way', () => {
+    expect(dockDots(false)[0]).toBe(palette.amber);
+    expect(dockDots(true)[0]).toBe(palette.amber);
+  });
+});
+
 describe('keyboardShape', () => {
   it('rests on the design’s own numbers with the keys down', () => {
     expect(keyboardShape(0))
-      .toEqual({ windowGap: 14, inputGap: 14, belowWindowFlex: 3, handleOpen: 1 });
+      .toEqual({ windowGap: 14, inputGap: 14, belowWindowFlex: 3, dockOpen: 1, dockWidth: 56 });
   });
 
   // Each box squared against ITS OWN sides — her window's 18, the input box's
@@ -801,13 +915,23 @@ describe('keyboardShape', () => {
   // margin and nothing else.
   it('squares both boxes off and closes the pool with the keys up', () => {
     expect(keyboardShape(1))
-      .toEqual({ windowGap: 18, inputGap: 20, belowWindowFlex: 0, handleOpen: 0 });
+      .toEqual({ windowGap: 18, inputGap: 20, belowWindowFlex: 0, dockOpen: 0, dockWidth: 0 });
+  });
+
+  // The button's width comes back already multiplied, so the animated style
+  // does no arithmetic of its own — which is the whole reason this line can be
+  // asserted at all. The handle it replaced scaled a MEASURED height inside the
+  // worklet, where nothing in jest could reach it.
+  it('closes the cabinet button by its whole track, not by a ratio', () => {
+    expect(keyboardShape(0).dockWidth).toBe(56); // a 48px button and its 8px gap
+    expect(keyboardShape(0.25).dockWidth).toBe(42);
+    expect(keyboardShape(1).dockWidth).toBe(0);
   });
 
   // The point of the whole exercise: a ramp, not a step.
   it('moves continuously between the two', () => {
     expect(keyboardShape(0.5))
-      .toEqual({ windowGap: 16, inputGap: 17, belowWindowFlex: 1.5, handleOpen: 0.5 });
+      .toEqual({ windowGap: 16, inputGap: 17, belowWindowFlex: 1.5, dockOpen: 0.5, dockWidth: 28 });
 
     let previous = keyboardShape(0).belowWindowFlex;
     for (let i = 1; i <= 10; i += 1) {

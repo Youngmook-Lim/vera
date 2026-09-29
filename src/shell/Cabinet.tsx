@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useFacilityStore } from '../core/store';
 import { font, ms, palette } from '../core/theme';
 import { registry } from '../modules/registry';
@@ -20,9 +26,28 @@ import { T } from './strings';
 // full width and the rest a three-column grid underneath; one room in a
 // building of six made that a banner over five holes, so every slot is now
 // the same square. This is a deliberate departure from the prototype.
+//
+// And the drawer is a floating sheet now (`1d`, 2026-09-29). It used to sit
+// flush to the screen edges, rounded 20 at the top and 34 at the bottom
+// because the bottom two corners were off-screen — the shape of something
+// dragged up from the edge, which is what opened it. A button opens it now
+// (`cabinet-dock` in Stage.tsx), so it is a card that arrives rather than an
+// edge that lifts: clear of all four sides, one radius, and no grab bar,
+// since there is no longer anything to grab.
 
 const GRID_TILE_PX = 86; // every slot, in the three-column grid
 const PER_ROW = 3;
+
+// `transform:translateY(40px)` → `0` on the design's own curve. Short, because
+// the sheet is already where it belongs and is only settling; the long travel
+// belonged to the drawer that came from off-screen.
+const SHEET_RISE_PX = 40;
+const SHEET_RISE_MS = 320;
+const SHEET_EASING = Easing.bezier(0.22, 0.61, 0.36, 1);
+
+// Reanimated drives the rise; the Modal's own `fade` drives the opacity, which
+// is why nothing here animates it. Doing both would fade the sheet twice.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -46,21 +71,34 @@ export function Cabinet() {
 
   const furnished = registry.filter(isModule).length;
   const rows = inRows(registry, PER_ROW);
-  const countLabel = `${pad2(furnished)} / ${pad2(registry.length)} · ${t.close}`;
+  const count = `${pad2(furnished)} / ${pad2(registry.length)}`;
+
+  const rise = useSharedValue(SHEET_RISE_PX);
+  useEffect(() => {
+    rise.value = withTiming(0, { duration: SHEET_RISE_MS, easing: SHEET_EASING });
+  }, [rise]);
+  const riseStyle = useAnimatedStyle(() => ({ transform: [{ translateY: rise.value }] }));
 
   return (
-    <Modal transparent animationType="slide" onRequestClose={close}>
+    <Modal transparent animationType="fade" onRequestClose={close}>
       <Pressable style={styles.scrim} onPress={close}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          <View style={styles.grabBar} />
-
+        <AnimatedPressable
+          testID="cabinet-sheet"
+          style={[styles.sheet, riseStyle]}
+          onPress={() => {}}
+        >
           <View style={styles.header}>
             <Text style={[styles.title, { fontFamily: font('mono', 500, lang) }]}>
               {t.cabinet}
             </Text>
-            <Pressable onPress={close} accessibilityLabel={`${t.alloc} ${countLabel}`}>
+            {/* The word CLOSE left the header with the rest of `1d`, and did
+                not leave the screen reader with it: the design governs what is
+                on screen, and a label announcing what a press does is not.
+                Keeping it here is also what keeps `t.close` a live string
+                rather than orphaned copy in two languages. */}
+            <Pressable onPress={close} accessibilityLabel={`${t.alloc} ${count} · ${t.close}`}>
               <Text style={[styles.count, { fontFamily: font('mono', 500, lang) }]}>
-                {countLabel}
+                {count}
               </Text>
             </Pressable>
           </View>
@@ -84,50 +122,43 @@ export function Cabinet() {
               </View>
             ))}
           </View>
-        </Pressable>
+        </AnimatedPressable>
       </Pressable>
     </Modal>
   );
 }
 
-// 4a's drawer. It is flush to the screen edges and rounded only at the top —
-// the inset, floating card was an invention.
+// `1d`'s sheet. Every number read off `design/Vera Final.dc.html`.
 const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     backgroundColor: '#08080699',
     justifyContent: 'flex-end',
   },
-  // `left:0;right:0;bottom:0; border-radius:20px 20px 34px 34px; padding:0 18px 20px`
+  // `left:12px;right:12px;bottom:100px; border-radius:20px; padding:0 16px 16px`
+  //
+  // The 100 is what holds it above the input row the dock button sits in, so
+  // the button that opened it is still visible underneath. It is measured from
+  // the screen's own bottom rather than from the safe area: the Modal is not
+  // inside the stage's padding, and the mock measures from the same edge.
   sheet: {
     backgroundColor: '#17171a',
-    borderTopWidth: 1,
+    borderWidth: 1,
     borderColor: palette.hairline,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomLeftRadius: 34,
-    borderBottomRightRadius: 34,
-    paddingHorizontal: 18,
-    paddingBottom: 20,
+    borderRadius: 20,
+    marginHorizontal: 12,
+    marginBottom: 100,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  // `padding:9px 0 4px`, a 34px bar
-  grabBar: {
-    alignSelf: 'center',
-    width: 34,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.hairline,
-    marginTop: 9,
-    marginBottom: 4,
-  },
-  // `padding:8px 2px 16px`
+  // `padding:16px 2px 16px` — symmetrical now that no grab bar sits above it
+  // eating the top half.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingVertical: 16,
   },
   title: {
     fontSize: ms(8.5),
@@ -139,10 +170,10 @@ const styles = StyleSheet.create({
     letterSpacing: ms(8) * 0.14,
     color: palette.textGhost,
   },
-  // `margin-top:11px; gap:10px` — the gap now stands between the rows as well
-  // as inside them, so the grid is square in both directions.
+  // `gap:10px` — the gap stands between the rows as well as inside them, so
+  // the grid is square in both directions. Its old 11px top margin is gone:
+  // the header's own bottom padding is the whole of that gap in `1d`.
   grid: {
-    marginTop: 11,
     gap: 10,
   },
   row: {
