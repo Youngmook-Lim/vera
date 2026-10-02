@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { longWarning } from '../core/conversation';
 import { useFacilityStore } from '../core/store';
 import { systemTextFor } from './systemText';
-import { font, ms, palette, serif } from '../core/theme';
+import { PALETTES, font, ms, serif, themed } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import type { LogEntry } from '../core/store';
 import type { Lang } from '../core/i18n';
@@ -27,6 +27,9 @@ const hhmm = (t: number): string => {
 
 // The stamp sits above your bubble, not under it (4a).
 function YouLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
+  // Its own read, as every helper in this file has: a sheet threaded
+  // down as a prop reads worse than the one line it saves.
+  const styles = S[useFacilityStore((st) => st.theme)];
   return (
     <View style={styles.youRow}>
       <Text style={[styles.stamp, { fontFamily: font('mono', 500, lang) }]}>{hhmm(entry.t)}</Text>
@@ -40,6 +43,7 @@ function YouLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
 // The app, not her. No bubble, no emotion rule, no serif — a refused
 // credential must not be readable as something she said.
 function SystemLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   if (!entry.code) return null;
   return (
     <View style={styles.systemRow}>
@@ -57,6 +61,7 @@ function SystemLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
 // Only the rule down her left edge carries the emotion's colour — the tag
 // itself stays grey, and her lines take no timestamp (4a).
 function HerLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   const emotion: EmotionKey = entry.emotion ?? 'calm';
   const iris = EMOTIONS[emotion].iris;
   return (
@@ -70,6 +75,9 @@ function HerLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
 }
 
 export function LogScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const insets = useSafeAreaInsets();
   const keyboardInset = useKeyboardInset();
   const lang = useFacilityStore((s) => s.lang);
@@ -110,7 +118,10 @@ export function LogScreen() {
   };
 
   return (
-    <Animated.View style={[styles.screen, { paddingTop: insets.top }, keyboardInset]}>
+    <Animated.View
+      testID="log-screen"
+      style={[styles.screen, { paddingTop: insets.top }, keyboardInset]}
+    >
       <View style={styles.header}>
         <Pressable onPress={back} hitSlop={12} style={styles.headerLeft}>
           <Text style={[styles.back, { fontFamily: font('mono', 500, lang) }]}>‹</Text>
@@ -188,7 +199,7 @@ export function LogScreen() {
           value={draft}
           onChangeText={setDraft}
           placeholder={t.reply}
-          placeholderTextColor={palette.textFaint}
+          placeholderTextColor={p.textFaint}
           onSubmitEditing={send}
         />
         <Pressable onPress={send} hitSlop={8} style={styles.sendButton}>
@@ -200,10 +211,10 @@ export function LogScreen() {
 }
 
 // 4a's log view, verbatim. Layout 1:1; only type passes through ms().
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.bgDeep,
+    backgroundColor: p.bgDeep,
   },
   // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
@@ -214,7 +225,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -223,7 +234,7 @@ const styles = StyleSheet.create({
   },
   back: {
     fontSize: ms(13),
-    color: palette.textDim,
+    color: p.textDim,
   },
   dot: {
     width: 4,
@@ -249,7 +260,7 @@ const styles = StyleSheet.create({
   longCount: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.18,
-    color: palette.danger,
+    color: p.danger,
   },
   clearHit: {
     paddingVertical: 4,
@@ -260,12 +271,12 @@ const styles = StyleSheet.create({
   clear: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.18,
-    color: palette.danger,
+    color: p.danger,
   },
   keep: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   // the destructive half is the only chip on the screen
   eraseChip: {
@@ -279,7 +290,7 @@ const styles = StyleSheet.create({
   erase: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.danger,
+    color: p.danger,
   },
   thread: {
     flex: 1,
@@ -302,7 +313,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.1,
-    color: palette.danger,
+    color: p.danger,
   },
   youRow: {
     alignSelf: 'flex-end',
@@ -313,7 +324,7 @@ const styles = StyleSheet.create({
   youBubble: {
     backgroundColor: YOU_BG,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 4,
@@ -324,12 +335,12 @@ const styles = StyleSheet.create({
   youText: {
     fontSize: ms(11.5),
     lineHeight: ms(11.5) * 1.62,
-    color: palette.textMuted,
+    color: p.textMuted,
   },
   stamp: {
     fontSize: ms(7),
     letterSpacing: ms(7) * 0.14,
-    color: '#33302a',
+    color: p.footer,
   },
   herRow: {
     alignSelf: 'flex-start',
@@ -340,12 +351,12 @@ const styles = StyleSheet.create({
   herTag: {
     fontSize: ms(7),
     letterSpacing: ms(7) * 0.14,
-    color: palette.textGhost,
+    color: p.textGhost,
   },
   herText: {
     fontSize: ms(17),
     lineHeight: ms(17) * 1.5,
-    color: palette.text,
+    color: p.text,
   },
   empty: {
     marginVertical: 'auto',
@@ -355,13 +366,13 @@ const styles = StyleSheet.create({
   emptyLabel: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.22,
-    color: palette.textGhostest,
+    color: p.textGhostest,
   },
   emptyLine: {
     maxWidth: 230,
     fontSize: ms(15),
     lineHeight: ms(15) * 1.5,
-    color: palette.textFaint,
+    color: p.textFaint,
     textAlign: 'center',
   },
   // `padding:0 20px 10px; gap:7px`
@@ -380,24 +391,24 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     paddingVertical: 13,
     paddingHorizontal: 14,
-    backgroundColor: palette.panel,
+    backgroundColor: p.panel,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 12,
   },
   chevron: {
     fontSize: ms(11),
-    color: palette.amber,
+    color: p.amber,
   },
   input: {
     flex: 1,
     padding: 0,
     fontSize: ms(12.5),
-    color: palette.text,
+    color: p.text,
   },
   sendButton: {
     borderWidth: 1,
-    borderColor: palette.amberEdgeSoft,
+    borderColor: p.amberEdgeSoft,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 9,
@@ -405,6 +416,6 @@ const styles = StyleSheet.create({
   send: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
-    color: palette.amber,
+    color: p.amber,
   },
-});
+}));
