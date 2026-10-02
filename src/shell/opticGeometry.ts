@@ -12,7 +12,6 @@ export interface OpticGeometry {
   socketDiameter: number;
   socketTop: number;
   socketBottom: number;
-  glowRadius: number;
   irisRadius: number;
   pupilRadius: number;
   lidHeight: number;
@@ -20,7 +19,6 @@ export interface OpticGeometry {
   lidClosedHeight: number;
   lowerLidClosedHeight: number;
   iris: string;
-  glowAlpha: number;
   seamAlpha: number;
   seamBAlpha: number;
   blinkMs: number;
@@ -35,7 +33,6 @@ export interface OpticGeometry {
 }
 
 const BEZEL_INSET = 4; // the socket's `inset:4px`
-const GLOW_SPREAD = 30; // the glow's `inset:-30px`
 const GAZE_RANGE = 0.14;
 
 // fshutT / fshutB, with one deliberate departure from the design. The
@@ -160,7 +157,6 @@ export const opticGeometry = (emotion: EmotionKey, size: number): OpticGeometry 
     // The lids sit at `top:0` / `bottom:0` of the socket, not of the outer box.
     socketTop: bezelRadius - socketRadius,
     socketBottom: bezelRadius + socketRadius,
-    glowRadius: bezelRadius + GLOW_SPREAD,
     irisRadius,
     pupilRadius: irisRadius * e.pupil,
     lidHeight: socketDiameter * e.lid,
@@ -168,7 +164,6 @@ export const opticGeometry = (emotion: EmotionKey, size: number): OpticGeometry 
     lidClosedHeight: socketDiameter * LID_CLOSED,
     lowerLidClosedHeight: socketDiameter * LOWER_LID_CLOSED,
     iris: e.iris,
-    glowAlpha: e.glow,
     // `--seam` is the iris-coloured hairline on the lid's leading edge. The
     // ring around the iris is drawn at full strength in the design and takes
     // no part in this.
