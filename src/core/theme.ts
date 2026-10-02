@@ -8,7 +8,86 @@ import type { Lang } from './i18n';
 // intent — this is pressable, this one is destructive — never arrives. Every
 // such pair below is resolved to the HOVER value, which is the state the
 // design meant you to read the control in.
-export const palette = {
+export type Theme = 'dark' | 'light';
+
+interface ModeSkin {
+  ink: string;
+  wash: string;
+  edge: string;
+}
+
+interface RoomInk {
+  bg: string;
+  card: string;
+  cardBorder: string;
+  rule: string;
+  ink: string;
+  inkSoft: string;
+  inkDim: string;
+  inkGhost: string;
+}
+
+// One shape, two values. `palettes.test.ts` compares the two recursively, so a
+// token added here and filled in on only one side fails the suite rather than
+// rendering as `undefined` on a device.
+export interface Palette {
+  bg: string;
+  bgDeep: string;
+  bgFile: string;
+  iconBg: string;
+  panel: string;
+  panelAlt: string;
+  border: string;
+  borderSoft: string;
+  borderFaint: string;
+  borderPill: string;
+  borderLift: string;
+  hairline: string;
+  hairlineDim: string;
+  text: string;
+  textSoft: string;
+  textDim: string;
+  textMuted: string;
+  textPill: string;
+  textFaint: string;
+  textGhost: string;
+  textGhostest: string;
+  amber: string;
+  amberText: string;
+  amberWash: string;
+  amberEdge: string;
+  amberEdgeSoft: string;
+  danger: string;
+  dangerSoft: string;
+  sealed: string;
+  scrim: string;
+  sheet: string;
+  emptyNum: string;
+  footer: string;
+  // The two register ids are spelled out rather than imported from vera/modes,
+  // for the reason the comment on `mode` below gives: every hex in the app
+  // stays greppable in this one file. A third register is a key here.
+  mode: Record<'default' | 'supportive', ModeSkin>;
+  advice: RoomInk;
+  notes: RoomInk;
+  horror: RoomInk & { redaction: string };
+  organism: {
+    bg: string;
+    card: string;
+    cardBorder: string;
+    well: string;
+    wellBorder: string;
+    ink: string;
+    inkDim: string;
+    label: string;
+    text: string;
+    textBright: string;
+    green: string;
+    hungry: string;
+  };
+}
+
+export const DARK: Palette = {
   // the shell — her stage and the views behind it
   bg: '#14130f',
   bgDeep: '#131210',
@@ -36,6 +115,10 @@ export const palette = {
   textGhost: '#4a4740',
   textGhostest: '#3a372c',
   amber: '#f4b43a',
+  // Amber used as TYPE. In dark it is amber; the light palette darkens it,
+  // which is the whole of the design's "Amber is darkened for type on light
+  // grounds so it holds contrast; her iris keeps its hue."
+  amberText: '#f4b43a',
   // the amber button skin: wash + edge, both at their hover strength
   amberWash: '#f4b43a1f', // hover of #f4b43a12
   amberEdge: '#f4b43a88', // hover of #f4b43a44
@@ -43,6 +126,15 @@ export const palette = {
   danger: '#ff4a3d',
   dangerSoft: '#ff6a5a',
   sealed: '#9d8757',
+
+  // Four surfaces that were raw literals until the theme needed them: the
+  // cabinet's scrim, its sheet and its empty numerals, all three spelled out in
+  // `Cabinet.tsx`, and the timestamp footer that `LogScreen`, `FileScreen` and
+  // `SystemScreen` each wrote out separately.
+  scrim: '#08080699',
+  sheet: '#17171a',
+  emptyNum: '#2b2820',
+  footer: '#33302a',
 
   // Her two registers, worn by the tag beside the wordmark and by each choice
   // in the picker. Each is the iris of the state that register is most often
@@ -118,7 +210,157 @@ export const palette = {
     inkDim: '#6a675f',
     inkGhost: '#45433d',
   },
-} as const;
+};
+
+// `2e COOL CLINICAL` from `design/Theme Options.dc.html`, picked by
+// `design/Vera Final.dc.html`. Forty of these are transcribed verbatim; the
+// rest are DERIVED, which that file authorises in as many words — "Every token
+// in theme.ts gets a light counterpart" — under the three rules in
+// `docs/superpowers/specs/2026-09-29-light-theme-design.md` §3. Every derived
+// token used as type is held to AA by `palettes.test.ts` rather than by eye.
+export const LIGHT: Palette = {
+  bg: '#eceef0',
+  bgDeep: '#e8ebed',
+  // Derived: continues `bg → bgDeep`'s own step (−4,−3,−3) one rung further.
+  bgFile: '#e4e8ea',
+  // NOT themed. `app.json` fixes the native splash's ground at build time and
+  // cannot know what theme is stored, so the JS frame must agree with the
+  // native one rather than flash twice.
+  iconBg: '#131011',
+  panel: '#e2e6e9',
+  panelAlt: '#f7f8f9',
+  border: '#cbd1d6',
+  borderSoft: '#d7dce0',
+  borderFaint: '#d3d8dd',
+  borderPill: '#b6bec5',
+  // Derived: sits between borderPill and hairlineDim, as it does in dark.
+  borderLift: '#a4acb3',
+  hairline: '#c4cbd1',
+  hairlineDim: '#7d868e',
+  text: '#15181b',
+  // Derived: between text and textDim, at dark's own proportion.
+  textSoft: '#33393f',
+  textDim: '#5b636b',
+  // Derived: between textSoft and textDim.
+  textMuted: '#474e55',
+  textPill: '#4d565e',
+  textFaint: '#848c94',
+  textGhost: '#99a1a8',
+  textGhostest: '#8a929a',
+  // Her iris keeps its hue; the type darkens. 5.48:1 on `bg`.
+  amber: '#d6920f',
+  amberText: '#855500',
+  amberWash: '#d6920f1a',
+  amberEdge: '#d6920f99',
+  // Derived: the light amber at the dark edge-soft's own alpha.
+  amberEdgeSoft: '#d6920f66',
+  // Derived, and the reason the rule exists: dark's #ff4a3d is 2.87:1 here,
+  // under AA for type — and it is the app's own voice, on every CLEAR, every
+  // ERASE and every systemNotice. This is 4.82:1.
+  danger: '#c62a1c',
+  // Derived: kept as the more vivid of the pair, as in dark.
+  dangerSoft: '#e04a38',
+  // Derived: type only, on the SEALED label. 5.96:1.
+  sealed: '#6b5730',
+  scrim: '#1a1f2440',
+  sheet: '#f8f9fa',
+  emptyNum: '#d0d5da',
+  footer: '#a9b0b7',
+  // Derived: each register's accent takes amber's own two steps — the hue for
+  // fills, a darkened form for type. Supportive's rose darkens to #c8534b.
+  mode: {
+    default: { ink: '#855500', wash: '#d6920f1a', edge: '#d6920f99' },
+    supportive: { ink: '#8f332d', wash: '#c8534b1a', edge: '#c8534b99' },
+  },
+  // The advice room's light half is complete in the design.
+  advice: {
+    bg: '#f2f3f5',
+    card: '#fbfcfd',
+    cardBorder: '#dfe3e7',
+    rule: '#e5e8ec',
+    ink: '#1a1d21',
+    inkSoft: '#5f666e',
+    inkDim: '#767d85',
+    inkGhost: '#b0b6bc',
+  },
+  // Four given, four derived from the advice room's ladder and tinted cool —
+  // "each room keeps its own tint so the cabinet still reads as windows into
+  // different rooms."
+  notes: {
+    bg: '#eef2f5',
+    card: '#eaeff3',
+    cardBorder: '#d2dbe2',
+    rule: '#e1e8ee',
+    ink: '#18212a',
+    inkSoft: '#5d686f',
+    inkDim: '#77828c',
+    inkGhost: '#a8b2bb',
+  },
+  // Four given, five derived, tinted warm — the same darkness with blood left
+  // in it, inverted. `redaction` INVERTS: in dark it is a bar slightly lighter
+  // than the card, so here it is slightly darker. A withheld sentence has to
+  // read as a solid, never as a hole.
+  horror: {
+    bg: '#f0eded',
+    card: '#f2eeee',
+    cardBorder: '#e0d8d8',
+    rule: '#e9e1e0',
+    ink: '#261f20',
+    inkSoft: '#6b5f5f',
+    inkDim: '#837777',
+    inkGhost: '#b1a7a7',
+    redaction: '#ded4d4',
+  },
+  // NOT themed. Off the registry since 2026-09-07 and unreachable, so reviving
+  // the room means authoring its light half — a better line to leave than
+  // twelve invented greens for a room nobody can open.
+  organism: DARK.organism,
+};
+
+export const PALETTES: Record<Theme, Palette> = { dark: DARK, light: LIGHT };
+
+// TEMPORARY. Removed in the last code task of
+// `docs/superpowers/plans/2026-09-29-light-theme.md`, and the removal is the
+// point: every call site still reading this is a file the migration has not
+// reached, and it would look in a diff and in a green suite exactly like a file
+// that was finished. Deleting the export is the only detector.
+export const palette = DARK;
+
+// Both sheets, built ONCE at import and indexed at render. Not memoised per
+// render: styles stay static, which several comments in this repo lean on,
+// there is no frame on which a style object is a new identity, and the cost is
+// nineteen small objects built twice at boot and never again.
+export const themed = <T,>(make: (p: Palette) => T): Record<Theme, T> => ({
+  dark: make(DARK),
+  light: make(LIGHT),
+});
+
+// Her nine states keep their hues in both themes — the design's "her iris keeps
+// its hue" — which is right for a dot and wrong for 9px type on a pale strip,
+// where AMUSED's yellow is 1.10:1. The design asks for
+// `color-mix(in srgb, iris 52%, #000)`; RN has no color-mix, so this is it, a
+// linear sRGB mix toward black, which is what color-mix does in that space.
+//
+// 45%, not the design's 52%, and this is the one deliberate numeric departure
+// from it. At 52% AMUSED lands at 3.82:1 — under AA, and it is the exact state
+// the design's own prose names as the case to check. 47% is the first fraction
+// that clears it, and does so at 4.50:1 exactly, which rounding could tip; 45%
+// clears all eight waking states with room and is not a visibly different
+// choice. `palettes.test.ts` holds every state to the number.
+const LIGHT_MIX = 0.45;
+
+export const onLight = (hex: string): string => {
+  const n = parseInt(hex.slice(1), 16);
+  return `#${[16, 8, 0]
+    .map((shift) => Math.round(((n >> shift) & 0xff) * LIGHT_MIX))
+    .map((v) => v.toString(16).padStart(2, '0'))
+    .join('')}`;
+};
+
+// Her iris where it is used as TYPE. Objects — the pulse dots, the slider's
+// ring, the optic itself — take the raw iris in both themes.
+export const emotionText = (iris: string, theme: Theme): string =>
+  theme === 'light' ? onLight(iris) : iris;
 
 // The 388px mock maps ~1:1 to device dp for layout, but type scales ×1.1.
 // Use for font sizes only.
