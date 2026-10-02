@@ -14,6 +14,8 @@ She is a live model, not a script.
 
 One eye, one line, and one box to type in with the cabinet's own button beside it.
 
+She comes in **two themes** — the original near-black and a pale grey — and the switch is a 30×16 pill in the header, left of the dots that open SYSTEM. It shows both grounds and rings the one you are on in whatever colour she is currently feeling. **Her eye does not change**: the dark socket, the bronze lids and the white core stay exactly as they are on the pale ground, so only the room around her moves. She is never told the theme changed; it is your furniture, not hers.
+
 The **optic** is drawn with Skia and carries nine emotional states — lids, drift, blink and catchlight all come out of a pure geometry module, so what she is feeling changes how she looks rather than being announced. Her line arrives in a bordered **window** headed by a status strip: a pulsing iris dot, the emotion she is in, and one live word — `TRANSMITTING` while the typewriter is still drawing, `COMPLETE` once it stops, an animated ellipsis while she is only thinking.
 
 She answers **five things**, and only one of them reaches the model:
@@ -95,7 +97,7 @@ A key from an unlisted provider is refused at the gate — the accepted cost of 
 - [`CLAUDE.md`](CLAUDE.md) — the working brief: what exists, why it is the way it is, and every gotcha that cost a day
 - [`docs/architecture.md`](docs/architecture.md) — stack, structure, mechanics, deployment
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — the design docs, one per feature
-- [`design/`](design/) — the original handoff. `The Facility - Overhaul.dc.html` is the v2 prototype and the authority on every pixel; `Vera Final.dc.html` supersedes it on the cabinet, and carries a light theme that is not built
+- [`design/`](design/) — the original handoff. `The Facility - Overhaul.dc.html` is the v2 prototype and the authority on every pixel; `Vera Final.dc.html` supersedes it on the cabinet and the theme, with `Theme Options.dc.html` behind it
 - `src/` — `core/` (pure logic + state) · `vera/` (her brain) · `shell/` (her surface) · `modules/` (the rooms)
 
 Everything that decides anything is a pure module with no React in it and its own tests. Components render and dispatch, nothing more.
@@ -104,7 +106,7 @@ Everything that decides anything is a pure module with no React in it and its ow
 
 ```sh
 npm install
-npm test && npx tsc --noEmit    # both are the gate — 956 tests, 70 suites
+npm test && npx tsc --noEmit    # both are the gate — 1010 tests, 75 suites
 npx expo start                  # needs an EAS dev build, not Expo Go
 ```
 

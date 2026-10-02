@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useFacilityStore } from '../core/store';
 import { themed } from '../core/theme';
 import { EMOTIONS } from '../vera/emotions';
@@ -19,6 +25,13 @@ const GROUND_LIGHT = '#eceef0';
 
 // 2px inside a 30px track at each end, for a 10px thumb: 2 and 16.
 const THUMB_LEFT: Record<'dark' | 'light', number> = { dark: 2, light: 16 };
+
+// The design's own travel: "the marker actually travels when you tap, over
+// 0.3s, while the screen crossfades underneath." The crossfade is not ours —
+// it would mean rendering the whole tree twice — but the 300ms is, and a thumb
+// that jumps reads as two controls rather than one moving.
+const SLIDE_MS = 300;
+const SLIDE_EASING = Easing.bezier(0.22, 0.61, 0.36, 1);
 
 const S = themed((p) =>
   StyleSheet.create({
@@ -56,6 +69,16 @@ export function ThemeSlider() {
 
   const styles = S[theme];
 
+  // Driven from the theme rather than from the press, so the thumb is in the
+  // right place on a first render too — the control is remounted by every
+  // screen that shows it, and a position animated from a press would start at
+  // the wrong end each time.
+  const left = useSharedValue(THUMB_LEFT[theme]);
+  useEffect(() => {
+    left.value = withTiming(THUMB_LEFT[theme], { duration: SLIDE_MS, easing: SLIDE_EASING });
+  }, [left, theme]);
+  const slide = useAnimatedStyle(() => ({ left: left.value }));
+
   return (
     <Pressable
       testID="theme-slider"
@@ -71,9 +94,9 @@ export function ThemeSlider() {
       {/* Her mood, not the theme's amber — `Vera Final`'s own change to the
           option it picked. The ring is the one thing in this cluster that
           would otherwise stop following her. */}
-      <View
+      <Animated.View
         testID="theme-slider-thumb"
-        style={[styles.thumb, { left: THUMB_LEFT[theme], borderColor: EMOTIONS[emotion].iris }]}
+        style={[styles.thumb, { borderColor: EMOTIONS[emotion].iris }, slide]}
       />
     </Pressable>
   );
