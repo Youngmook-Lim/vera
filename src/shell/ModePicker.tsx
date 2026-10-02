@@ -1,7 +1,7 @@
 import React, { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette } from '../core/theme';
+import { PALETTES, font, ms, themed } from '../core/theme';
 import { MODES, MODE_ORDER } from '../vera/modes/registry';
 
 // The logo, and the register behind it. Her name is the app's identity and is
@@ -28,6 +28,9 @@ import { MODES, MODE_ORDER } from '../vera/modes/registry';
 // so flex centring aligns it with the wordmark and the tag rather than with
 // whatever the block happens to contain. The stage passes her pulse dot.
 export function ModePicker({ leading }: { leading?: ReactNode }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const lang = useFacilityStore((s) => s.lang);
   const mode = useFacilityStore((s) => s.mode);
   const open = useFacilityStore((s) => s.modePickerOpen);
@@ -57,8 +60,8 @@ export function ModePicker({ leading }: { leading?: ReactNode }) {
               style={[
                 styles.tagPill,
                 {
-                  backgroundColor: palette.mode[mode].wash,
-                  borderColor: palette.mode[mode].edge,
+                  backgroundColor: p.mode[mode].wash,
+                  borderColor: p.mode[mode].edge,
                 },
               ]}
             >
@@ -66,7 +69,7 @@ export function ModePicker({ leading }: { leading?: ReactNode }) {
                 testID="mode-tag"
                 style={[
                   styles.tag,
-                  { fontFamily: font('mono', 600, lang), color: palette.mode[mode].ink },
+                  { fontFamily: font('mono', 600, lang), color: p.mode[mode].ink },
                 ]}
               >
                 {MODES[mode].tag[lang]}
@@ -94,14 +97,14 @@ export function ModePicker({ leading }: { leading?: ReactNode }) {
                 testID={`mode-choice-${id}`}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: id === mode }}
-                style={[styles.choice, { borderLeftColor: palette.mode[id].ink }]}
+                style={[styles.choice, { borderLeftColor: p.mode[id].ink }]}
                 onPress={() => void setMode(id)}
               >
                 <Text
                   style={[
                     styles.choiceText,
                     { fontFamily: font('mono', 500, lang) },
-                    id === mode ? { color: palette.mode[id].ink } : null,
+                    id === mode ? { color: p.mode[id].ink } : null,
                   ]}
                 >
                   {MODES[id].label[lang]}
@@ -115,7 +118,7 @@ export function ModePicker({ leading }: { leading?: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,7 +128,7 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.22,
-    color: palette.textDim,
+    color: p.textDim,
   },
   // A badge she is wearing, not a second word of her name: filled and edged in
   // the register's own colour, on the SEND button's wash-and-edge idiom.
@@ -169,9 +172,9 @@ const styles = StyleSheet.create({
     minWidth: 190,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: palette.panelAlt,
+    backgroundColor: p.panelAlt,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
   },
   // The point at the top, near the left edge, aimed at the logo it came out
   // of. It is what makes this something she is saying rather than a menu.
@@ -182,10 +185,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     transform: [{ rotate: '45deg' }],
-    backgroundColor: palette.panelAlt,
+    backgroundColor: p.panelAlt,
     borderLeftWidth: 1,
     borderTopWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
   },
   // Each choice carries its own register's colour as a stripe down its left
   // edge, so the two are told apart before either is read.
@@ -197,6 +200,6 @@ const styles = StyleSheet.create({
   choiceText: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.2,
-    color: palette.textDim,
+    color: p.textDim,
   },
-});
+}));

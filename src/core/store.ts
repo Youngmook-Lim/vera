@@ -1,6 +1,7 @@
 import { getLocales } from 'expo-localization';
 import { create } from 'zustand';
 import type { Lang } from './i18n';
+import type { Theme } from './theme';
 import { runSpeech, type SpeechOutcome } from './speech';
 import { KEYS, secure, storage } from './storage';
 import { applyExtraction } from '../vera/apply';
@@ -168,6 +169,7 @@ interface SoulBlob {
   lang: Lang;
   cleared: number;
   mode: Mode;
+  theme: Theme;
   transmissions: boolean;
   transmissionsSyncedOn: string | null;
 }
@@ -183,6 +185,7 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     lang: s.lang,
     cleared: s.cleared,
     mode: s.mode,
+    theme: s.theme,
     transmissions: s.transmissions,
     transmissionsSyncedOn: s.transmissionsSyncedOn,
   };
@@ -197,6 +200,8 @@ interface FacilityState {
   hydrated: boolean;
   view: View;
   lang: Lang;
+  // Dark or pale. Hers in no sense at all — she is told nothing about it.
+  theme: Theme;
   // Her register. The core document is everything this cannot change.
   mode: Mode;
   // Whether she sends to the lock screen at eleven and at four, and the day
@@ -295,6 +300,7 @@ interface FacilityState {
   clearTranscript: () => Promise<void>;
   clearMemory: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
+  setTheme: (theme: Theme) => Promise<void>;
   setMode: (mode: Mode) => Promise<void>;
   setTransmissions: (on: boolean) => Promise<boolean>;
   syncTransmissionsIfDue: (now?: Date) => Promise<void>;
@@ -307,6 +313,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   hydrated: false,
   view: 'stage',
   lang: 'en',
+  theme: 'dark',
   mode: 'default',
   transmissions: false,
   transmissionsSyncedOn: null,
@@ -481,6 +488,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         hydrated: true,
         ...woken,
         lang: saved?.lang === 'ko' || (saved?.lang == null && deviceKo) ? 'ko' : 'en',
+        // A blob written before the theme existed carries none, and an
+        // unreadable one must not leave her painted in a colour nobody chose.
+        theme: saved?.theme === 'light' ? 'light' : 'dark',
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         // A blob written before modes existed carries no register at all, and
@@ -830,6 +840,14 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // and does not remark on the switch. The write is the whole action.
   setLang: async (lang: Lang): Promise<void> => {
     set({ lang });
+    await saveSoul(get());
+  },
+
+  // Switching the theme is a silent action, exactly as switching language is:
+  // she is told nothing, nothing enters the transcript, and no stimulus fires.
+  // The subject is rearranging their own furniture.
+  setTheme: async (theme: Theme): Promise<void> => {
+    set({ theme });
     await saveSoul(get());
   },
 

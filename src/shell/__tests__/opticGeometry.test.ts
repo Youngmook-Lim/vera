@@ -132,7 +132,16 @@ describe('opticGeometry', () => {
   it('scales every radius with the box', () => {
     const small = opticGeometry('calm', 79);
     const big = opticGeometry('calm', 158);
-    expect(small.glowRadius).toBeGreaterThan(small.bezelRadius);
+    // The glow is gone (2026-10-02). It was drawn at `bezelRadius + 30` into a
+    // canvas of `bezelRadius * 2`, so it was clipped by the canvas RECTANGLE
+    // while still at 28% strength, in a square whose corners fell outside the
+    // circle. On the dark ground that was ~4% amber over near-black and nobody
+    // saw it; on the light theme's #eceef0 it was a visible grey box around
+    // her eye. At this canvas size a visible halo is geometrically impossible
+    // — the bezel and the canvas edge are both at `bezelRadius`, so there is no
+    // room between them — which is why it went rather than being corrected.
+    expect('glowRadius' in small).toBe(false);
+    expect('glowAlpha' in small).toBe(false);
     expect(small.irisRadius).toBeLessThan(big.irisRadius);
   });
 });

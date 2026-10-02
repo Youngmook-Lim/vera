@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../core/i18n';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette } from '../core/theme';
+import { PALETTES, font, ms, themed } from '../core/theme';
 import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { maskKey, providerFor } from '../vera/providers';
@@ -31,6 +31,9 @@ const hhmm = (t: number): string => {
 };
 
 function SectionLabel({ text, lang, first }: { text: string; lang: Lang; first?: boolean }) {
+  // Its own read, as every helper in this file has: a sheet threaded
+  // down as a prop reads worse than the one line it saves.
+  const styles = S[useFacilityStore((st) => st.theme)];
   return (
     <Text
       style={[
@@ -45,6 +48,9 @@ function SectionLabel({ text, lang, first }: { text: string; lang: Lang; first?:
 }
 
 export function SystemScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const mode = useFacilityStore((s) => s.mode);
@@ -62,6 +68,7 @@ export function SystemScreen() {
 
   return (
     <View
+      testID="system-screen"
       style={[
         styles.screen,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
@@ -178,7 +185,7 @@ export function SystemScreen() {
                 style={[
                   styles.tileSub,
                   { fontFamily: font('mono', 500, lang) },
-                  refused && { color: palette.danger },
+                  refused && { color: p.danger },
                 ]}
               >
                 {maskKey(apiKey)}
@@ -210,10 +217,10 @@ export function SystemScreen() {
 
 // 4a's SYSTEM view. The rows are flat and hairline-separated — the design has
 // no cards here; a boxed panel per row was an invention.
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.bgDeep,
+    backgroundColor: p.bgDeep,
   },
   // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
@@ -224,16 +231,16 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   back: {
     fontSize: ms(11),
-    color: palette.textDim,
+    color: p.textDim,
   },
   title: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.2,
-    color: palette.textDim,
+    color: p.textDim,
   },
   // `padding:20px 20px 0`
   body: {
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.24,
-    color: palette.textGhostest,
+    color: p.textGhostest,
     paddingTop: 26,
     paddingBottom: 12,
   },
@@ -260,7 +267,7 @@ const styles = StyleSheet.create({
     gap: 13,
     paddingVertical: 15,
     borderTopWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   tileText: {
     flex: 1,
@@ -268,22 +275,22 @@ const styles = StyleSheet.create({
   tileName: {
     fontSize: ms(11),
     letterSpacing: ms(11) * 0.06,
-    color: palette.text,
+    color: p.text,
   },
   tileSub: {
     marginTop: 5,
     fontSize: ms(8.5),
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   tileRoute: {
     marginTop: 4,
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.1,
-    color: palette.textGhostest,
+    color: p.textGhostest,
   },
   chevron: {
     fontSize: ms(10),
-    color: palette.textGhost,
+    color: p.textGhost,
   },
   // preferences and access rules are ruled top AND bottom
   row: {
@@ -294,17 +301,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   rowLabel: {
     fontSize: ms(11),
     letterSpacing: ms(11) * 0.06,
-    color: palette.text,
+    color: p.text,
   },
   changeText: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.16,
-    color: palette.amber,
+    color: p.amber,
   },
   // `padding:16px 20px 20px`, right-aligned
   footer: {
@@ -316,6 +323,6 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
-    color: '#33302a',
+    color: p.footer,
   },
-});
+}));

@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette } from '../core/theme';
+import { font, ms, themed } from '../core/theme';
 import { registry } from '../modules/registry';
 import { isModule } from '../modules/types';
 import { T } from './strings';
@@ -68,6 +68,8 @@ export function Cabinet() {
 
   const t = T[lang];
   const close = () => setCabinet(false);
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
 
   const furnished = registry.filter(isModule).length;
   const rows = inRows(registry, PER_ROW);
@@ -129,10 +131,10 @@ export function Cabinet() {
 }
 
 // `1d`'s sheet. Every number read off `design/Vera Final.dc.html`.
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   scrim: {
     flex: 1,
-    backgroundColor: '#08080699',
+    backgroundColor: p.scrim,
     justifyContent: 'flex-end',
   },
   // `left:12px;right:12px;bottom:100px; border-radius:20px; padding:0 16px 16px`
@@ -142,9 +144,9 @@ const styles = StyleSheet.create({
   // the screen's own bottom rather than from the safe area: the Modal is not
   // inside the stage's padding, and the mock measures from the same edge.
   sheet: {
-    backgroundColor: '#17171a',
+    backgroundColor: p.sheet,
     borderWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: p.hairline,
     borderRadius: 20,
     marginHorizontal: 12,
     marginBottom: 100,
@@ -163,12 +165,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.22,
-    color: palette.textDim,
+    color: p.textDim,
   },
   count: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.14,
-    color: palette.textGhost,
+    color: p.textGhost,
   },
   // `gap:10px` — the gap stands between the rows as well as inside them, so
   // the grid is square in both directions. Its old 11px top margin is gone:
@@ -185,12 +187,12 @@ const styles = StyleSheet.create({
     height: GRID_TILE_PX,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: palette.borderFaint,
+    borderColor: p.borderFaint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyNumeral: {
     fontSize: ms(24),
-    color: '#2b2820',
+    color: p.emptyNum,
   },
-});
+}));

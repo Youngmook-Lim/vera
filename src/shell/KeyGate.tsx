@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette, serif } from '../core/theme';
+import { PALETTES, font, ms, serif, themed } from '../core/theme';
 import { T } from './strings';
 
 // The doc's copy never names a provider — she does not deal in vendors — but a
@@ -16,6 +16,9 @@ const ROUTES = 'ANTHROPIC · OPENROUTER · OPENAI · DEEPSEEK · GOOGLE';
 // no verification step here: a key whose shape matches a route gets in, and a
 // wrong one reveals itself when she fails to answer (spec §10).
 export function KeyGate() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const lang = useFacilityStore((s) => s.lang);
   const activate = useFacilityStore((s) => s.activate);
   const t = T[lang];
@@ -34,7 +37,7 @@ export function KeyGate() {
   };
 
   return (
-    <View style={styles.panel}>
+    <View testID="key-gate" style={styles.panel}>
       <Text style={[styles.title, { fontFamily: serif(lang) }]}>{t.gateTitle}</Text>
       <View style={styles.inputRow}>
         <Text style={[styles.chevron, { fontFamily: font('mono', 500, lang) }]}>›</Text>
@@ -43,7 +46,7 @@ export function KeyGate() {
           value={draft}
           onChangeText={onChangeText}
           placeholder={t.gatePh}
-          placeholderTextColor={palette.textFaint}
+          placeholderTextColor={p.textFaint}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -65,7 +68,7 @@ export function KeyGate() {
 }
 
 // 4a's dormant panel, verbatim.
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   // `margin:0 18px 18px; padding:17px 17px 15px`
   panel: {
     marginHorizontal: 18,
@@ -74,15 +77,15 @@ const styles = StyleSheet.create({
     paddingTop: 17,
     paddingBottom: 15,
     borderRadius: 16,
-    backgroundColor: palette.panelAlt,
+    backgroundColor: p.panelAlt,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     gap: 12,
   },
   title: {
     fontSize: ms(19),
     lineHeight: ms(19) * 1.34,
-    color: palette.textSoft,
+    color: p.textSoft,
   },
   // `padding:12px 13px; background:#131210; border 1px; radius 11; gap 10`
   inputRow: {
@@ -91,32 +94,32 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 13,
-    backgroundColor: palette.bgDeep,
+    backgroundColor: p.bgDeep,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 11,
   },
   chevron: {
     fontSize: ms(10),
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   input: {
     flex: 1,
     padding: 0,
     fontSize: ms(12),
     letterSpacing: ms(12) * 0.06,
-    color: palette.text,
+    color: p.text,
   },
   error: {
     fontSize: ms(9),
     lineHeight: ms(9) * 1.6,
-    color: palette.dangerSoft,
+    color: p.dangerSoft,
   },
   // a filled amber wash under a soft amber edge, both at hover strength
   button: {
     borderWidth: 1,
-    borderColor: palette.amberEdge,
-    backgroundColor: palette.amberWash,
+    borderColor: p.amberEdge,
+    backgroundColor: p.amberWash,
     borderRadius: 11,
     paddingVertical: 13,
     alignItems: 'center',
@@ -124,16 +127,16 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.2,
-    color: palette.amber,
+    color: p.amberText,
   },
   body: {
     fontSize: ms(8.5),
     lineHeight: ms(8.5) * 1.7,
-    color: palette.textGhost,
+    color: p.textGhost,
   },
   routes: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.textGhostest,
+    color: p.textGhostest,
   },
-});
+}));

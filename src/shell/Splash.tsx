@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { faceFor } from '../core/appIcon';
-import { font, ms, palette } from '../core/theme';
+import { DARK, font, ms } from '../core/theme';
 import { EMOTIONS, isEmotionKey, type EmotionKey } from '../vera/emotions';
 import { Optic } from './Optic';
 
@@ -156,11 +156,17 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
 // Every number read off 2a. The ground is the icon's #131011, not the stage's
 // #14130f, so the native splash underneath and this one are the same colour and
 // the handover has no seam in it.
+// DARK in both themes, and not an oversight. This screen's ground is `iconBg`,
+// which `app.json` fixes at build time and which therefore cannot know what
+// theme is stored — so its type cannot change either: the light palette's
+// graphite on a near-black splash would be unreadable. A light-theme launch
+// shows this screen dark and then crosses to a pale app, which is the seam
+// recorded in the spec as unfixable from here.
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: palette.iconBg,
+    backgroundColor: DARK.iconBg,
   },
   aboveEye: {
     flex: ABOVE_EYE,
@@ -188,7 +194,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: WORDMARK_PX,
     letterSpacing: WORDMARK_PX * 0.38,
-    color: palette.textSoft,
+    color: DARK.textSoft,
   },
   // Hairline for three quarters of the ring, the day's colour for the fourth.
   // borderTopColor is overridden at render; the rest stays the app's own line.
@@ -198,7 +204,7 @@ const styles = StyleSheet.create({
     height: SPIN_PX,
     borderRadius: SPIN_PX / 2,
     borderWidth: 2,
-    borderColor: palette.hairline,
+    borderColor: DARK.hairline,
   },
   // Dim against the wordmark on purpose: two lines at one weight would read as
   // a sentence rather than a name and a gloss on it.
@@ -208,6 +214,6 @@ const styles = StyleSheet.create({
     marginTop: 9,
     fontSize: EXPANSION_PX,
     letterSpacing: EXPANSION_PX * 0.2,
-    color: palette.textGhost,
+    color: DARK.textGhost,
   },
 });

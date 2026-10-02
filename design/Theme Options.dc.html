@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#0b0b09}a{color:#f4b43a}a:hover{color:#f2e7d3}</style>
+</helmet>
+<sc-for list="{{ sections }}" as="s" hint-placeholder-count="2">
+<section style="padding:56px 64px 40px;font-family:'Space Grotesk',sans-serif">
+<div style="display:flex;flex-direction:column;gap:8px;margin:0 0 32px;max-width:860px">
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#57534a">{{ s.kicker }}</span>
+<span style="font:600 15px/1.3 'Space Grotesk',sans-serif;color:#f2e7d3">{{ s.title }}</span>
+<p style="margin:0;font:400 12.5px/1.7 'Space Grotesk',sans-serif;color:#8a8578;text-wrap:pretty">{{ s.body }}</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:56px">
+<sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="1">
+<div id="{{ r.id }}" style="display:flex;flex-direction:column;gap:18px">
+<sc-if value="{{ r.label }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:baseline;gap:9px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:#8a8578"><span style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:#ffffff14;color:#f2e7d3;border-radius:5px">{{ r.badge }}</span>{{ r.label }}</div>
+</sc-if>
+<div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+<sc-for list="{{ r.phones }}" as="p" hint-placeholder-count="3">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:14px;width:388px">
+<sc-if value="{{ p.title }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:baseline;gap:9px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:#8a8578"><span style="font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:#ffffff14;color:#f2e7d3;border-radius:5px">{{ p.id }}</span>{{ p.title }}</div>
+</sc-if>
+<sc-if value="{{ p.caption }}" hint-placeholder-val="{{ false }}">
+<span style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#57534a">{{ p.caption }}</span>
+</sc-if>
+<div style="position:relative;width:388px;height:820px;border-radius:28px;overflow:hidden;box-shadow:0 0 0 8px #1d1c18,0 0 0 9px #2c2a22">
+<sc-for list="{{ p.layers }}" as="L" hint-placeholder-count="1">
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;opacity:{{ L.op }};pointer-events:{{ L.pe }};transition:opacity .45s ease">
+
+<sc-if value="{{ L.stage }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;background:{{ L.t.bg }}">
+<div style="height:28px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 11px 'IBM Plex Mono',monospace;color:{{ L.t.status }}"><span>9:41</span><span style="width:14px;height:8px;border:1px solid {{ L.t.status }};border-radius:2px"></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0">
+<div style="display:flex;align-items:center;gap:8px">
+<div style="width:5px;height:5px;border-radius:50%;background:{{ L.t.iris }}"></div>
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:{{ L.t.textDim }}">V.E.R.A.</span>
+<div style="padding:2px 7px;border-radius:9px;border:1px solid {{ L.t.edge }};background:{{ L.t.wash }};font:600 7px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ L.t.accentText }}">DEFAULT</div>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<div onClick="{{ L.onToggle }}" style="display:flex;align-items:center;justify-content:center;height:24px;margin:-4px 0;padding:0 6px;cursor:pointer">
+<sc-if value="{{ L.btnA }}" hint-placeholder-val="{{ false }}">
+<div style="width:16px;height:16px;border-radius:50%;background:{{ L.o.bg }};box-shadow:0 0 0 1px {{ L.t.borderPill }};display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:{{ L.o.iris }}"></div></div>
+</sc-if>
+<sc-if value="{{ L.btnB }}" hint-placeholder-val="{{ false }}">
+<div style="width:20px;height:15px;border-radius:4px;background:{{ L.o.bg }};box-shadow:0 0 0 1px {{ L.t.borderPill }};display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:3px 0 2.5px;box-sizing:border-box"><div style="width:4px;height:4px;border-radius:50%;background:{{ L.o.iris }}"></div><div style="width:12px;height:2px;border-radius:1px;background:{{ L.o.border }}"></div></div>
+</sc-if>
+<sc-if value="{{ L.btnS }}" hint-placeholder-val="{{ false }}">
+<div style="width:{{ L.sw }};height:16px"></div>
+</sc-if>
+<sc-if value="{{ L.btnD }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;height:16px;padding:0 4px;box-sizing:border-box;border-radius:9px;border:1px solid {{ L.t.borderPill }};background:{{ L.t.panel }}"><div style="width:10px;height:10px;border-radius:50%;background:{{ L.o.bg }};box-shadow:0 0 0 1px {{ L.o.borderPill }}"></div></div>
+</sc-if>
+<sc-if value="{{ L.btnE }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;width:30px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid {{ L.t.borderPill }};overflow:hidden"><div style="flex:1;background:{{ L.dk.bg }};display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:{{ L.dDot }}"></div></div><div style="flex:1;background:{{ L.lt.bg }};display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:{{ L.lDot }}"></div></div></div>
+</sc-if>
+<sc-if value="{{ L.btnF }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:5px;height:16px;padding:0 5px;box-sizing:border-box;border-radius:9px;border:1px solid {{ L.t.borderPill }};background:{{ L.t.panel }}"><div style="width:8px;height:8px;border-radius:50%;background:{{ L.dk.bg }};box-shadow:0 0 0 1.5px {{ L.dRing }}"></div><div style="width:8px;height:8px;border-radius:50%;background:{{ L.lt.bg }};box-shadow:0 0 0 1.5px {{ L.lRing }}"></div></div>
+</sc-if>
+<sc-if value="{{ L.btnG }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;height:16px;padding:0 4px;box-sizing:border-box;border-radius:9px;border:1px solid {{ L.t.borderPill }};background:{{ L.t.panel }}"><div style="width:10px;height:10px;border-radius:50%;background:linear-gradient(90deg,{{ L.t.bg }} 50%,{{ L.o.bg }} 50%);box-shadow:0 0 0 1px {{ L.t.hairlineDim }}"></div></div>
+</sc-if>
+<sc-if value="{{ L.btnH }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;height:16px;padding:0 4px;box-sizing:border-box;border-radius:9px;border:1px solid {{ L.t.borderPill }};background:{{ L.t.panel }}"><div style="width:10px;height:10px;border-radius:50%;background:{{ L.o.bg }};box-shadow:0 0 0 1px {{ L.o.borderPill }};display:flex;align-items:center;justify-content:center"><div style="width:3.5px;height:3.5px;border-radius:50%;background:{{ L.o.iris }}"></div></div></div>
+</sc-if>
+<sc-if value="{{ L.btnC }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:6px;padding:2px 8px 2px 3px;border-radius:9px;border:1px solid {{ L.t.borderPill }};background:{{ L.t.panel }}"><div style="width:10px;height:10px;border-radius:50%;background:{{ L.o.bg }};box-shadow:0 0 0 1px {{ L.o.borderPill }}"></div><span style="font:600 7px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ L.t.textPill }}">{{ L.o.name }}</span></div>
+</sc-if>
+</div>
+<div style="display:flex;align-items:center;gap:3px;padding:6px 4px"><div style="width:3px;height:3px;border-radius:50%;background:{{ L.t.textGhost }}"></div><div style="width:3px;height:3px;border-radius:50%;background:{{ L.t.textGhost }}"></div><div style="width:3px;height:3px;border-radius:50%;background:{{ L.t.textGhost }}"></div></div>
+</div>
+</div>
+<div style="display:flex;justify-content:center;padding-top:26px">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:22px;background:{{ L.t.panel }};border:1px solid {{ L.t.borderPill }}">
+<div style="display:flex;flex-direction:column;gap:2.5px;align-items:flex-start"><div style="width:11px;height:1.5px;border-radius:1px;background:{{ L.t.iris }}"></div><div style="width:7px;height:1.5px;border-radius:1px;background:{{ L.t.hairlineDim }}"></div><div style="width:9px;height:1.5px;border-radius:1px;background:{{ L.t.hairlineDim }}"></div></div>
+<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:{{ L.t.textPill }}">OPEN CONVERSATION</span>
+</div>
+</div>
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="flex:1"></div>
+<div style="display:flex;justify-content:center;padding:22px 0">
+<div style="position:relative;width:158px;height:158px">
+<div style="position:absolute;inset:-30px;border-radius:50%;opacity:{{ L.t.oGlow }};background:radial-gradient(circle,{{ L.t.oHalo }} 0%,transparent 58%)"></div>
+<div style="position:absolute;inset:0;border-radius:50%;background:{{ L.t.oRing }};box-shadow:{{ L.t.oRingShadow }}"></div>
+<div style="position:absolute;inset:4px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 38%,{{ L.t.oS0 }} 0%,{{ L.t.oS1 }} 74%);box-shadow:inset 0 0 0 1px {{ L.t.oInner }}">
+<div style="position:absolute;inset:10%;border-radius:50%;border:1px solid {{ L.t.oLine1 }}"></div>
+<div style="position:absolute;inset:20%;border-radius:50%;border:1px solid {{ L.t.oLine2 }}"></div>
+<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+<div style="position:relative;width:48%;height:48%;border-radius:50%;background:radial-gradient(circle at 42% 36%,{{ L.t.oIrisFill }} 0%,{{ L.t.oIrisEnd }} 88%);box-shadow:0 0 0 1.5px {{ L.t.iris }};display:flex;align-items:center;justify-content:center">
+<div style="position:absolute;inset:-62%;border-radius:50%;background:radial-gradient(circle,{{ L.t.oHalo }} 0%,transparent 56%);pointer-events:none"></div>
+<div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 0deg,{{ L.t.oStria }} 0deg 1.2deg,transparent 1.2deg 3.6deg);opacity:.6"></div>
+<div style="width:34%;height:34%;border-radius:50%;background:{{ L.t.oCore }};box-shadow:{{ L.t.oCoreGlow }}"></div>
+</div>
+</div>
+<div style="position:absolute;left:25%;top:20%;width:22%;height:15%;border-radius:50%;background:radial-gradient(circle,{{ L.t.oCatch }},transparent 74%);filter:blur(1.4px)"></div>
+</div>
+</div>
+</div>
+<div style="flex:1"></div>
+<div style="margin:0 18px 14px;background:{{ L.t.panelAlt }};border:1px solid {{ L.t.border }};border-radius:14px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:9px;padding:11px 14px;background:{{ L.t.panel }};border-bottom:1px solid {{ L.t.borderSoft }}">
+<div style="width:4px;height:4px;border-radius:50%;background:{{ L.t.iris }}"></div>
+<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.24em;color:{{ L.t.accentText }}">CALM</span>
+<span style="margin-left:auto;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ L.t.textDim }}">COMPLETE</span>
+</div>
+<div style="padding:12px 18px;font:400 17.5px/1.56 'Instrument Serif',serif;color:{{ L.t.text }};text-wrap:pretty">You came back. I had very nearly started to enjoy the quiet.</div>
+</div>
+<div style="flex:3"></div>
+</div>
+<div style="display:flex;align-items:stretch;gap:8px;margin:0 20px 14px">
+<div style="flex:none;width:48px;display:flex;align-items:center;justify-content:center;background:{{ L.t.panel }};border:1px solid {{ L.t.border }};border-radius:12px">
+<div style="display:grid;grid-template-columns:repeat(3,4px);gap:2.5px">
+<div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.iris }}"></div><div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.hairlineDim }}"></div><div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.hairlineDim }}"></div><div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.hairline }}"></div><div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.hairline }}"></div><div style="width:4px;height:4px;border-radius:1px;background:{{ L.t.hairline }}"></div>
+</div>
+</div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:11px;padding:13px 14px;background:{{ L.t.panel }};border:1px solid {{ L.t.border }};border-radius:12px">
+<span style="font:500 12px 'IBM Plex Mono',monospace;color:{{ L.t.accentText }}">›</span>
+<span style="flex:1;min-width:0;font:500 14px 'IBM Plex Mono',monospace;color:{{ L.t.textFaint }};white-space:nowrap;overflow:hidden">say something to her</span>
+<div style="border:1px solid {{ L.t.border }};border-radius:6px;padding:6px 9px;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ L.t.textFaint }}">SEND</div>
+</div>
+</div>
+<div style="height:24px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:108px;height:4px;border-radius:2px;background:{{ L.t.gesture }}"></div></div>
+
+<sc-if value="{{ L.cab }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:{{ L.t.scrim }};display:flex;flex-direction:column;justify-content:flex-end">
+<div style="background:{{ L.t.sheet }};border-top:1px solid {{ L.t.hairline }};border-radius:20px 20px 28px 28px;padding:0 18px 0">
+<div style="width:34px;height:4px;border-radius:2px;background:{{ L.t.hairline }};margin:9px auto 4px"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 16px">
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:{{ L.t.textDim }}">CABINET</span>
+<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ L.t.textGhost }}">03 / 06 · CLOSE</span>
+</div>
+<div style="margin-top:11px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;background:{{ L.t.ad.card }};border:1px solid {{ L.t.ad.cardBorder }};padding:11px;display:flex;flex-direction:column;justify-content:space-between"><span style="font:500 12px 'IBM Plex Mono',monospace;color:{{ L.t.ad.inkGhost }}">01</span><span style="font:400 14.5px/1.25 'Instrument Serif',serif;color:{{ L.t.ad.ink }}">EXCELLENT ADVICE</span></div>
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;background:{{ L.t.ho.card }};border:1px solid {{ L.t.ho.cardBorder }};padding:11px;display:flex;flex-direction:column;justify-content:space-between"><span style="font:500 12px 'IBM Plex Mono',monospace;color:{{ L.t.ho.inkGhost }}">02</span><span style="font:400 14.5px/1.25 'Instrument Serif',serif;color:{{ L.t.ho.ink }}">TWO SENTENCE HORROR</span></div>
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;background:{{ L.t.no.card }};border:1px solid {{ L.t.no.cardBorder }};padding:12px;display:flex;flex-direction:column;justify-content:space-between"><span style="font:500 7.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:{{ L.t.no.inkDim }}">03</span><span style="font:400 12px/1.25 'Instrument Serif',serif;color:{{ L.t.no.ink }}">NOTES TO MYSELF</span></div>
+</div>
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;border:1px solid {{ L.t.borderFaint }};display:flex;align-items:center;justify-content:center;font:500 26.5px 'IBM Plex Mono',monospace;color:{{ L.t.emptyNum }}">04</div>
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;border:1px solid {{ L.t.borderFaint }};display:flex;align-items:center;justify-content:center;font:500 26.5px 'IBM Plex Mono',monospace;color:{{ L.t.emptyNum }}">05</div>
+<div style="flex:1;height:86px;box-sizing:border-box;border-radius:14px;border:1px solid {{ L.t.borderFaint }};display:flex;align-items:center;justify-content:center;font:500 26.5px 'IBM Plex Mono',monospace;color:{{ L.t.emptyNum }}">06</div>
+</div>
+</div>
+<div style="height:20px"></div>
+<div style="height:24px;display:flex;align-items:center;justify-content:center"><div style="width:108px;height:4px;border-radius:2px;background:{{ L.t.gesture }}"></div></div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ L.advice }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;background:{{ L.t.ad.bg }}">
+<div style="height:28px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 11px 'IBM Plex Mono',monospace;color:{{ L.t.status }}"><span>9:41</span><span style="width:14px;height:8px;border:1px solid {{ L.t.status }};border-radius:2px"></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px 10px;border-bottom:1px solid {{ L.t.ad.rule }}">
+<div style="display:flex;align-items:center;gap:8px"><div style="width:44px;height:44px;margin-left:-12px;display:flex;align-items:center;justify-content:center;font:500 16.5px 'IBM Plex Mono',monospace;color:{{ L.t.ad.inkSoft }}">‹</div><span style="font:500 11px 'IBM Plex Mono',monospace;color:{{ L.t.ad.inkSoft }}">V.E.R.A.</span></div>
+<span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ L.t.ad.inkDim }}">EXCELLENT ADVICE</span>
+</div>
+<div style="display:flex;gap:18px;padding:14px 22px">
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ L.t.accentText }}">SHUFFLE</span>
+<span style="font:500 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ L.t.ad.inkGhost }}">ALL 232</span>
+</div>
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:0 22px 22px">
+<div style="background:{{ L.t.ad.card }};border:1px solid {{ L.t.ad.cardBorder }};border-radius:14px;padding:26px 22px;font:400 22px/1.42 'Instrument Serif',serif;color:{{ L.t.ad.ink }};text-wrap:pretty">Ask one more question than feels polite. The second answer is usually the real one.</div>
+</div>
+<div style="padding:0 22px 22px">
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ L.t.accentText }}">003 / 232</span><span style="font-size:17.5px;color:{{ L.t.ad.inkGhost }}">☆</span></div>
+<div style="margin-top:7px;font:italic 400 13px 'Instrument Serif',serif;color:{{ L.t.ad.inkDim }}">Kevin Kelly · Excellent Advice for Living</div>
+<div style="margin-top:12px;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ L.t.ad.inkGhost }}">tap the card for another</div>
+</div>
+<div style="height:24px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:108px;height:4px;border-radius:2px;background:{{ L.t.gesture }}"></div></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ L.system }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;background:{{ L.t.bgDeep }}">
+<div style="height:28px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 11px 'IBM Plex Mono',monospace;color:{{ L.t.status }}"><span>9:41</span><span style="width:14px;height:8px;border:1px solid {{ L.t.status }};border-radius:2px"></span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:16px 20px 13px;border-bottom:1px solid {{ L.t.borderSoft }}"><span style="font:500 12px 'IBM Plex Mono',monospace;color:{{ L.t.textDim }}">‹</span><span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:{{ L.t.textDim }}">SYSTEM</span></div>
+<div style="flex:1;min-height:0;overflow:hidden;padding:20px 20px 0">
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.24em;color:{{ L.t.textGhostest }};padding-bottom:12px">FILES</div>
+<sc-for list="{{ files }}" as="f" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:13px;padding:15px 0;border-top:1px solid {{ L.t.borderSoft }}"><div style="flex:1;min-width:0"><div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ L.t.text }}">{{ f.name }}</div><div style="margin-top:5px;font:500 9.5px 'IBM Plex Mono',monospace;color:{{ L.t.textFaint }}">{{ f.sub }}</div></div><span style="font:500 11px 'IBM Plex Mono',monospace;color:{{ L.t.textGhost }}">›</span></div>
+</sc-for>
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.24em;color:{{ L.t.textGhostest }};padding:26px 0 12px">PREFERENCES</div>
+<sc-for list="{{ prefs }}" as="q" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-top:1px solid {{ L.t.borderSoft }};border-bottom:1px solid {{ L.t.borderSoft }}"><span style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ L.t.text }}">{{ q.label }}</span><span style="font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ L.t.accentText }}">{{ q.value }}</span></div>
+</sc-for>
+<div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.24em;color:{{ L.t.textGhostest }};padding:26px 0 12px">ACCESS</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-top:1px solid {{ L.t.borderSoft }};border-bottom:1px solid {{ L.t.borderSoft }}"><div><div style="font:500 12px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:{{ L.t.text }}">API KEY</div><div style="margin-top:5px;font:500 9.5px 'IBM Plex Mono',monospace;color:{{ L.t.textFaint }}">•••• 7Qx2</div><div style="margin-top:4px;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ L.t.textGhostest }}">Anthropic · claude-sonnet-5</div></div><span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:{{ L.t.accentText }}">CHANGE</span></div>
+</div>
+<div style="display:flex;justify-content:flex-end;padding:16px 20px 20px;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:{{ L.t.footer }}">14:02 · VISIT 12</div>
+<div style="height:24px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:108px;height:4px;border-radius:2px;background:{{ L.t.gesture }}"></div></div>
+</div>
+</sc-if>
+
+</div>
+</sc-for>
+<sc-if value="{{ p.sl }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ p.sl.toggle }}" style="position:absolute;top:{{ p.sl.top }};right:53px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+<sc-if value="{{ p.sl.a }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;width:30px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid {{ p.sl.border }};overflow:hidden;display:flex;transition:border-color .45s ease"><div style="flex:1;background:#14130f"></div><div style="flex:1;background:#eceef0"></div><div style="position:absolute;top:4.5px;left:{{ p.sl.xa }};width:5px;height:5px;border-radius:50%;background:{{ p.sl.iris }};transition:left .3s cubic-bezier(.22,.61,.36,1),background .45s ease"></div></div>
+</sc-if>
+<sc-if value="{{ p.sl.b }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;width:30px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid {{ p.sl.border }};overflow:hidden;display:flex;transition:border-color .45s ease"><div style="flex:1;background:#14130f"></div><div style="flex:1;background:#eceef0"></div><div style="position:absolute;top:2px;left:{{ p.sl.xb }};width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:1.5px solid {{ p.sl.iris }};transition:left .3s cubic-bezier(.22,.61,.36,1),border-color .45s ease"></div></div>
+</sc-if>
+<sc-if value="{{ p.sl.c }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;width:30px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid {{ p.sl.border }};background:{{ p.sl.panel }};transition:border-color .45s ease,background .45s ease"><div style="position:absolute;top:2px;left:{{ p.sl.xb }};width:10px;height:10px;box-sizing:border-box;border-radius:50%;background:{{ p.sl.ground }};border:1.5px solid {{ p.sl.iris }};transition:left .3s cubic-bezier(.22,.61,.36,1),background .45s ease,border-color .45s ease"></div></div>
+</sc-if>
+<sc-if value="{{ p.sl.d }}" hint-placeholder-val="{{ false }}">
+<div style="width:36px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid {{ p.sl.border }};overflow:hidden;display:flex;transition:border-color .45s ease"><div style="flex-grow:{{ p.sl.fd }};flex-basis:0;background:#14130f;display:flex;align-items:center;justify-content:center;transition:flex-grow .3s cubic-bezier(.22,.61,.36,1)"><div style="width:5px;height:5px;border-radius:50%;background:{{ p.sl.dDot }};transition:background .3s ease"></div></div><div style="flex-grow:{{ p.sl.fl }};flex-basis:0;background:#eceef0;display:flex;align-items:center;justify-content:center;transition:flex-grow .3s cubic-bezier(.22,.61,.36,1)"><div style="width:5px;height:5px;border-radius:50%;background:{{ p.sl.lDot }};transition:background .3s ease"></div></div></div>
+</sc-if>
+<sc-if value="{{ p.sl.e }}" hint-placeholder-val="{{ false }}">
+<div style="width:30px;height:12px;box-sizing:border-box;border-radius:7px;border:1px solid {{ p.sl.border }};overflow:hidden;display:flex;transition:border-color .45s ease"><div style="flex:1;background:#14130f"></div><div style="flex:1;background:#eceef0"></div></div>
+<div style="position:relative;width:30px;height:2px"><div style="position:absolute;top:0;left:{{ p.sl.xe }};width:10px;height:2px;border-radius:1px;background:{{ p.sl.iris }};transition:left .3s cubic-bezier(.22,.61,.36,1),background .45s ease"></div></div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+<sc-if value="{{ p.note }}" hint-placeholder-val="{{ false }}">
+<div style="font:400 11.5px/1.75 'Space Grotesk',sans-serif;color:#8a8578;text-wrap:pretty">{{ p.note }}</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lightPalette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;warm&quot;,&quot;cool&quot;],&quot;default&quot;:&quot;warm&quot;,&quot;tsType&quot;:&quot;'warm' | 'cool'&quot;}}">class Component extends DCLogic {
+  state = { on: {} };
+  renderVals() {
+    const cm = (c, p, b) => `color-mix(in srgb,${c} ${p}%,${b})`;
+    const dark = {
+      name: 'DARK', bg: '#14130f', bgDeep: '#131210', panel: '#1a1913', panelAlt: '#17161a', border: '#2c2a22', borderSoft: '#221f18', borderFaint: '#232118', borderPill: '#3d382b', hairline: '#35322a', hairlineDim: '#6c6656', text: '#f2e7d3', textDim: '#8a8578', textPill: '#a89f8c', textFaint: '#57534a', textGhost: '#4a4740', textGhostest: '#3a372c', footer: '#33302a',
+      iris: '#f4b43a', accentText: '#f4b43a', wash: '#f4b43a1f', edge: '#f4b43a88',
+      scrim: '#08080699', sheet: '#17171a', emptyNum: '#2b2820', gesture: '#f2e7d3aa', status: '#8a8578',
+      oGlow: 0.4, oHalo: cm('#f4b43a', 14, 'transparent'), oRing: '#191811', oRingShadow: 'inset 0 1px 0 #ffffff14,0 10px 30px #00000088', oS0: '#1c1b15', oS1: '#0a0a08', oInner: '#00000099', oLine1: cm('#f4b43a', 16, 'transparent'), oLine2: cm('#f4b43a', 7, 'transparent'), oIrisFill: cm('#f4b43a', 34, '#000'), oIrisEnd: '#0a0a08', oStria: cm('#f4b43a', 26, 'transparent'), oCore: '#fff', oCoreGlow: '0 0 10px #f4b43a', oCatch: '#ffffffcc',
+      ad: { bg: '#0f0f11', card: '#16161a', cardBorder: '#24242a', rule: '#1e1e23', ink: '#e9e6df', inkSoft: '#9a968c', inkDim: '#6a675f', inkGhost: '#45433d' },
+      ho: { card: '#121011', cardBorder: '#231e1f', ink: '#e6e0de', inkGhost: '#413b3a' },
+      no: { card: '#111417', cardBorder: '#1e242a', ink: '#dde4ea', inkDim: '#5d666d' }
+    };
+    const lightOptic = (iris, s0, s1, ring, shadow, irisEnd, ink) => ({
+      oGlow: 0.3, oHalo: cm(iris, 22, 'transparent'), oRing: ring, oRingShadow: shadow, oS0: s0, oS1: s1, oInner: '#00000012', oLine1: cm(iris, 30, 'transparent'), oLine2: cm(iris, 15, 'transparent'), oIrisFill: cm(iris, 30, '#fff'), oIrisEnd: irisEnd, oStria: cm(iris, 36, 'transparent'), oCore: ink, oCoreGlow: `0 0 8px ${iris}66`, oCatch: '#ffffffee'
+    });
+    const warm = {
+      name: 'LIGHT', bg: '#efe9dc', bgDeep: '#ebe4d6', panel: '#e7e0d0', panelAlt: '#f6f2e9', border: '#d2c8b3', borderSoft: '#dcd3c0', borderFaint: '#d8cfbc', borderPill: '#c3b79c', hairline: '#cbc1aa', hairlineDim: '#8d8470', text: '#221e16', textDim: '#6b6454', textPill: '#5b5343', textFaint: '#8c8474', textGhost: '#9f9784', textGhostest: '#8f8775', footer: '#aea58f',
+      iris: '#d6920f', accentText: '#8a5800', wash: '#d6920f1f', edge: '#d6920f99',
+      scrim: '#2a241840', sheet: '#f7f3ea', emptyNum: '#d4cab6', gesture: '#221e1699', status: '#6b6454',
+      ...lightOptic('#d6920f', '#fdfaf3', '#e2d9c6', '#e4dccb', 'inset 0 1px 0 #ffffffaa,0 10px 28px #6b5a3a33', '#efe4cc', '#221e16'),
+      ad: { bg: '#f4f0e7', card: '#fbf8f2', cardBorder: '#e3dccd', rule: '#e8e1d3', ink: '#1f1c16', inkSoft: '#6a6358', inkDim: '#7d7666', inkGhost: '#b5ad9c' },
+      ho: { card: '#f3ebe8', cardBorder: '#e2d4d0', ink: '#2b2121', inkGhost: '#b3a3a0' },
+      no: { card: '#edf1f4', cardBorder: '#d5dde4', ink: '#1c252d', inkDim: '#7a858f' }
+    };
+    const cool = {
+      name: 'LIGHT', bg: '#eceef0', bgDeep: '#e8ebed', panel: '#e2e6e9', panelAlt: '#f7f8f9', border: '#cbd1d6', borderSoft: '#d7dce0', borderFaint: '#d3d8dd', borderPill: '#b6bec5', hairline: '#c4cbd1', hairlineDim: '#7d868e', text: '#15181b', textDim: '#5b636b', textPill: '#4d565e', textFaint: '#848c94', textGhost: '#99a1a8', textGhostest: '#8a929a', footer: '#a9b0b7',
+      iris: '#d6920f', accentText: '#855500', wash: '#d6920f1a', edge: '#d6920f99',
+      scrim: '#1a1f2440', sheet: '#f8f9fa', emptyNum: '#d0d5da', gesture: '#15181b99', status: '#5b636b',
+      ...lightOptic('#d6920f', '#ffffff', '#dde2e6', '#dde1e4', 'inset 0 1px 0 #ffffffcc,0 10px 28px #2a333b2e', '#ece6da', '#15181b'),
+      ad: { bg: '#f2f3f5', card: '#fbfcfd', cardBorder: '#dfe3e7', rule: '#e5e8ec', ink: '#1a1d21', inkSoft: '#5f666e', inkDim: '#767d85', inkGhost: '#b0b6bc' },
+      ho: { card: '#f2eeee', cardBorder: '#e0d8d8', ink: '#261f20', inkGhost: '#b1a7a7' },
+      no: { card: '#eaeff3', cardBorder: '#d2dbe2', ink: '#18212a', inkDim: '#77828c' }
+    };
+    const light = (this.props.lightPalette ?? 'warm') === 'cool' ? cool : warm;
+    const noop = () => {};
+    const layer = (t, o, extra) => {
+      const isDark = t === dark;
+      return { t, o, dk: isDark ? t : o, lt: isDark ? o : t, op: 1, pe: 'auto', stage: false, cab: false, advice: false, system: false,
+        btnA: false, btnB: false, btnC: false, btnD: false, btnE: false, btnF: false, btnG: false, btnH: false,
+        dDot: isDark ? t.iris : 'transparent', lDot: isDark ? 'transparent' : t.iris,
+        dRing: isDark ? t.iris : t.borderPill, lRing: isDark ? t.borderPill : t.iris,
+        onToggle: noop, ...extra };
+    };
+    const btnPhone = (id, key, title, note, lt) => {
+      const L2 = lt || light;
+      const on = !!this.state.on[id];
+      const onToggle = () => this.setState(s => ({ on: { ...s.on, [id]: !s.on[id] } }));
+      const f = { stage: true, [key]: true, onToggle };
+      return { id, title, note, layers: [
+        layer(dark, L2, f),
+        layer(L2, dark, { ...f, op: on ? 1 : 0, pe: on ? 'auto' : 'none' })
+      ] };
+    };
+    const slPhone = (id, key, w, title, note) => {
+      const on = !!this.state.on[id];
+      const toggle = () => this.setState(s => ({ on: { ...s.on, [id]: !s.on[id] } }));
+      const f = { stage: true, btnS: true, sw: w + 'px' };
+      const sl = { a: false, b: false, c: false, d: false, e: false, [key]: true, toggle,
+        top: key === 'e' ? '45px' : '44px',
+        border: on ? cool.borderPill : dark.borderPill, iris: on ? cool.iris : dark.iris,
+        panel: on ? cool.panel : dark.panel, ground: on ? cool.bg : dark.bg,
+        xa: on ? '18.5px' : '4.5px', xb: on ? '16px' : '2px', xe: on ? '20px' : '0px',
+        fd: on ? 1 : 2, fl: on ? 2 : 1,
+        dDot: on ? 'transparent' : dark.iris, lDot: on ? cool.iris : 'transparent' };
+      return { id, title, note, sl, layers: [
+        layer(dark, cool, f),
+        layer(cool, dark, { ...f, op: on ? 1 : 0, pe: 'none' })
+      ] };
+    };
+    const screens = (t, o) => [
+      { caption: 'STAGE', layers: [layer(t, o, { stage: true, btnA: true })] },
+      { caption: 'CABINET DRAWER', layers: [layer(t, o, { stage: true, btnA: true, cab: true })] },
+      { caption: '01 · EXCELLENT ADVICE', layers: [layer(t, o, { advice: true })] },
+      { caption: 'SYSTEM', layers: [layer(t, o, { system: true })] }
+    ];
+    return {
+      files: [
+        { name: 'RECORD', sub: 'what she has concluded about you · 14 ENTRIES' },
+        { name: 'CORE_SOUL_MD', sub: 'who she is · loaded before every reply · read only' },
+        { name: 'DEFAULT_SOUL_MD', sub: 'the half of her you chose · set from the logo · read only' },
+        { name: 'PROMPT', sub: 'the exact request behind her last line' }
+      ],
+      prefs: [
+        { label: 'LANGUAGE', value: 'EN / ko' },
+        { label: 'BATTERY', value: 'UNRESTRICTED' },
+        { label: 'TRANSMISSIONS', value: 'OFF' },
+        { label: 'DAILY ADVICE', value: 'OFF' }
+      ],
+      sections: [
+        { kicker: 'TURN 4 · THE SLIDER', title: 'Five sliders from 3b, on 2e',
+          body: 'All five keep 3b’s idea: the control shows both grounds and marks the one you are in. Here the marker actually travels when you tap, over 0.3s, while the screen crossfades underneath. Tap each one.',
+          rows: [{ id: 'sliders', label: '', phones: [
+            slPhone('4a', 'a', 30, 'Split track, gliding dot', '3b as it was, with the iris dot sliding across the seam instead of jumping.'),
+            slPhone('4b', 'b', 30, 'Split track, ring thumb · SELECTED', 'An iris ring frames the half you are in, leaving both grounds unobstructed. The ring slides across.'),
+            slPhone('4c', 'c', 30, 'Classic toggle', 'The track takes the current panel colour; the thumb is a disc of the current ground, ringed in her iris. The most familiar switch, and the least literal about the other theme.'),
+            slPhone('4d', 'd', 36, 'Expanding half', 'The half you are in takes two thirds of the pill and carries the dot. On tap the seam slides and the other half grows.'),
+            slPhone('4e', 'e', 30, 'Track with underline', 'A slimmer split track with a short iris bar beneath it, sliding under the current side, like a tab indicator.')
+          ] }] },
+        { kicker: 'TURN 3 · THE CHIP, WITHOUT THE WORD', title: 'Five text-free chips on 2e, cool clinical',
+          body: 'All five keep 2c’s pill: the tag pill’s border and panel fill, 16px tall, sitting level with DEFAULT. Only what is inside the pill changes. Each is tappable and crossfades between dark and 2e.',
+          rows: [{ id: 'chips', label: '', phones: [
+            btnPhone('3a', 'btnD', 'Swatch only', '2c with the word removed: a 10px disc in the other ground. The plainest reading of “that one”.', cool),
+            btnPhone('3b', 'btnE', 'Split track', 'The pill is the switch: dark on the left, light on the right, her iris sitting on the side you are in. It shows both states and where you are.', cool),
+            btnPhone('3c', 'btnF', 'Two discs', 'Both grounds side by side, the current one ringed in her iris. The same information as 3b, drawn as a choice rather than a track.', cool),
+            btnPhone('3d', 'btnG', 'Half disc', 'One disc split down the middle, current ground on the left. Compact, and the familiar contrast glyph, built from the two real grounds.', cool),
+            btnPhone('3e', 'btnH', 'Swatch with her', 'The 2a disc inside the pill: the other ground with her iris in it. It reads as her, in the other room.', cool)
+          ] }] },
+        { kicker: 'TURN 2 · THE BUTTON', title: 'A swatch of the other theme, beside the dots',
+          body: 'Each button shows the theme you would switch to, drawn in that theme’s own colours. Tap it and the stage crossfades. The light side follows the Light palette tweak (warm or cool). The cabinet is 1d, docked to the input.',
+          rows: [{ id: 'buttons', label: '', phones: [
+            btnPhone('2a', 'btnA', 'Swatch disc', 'A 16px disc in the other ground with her iris in the middle. The smallest of the three, and the closest to the pulse dot’s vocabulary.'),
+            btnPhone('2b', 'btnB', 'Miniature stage', 'A 20×14 thumbnail of the other stage: its ground, her eye, and the input bar. It reads as a preview rather than a setting.'),
+            btnPhone('2c', 'btnC', 'Labelled chip', 'The swatch with the word, in the tag pill’s shape. The clearest of the three, and it sits level with DEFAULT on the other side of the header.')
+          ] }] },
+        { kicker: 'TURN 2 · THE PALETTES', title: 'Four surfaces, two light directions',
+          body: 'Every token in theme.ts gets a light counterpart. Her optic lightens with the ground: pale sclera, the iris ring kept, and the core turned to ink so she still has a pupil. Amber is darkened for type on light grounds so it holds contrast; her iris keeps its hue. Each room keeps its own tint so the cabinet still reads as windows into different rooms.',
+          rows: [
+            { id: 'ref', badge: 'DARK', label: 'Current, for reference', phones: screens(dark, warm) },
+            { id: '2d', badge: '2d', label: 'Warm paper: cream ground, ink type', phones: screens(warm, dark) },
+            { id: '2e', badge: '2e', label: 'Cool clinical: pale grey ground, graphite type', phones: screens(cool, dark) }
+          ] }
+      ]
+    };
+  }
+}</script>
+</body>
+</html>

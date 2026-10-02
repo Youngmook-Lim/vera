@@ -42,7 +42,6 @@ const DART_STEPPED = new Set(['quick']);
 // `design/The Facility - Overhaul.dc.html`.
 
 const TRANSITION_MS = 420;
-const GLOW_BREATHE_MS = 2800;
 const WAKE_MS = 1150;
 
 // Static layout constants — none of these vary by emotion, so they live here
@@ -135,11 +134,9 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
   const blink = useSharedValue(0);
   const openTop = useSharedValue(geometry.lidHeight);
   const openBottom = useSharedValue(geometry.lowerLidHeight);
-  const glowAlpha = useSharedValue(geometry.glowAlpha);
   const colorFrom = useSharedValue(geometry.iris);
   const colorTo = useSharedValue(geometry.iris);
   const colorProgress = useSharedValue(1);
-  const breathe = useSharedValue(1);
 
   const dartX = useSharedValue(0);
   const dartY = useSharedValue(0);
@@ -158,7 +155,6 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
   useEffect(() => {
     irisRadius.value = withTiming(geometry.irisRadius, { duration: TRANSITION_MS });
     pupilRadius.value = withTiming(geometry.pupilRadius, { duration: TRANSITION_MS });
-    glowAlpha.value = withTiming(geometry.glowAlpha, { duration: TRANSITION_MS });
 
     colorFrom.value = colorTo.value;
     colorTo.value = geometry.iris;
@@ -240,21 +236,6 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emotion, geometry.socketDiameter, tracking]);
 
-  // The glow's own breathing loop is constant across every state — only its
-  // strength (glowAlpha) is emotion-driven.
-  useEffect(() => {
-    breathe.value = withRepeat(
-      withSequence(
-        withTiming(0.5, { duration: GLOW_BREATHE_MS / 2 }),
-        withTiming(0.95, { duration: GLOW_BREATHE_MS / 2 }),
-      ),
-      -1,
-      true,
-    );
-    return () => cancelAnimation(breathe);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // A single wake bloom, once, whenever `waking` turns on.
   useEffect(() => {
     if (waking) {
@@ -269,8 +250,6 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
   const irisColor = useDerivedValue(() =>
     interpolateColor(colorProgress.value, [0, 1], [colorFrom.value, colorTo.value]),
   );
-  const glowOpacity = useDerivedValue(() => glowAlpha.value * breathe.value);
-  const glowColors = useDerivedValue(() => [irisColor.value, 'transparent']);
   // color-mix(in srgb, var(--iris) 34%, #000) — the iris at a third strength
   // over black, which is what makes the well read as deep rather than lit.
   const irisGradientColors = useDerivedValue(() => [
@@ -371,17 +350,32 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
   return (
     <Pressable onPress={onPress} testID="optic">
       <Canvas style={{ width: size, height: size }}>
-        {/* 1. glow */}
-        <Circle cx={center} cy={center} r={geometry.glowRadius} opacity={glowOpacity}>
-          <RadialGradient c={vec(center, center)} r={geometry.glowRadius} colors={glowColors} />
-        </Circle>
+        {/* The glow that used to sit here is gone (2026-10-02). It was drawn
+            at `bezelRadius + 30` into a canvas of `bezelRadius * 2`, so it was
+            clipped by the canvas RECTANGLE while still at 28% strength, in a
+            square whose four corners fell outside the circle. Against
+            `#14130f` that was about 4% amber over near-black and nobody ever
+            saw it; against the light theme's `#eceef0` it was a visible grey
+            box around her eye.
 
-        {/* 2. bezel */}
+            At this canvas size a visible halo is geometrically impossible: the
+            opaque bezel and the canvas edge are both at `bezelRadius`, so
+            there is no room between them for one. Restoring it means a 218²
+            canvas with the eye centred in it and a negative margin to keep the
+            layout box and the tap target at 158 — see
+            `design/Theme Options.dc.html`, whose `inset:-30px` box and
+            `transparent 58%` falloff are what it would be drawn from.
+
+            `EMOTIONS[…].glow` is left in place: it is her per-state data and
+            the design's own table, and it is what a restored halo would read.
+            Nothing renders it today. */}
+
+        {/* 1. bezel */}
         <Circle cx={center} cy={center} r={geometry.bezelRadius} color="#191811">
           <Shadow dx={0} dy={1} blur={0} color="#ffffff14" inner />
         </Circle>
 
-        {/* 3. socket — the gradient's centre sits high, at 50% 38% */}
+        {/* 2. socket — the gradient's centre sits high, at 50% 38% */}
         <Circle cx={center} cy={center} r={geometry.socketRadius}>
           <RadialGradient
             c={vec(center, size * SOCKET_CENTRE_Y)}
@@ -391,7 +385,7 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
           />
         </Circle>
 
-        {/* 4. iris rings */}
+        {/* 3. iris rings */}
         <Circle
           cx={center}
           cy={center}
@@ -411,7 +405,7 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
           opacity={RING_ALPHAS[1]}
         />
 
-        {/* 5. gaze group — iris, fibre, core */}
+        {/* 4. gaze group — iris, fibre, core */}
         <Group transform={gazeTransform} origin={vec(center, center)}>
          <Group transform={dartTransform} origin={vec(center, center)}>
           <Circle cx={center} cy={center} r={irisRadius}>
@@ -447,7 +441,7 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
          </Group>
         </Group>
 
-        {/* 6. catchlight — an ellipse, hidden when dead (dormant) */}
+        {/* 5. catchlight — an ellipse, hidden when dead (dormant) */}
         {geometry.showCatchlight ? (
           <Oval
             rect={rect(
@@ -470,7 +464,7 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
           </Oval>
         ) : null}
 
-        {/* 7. lids — gradient bodies, an iris-coloured seam on the leading
+        {/* 6. lids — gradient bodies, an iris-coloured seam on the leading
             edge, and the grain over the top. Clipped to the socket. */}
         <Group clip={socketClip}>
           <Rect x={lidLeft} y={geometry.socketTop} width={lidWidth} height={topLid}>
@@ -532,7 +526,7 @@ export function Optic({ emotion, size, gazeX, gazeY, tracking, onPress, waking }
           />
         </Group>
 
-        {/* 8. wake bloom — a single scale+fade burst, not a loop */}
+        {/* 7. wake bloom — a single scale+fade burst, not a loop */}
         {waking ? (
           <Group transform={wakeTransform} origin={vec(center, center)} opacity={wakeOpacity}>
             <Circle cx={center} cy={center} r={geometry.bezelRadius}>

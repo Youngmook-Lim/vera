@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFacilityStore } from '../../core/store';
-import { font, ms, palette, serif } from '../../core/theme';
+import { PALETTES, emotionText, font, ms, serif, themed } from '../../core/theme';
 import { EMOTIONS } from '../../vera/emotions';
 import type { ModuleDef } from '../types';
 import { DISPLAY_ORDER } from './schedule';
@@ -17,6 +17,7 @@ const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 const pad = (v: number) => String(v).padStart(2, '0');
 
 function NotesTile({ onPress }: { onPress: () => void }) {
+  const tileStyles = TileStylesSheets[useFacilityStore((st) => st.theme)];
   const lang = useFacilityStore((s) => s.lang);
   return (
     // The slot numeral sits above the title, not centred with it (4a).
@@ -30,6 +31,7 @@ function NotesTile({ onPress }: { onPress: () => void }) {
 // The doorway rule (spec §4): the one exit, top-left, fixed at 44px, drawn in
 // this room's own ink — never the shell's amber.
 function ExitAndLabel({ onBack }: { onBack?: () => void }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   const lang = useFacilityStore((s) => s.lang);
   const setView = useFacilityStore((s) => s.setView);
   return (
@@ -55,6 +57,9 @@ function daysLabel(note: Note, lang: 'en' | 'ko'): string {
 }
 
 function NotesScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const emotion = useFacilityStore((s) => s.emotion);
@@ -66,7 +71,7 @@ function NotesScreen() {
 
   // The room is in her building, so it is lit in whatever she is wearing —
   // the same as both other rooms, and for the same reasons set out there.
-  const accent = EMOTIONS[emotion].iris;
+  const accent = emotionText(EMOTIONS[emotion].iris, theme);
 
   const [editing, setEditing] = useState<Note | null | undefined>(undefined);
   const [card, setCard] = useState<string | null>(null);
@@ -122,7 +127,9 @@ function NotesScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View
+      testID="view-mod03"
+      style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <ExitAndLabel />
       </View>
@@ -145,7 +152,7 @@ function NotesScreen() {
                   styles.rowTime,
                   {
                     fontFamily: font('mono', 600, lang),
-                    color: note.enabled ? accent : palette.notes.inkDim,
+                    color: note.enabled ? accent : p.notes.inkDim,
                   },
                 ]}
               >
@@ -160,7 +167,7 @@ function NotesScreen() {
               <Text
                 style={[
                   styles.rowBody,
-                  { fontFamily: serif(lang), color: note.enabled ? palette.notes.ink : palette.notes.inkDim },
+                  { fontFamily: serif(lang), color: note.enabled ? p.notes.ink : p.notes.inkDim },
                 ]}
                 numberOfLines={2}
               >
@@ -177,7 +184,7 @@ function NotesScreen() {
               hitSlop={12}
               onPress={() => void setEnabled(note.id, !note.enabled)}
             >
-              <Text style={[styles.switch, { color: note.enabled ? accent : palette.notes.inkGhost }]}>
+              <Text style={[styles.switch, { color: note.enabled ? accent : p.notes.inkGhost }]}>
                 {note.enabled ? '●' : '○'}
               </Text>
             </Pressable>
@@ -185,7 +192,10 @@ function NotesScreen() {
         ))}
 
         <Pressable testID="notes-new" style={styles.newRow} onPress={() => setEditing(null)}>
-          <Text style={[styles.newText, { fontFamily: font('mono', 500, lang), color: accent }]}>
+          <Text
+            testID="notes-new-text"
+            style={[styles.newText, { fontFamily: font('mono', 500, lang), color: accent }]}
+          >
             {t.newNote}
           </Text>
         </Pressable>
@@ -214,7 +224,7 @@ export const notes: ModuleDef = {
   },
 };
 
-const tileStyles = StyleSheet.create({
+const TileStylesSheets = themed((p) => StyleSheet.create({
   tile: {
     width: GRID_TILE_PX,
     height: GRID_TILE_PX,
@@ -222,16 +232,16 @@ const tileStyles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 14,
-    backgroundColor: palette.notes.card,
+    backgroundColor: p.notes.card,
     borderWidth: 1,
-    borderColor: palette.notes.cardBorder,
+    borderColor: p.notes.cardBorder,
   },
-  slot: { fontSize: ms(7), letterSpacing: ms(7) * 0.2, color: palette.notes.inkDim },
-  title: { fontSize: ms(11), color: palette.notes.ink },
-});
+  slot: { fontSize: ms(7), letterSpacing: ms(7) * 0.2, color: p.notes.inkDim },
+  title: { fontSize: ms(11), color: p.notes.ink },
+}));
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.notes.bg },
+const S = themed((p) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: p.notes.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,29 +249,29 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderColor: palette.notes.rule,
+    borderColor: p.notes.rule,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   exit: { width: 44, height: 44, alignItems: 'flex-start', justifyContent: 'center' },
-  exitGlyph: { fontSize: ms(13), color: palette.notes.inkSoft },
-  label: { fontSize: ms(8), letterSpacing: ms(8) * 0.2, color: palette.notes.inkSoft },
+  exitGlyph: { fontSize: ms(13), color: p.notes.inkSoft },
+  label: { fontSize: ms(8), letterSpacing: ms(8) * 0.2, color: p.notes.inkSoft },
   list: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 30 },
-  empty: { fontSize: ms(8.5), color: palette.notes.inkGhost, paddingVertical: 26 },
+  empty: { fontSize: ms(8.5), color: p.notes.inkGhost, paddingVertical: 26 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     paddingVertical: 15,
     borderTopWidth: 1,
-    borderColor: palette.notes.rule,
+    borderColor: p.notes.rule,
   },
   rowText: { flex: 1 },
   rowTime: { fontSize: ms(15), letterSpacing: ms(15) * 0.04 },
-  rowDays: { marginTop: 3, fontSize: ms(7.5), letterSpacing: ms(7.5) * 0.3, color: palette.notes.inkDim },
+  rowDays: { marginTop: 3, fontSize: ms(7.5), letterSpacing: ms(7.5) * 0.3, color: p.notes.inkDim },
   rowBody: { marginTop: 6, fontSize: ms(12) },
   switch: { fontSize: ms(12) },
-  newRow: { paddingVertical: 18, borderTopWidth: 1, borderColor: palette.notes.rule },
+  newRow: { paddingVertical: 18, borderTopWidth: 1, borderColor: p.notes.rule },
   newText: { fontSize: ms(8.5), letterSpacing: ms(8.5) * 0.16 },
   cardWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
-  cardText: { fontSize: ms(24), lineHeight: ms(24) * 1.35, color: palette.notes.ink, textAlign: 'center' },
-});
+  cardText: { fontSize: ms(24), lineHeight: ms(24) * 1.35, color: p.notes.ink, textAlign: 'center' },
+}));

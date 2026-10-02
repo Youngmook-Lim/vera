@@ -626,7 +626,7 @@ describe('speak', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'transmissions',
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'theme', 'transmissions',
         'transmissionsSyncedOn', 'visits'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
@@ -829,7 +829,7 @@ describe('setLang', () => {
     const raw = await storage.get(KEYS.soul);
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
-      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'transmissions',
+      ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'theme', 'transmissions',
         'transmissionsSyncedOn', 'visits'].sort(),
     );
     expect(saved.lang).toBe('ko');

@@ -9,7 +9,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { palette } from '../core/theme';
+import { useFacilityStore } from '../core/store';
+import { themed } from '../core/theme';
 
 // fthink: three 3px amber dots on a 1.1s cycle, staggered by 180ms. She waits
 // this way on both surfaces that can be waiting — the stage and the log — so
@@ -18,6 +19,10 @@ const THINK_MS = 1100;
 const STAGGER_MS = 180;
 
 function Dot({ delay }: { delay: number }) {
+  // Its own subscription rather than a style threaded down from the row: three
+  // of these is three cheap reads, and a style as a prop reads worse than the
+  // one line it saves.
+  const styles = S[useFacilityStore((st) => st.theme)];
   const v = useSharedValue(0.2);
   useEffect(() => {
     v.value = withDelay(
@@ -39,6 +44,8 @@ function Dot({ delay }: { delay: number }) {
 }
 
 export function ThinkingDots({ style }: { style?: object }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
   return (
     <View style={[styles.row, style]} testID="thinking">
       <Dot delay={0} />
@@ -48,7 +55,7 @@ export function ThinkingDots({ style }: { style?: object }) {
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 4,
@@ -57,6 +64,6 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: palette.amber,
+    backgroundColor: p.amber,
   },
-});
+}));

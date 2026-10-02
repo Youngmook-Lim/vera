@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import Power from '../../../modules/power/src/PowerModule';
 import { useFacilityStore } from '../../core/store';
-import { palette } from '../../core/theme';
+import { DARK } from '../../core/theme';
 import { BatteryRow } from '../BatteryRow';
 
 const native = Power as unknown as Record<string, jest.Mock>;
@@ -34,7 +34,7 @@ describe('the battery row', () => {
     const value = valueOf(view);
     expect(value.props.children).toBe('OPTIMISED · FIX');
     expect(value.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ color: palette.danger })]),
+      expect.arrayContaining([expect.objectContaining({ color: DARK.danger })]),
     );
     await view.unmount();
   });
@@ -50,7 +50,7 @@ describe('the battery row', () => {
     const value = valueOf(view);
     expect(value.props.children).toBe('—');
     expect(value.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ color: palette.textFaint })]),
+      expect.arrayContaining([expect.objectContaining({ color: DARK.textFaint })]),
     );
     await view.unmount();
   });

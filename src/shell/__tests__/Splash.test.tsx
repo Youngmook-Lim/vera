@@ -3,7 +3,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { DORMANT, FACES, faceFor } from '../../core/appIcon';
 import { EMOTIONS } from '../../vera/emotions';
-import { palette } from '../../core/theme';
+import { DARK } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SPLASH_HOLD_MS, Splash, faceEmotion } from '../Splash';
 
@@ -114,8 +114,8 @@ describe('Splash', () => {
       const view = await render(<Splash hasKey now={NOW} />);
 
       const style = spinner(view);
-      expect(style.borderColor).toBe(palette.hairline);
-      expect(style.borderTopColor).not.toBe(palette.hairline);
+      expect(style.borderColor).toBe(DARK.hairline);
+      expect(style.borderTopColor).not.toBe(DARK.hairline);
       expect(style.borderRadius).toBe(Number(style.width) / 2);
 
       await view.unmount();

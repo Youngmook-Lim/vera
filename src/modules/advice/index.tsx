@@ -5,7 +5,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../../core/i18n';
 import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
-import { font, ms, palette, serif, serifItalic } from '../../core/theme';
+import {
+  PALETTES,
+  emotionText,
+  font,
+  ms,
+  serif,
+  serifItalic,
+  themed,
+} from '../../core/theme';
 import type { ModuleDef } from '../types';
 import { advance, current, goTo } from '../deck';
 import { displayOrder } from '../favorites';
@@ -49,6 +57,9 @@ function Star({
   style: TextStyle;
 }) {
   const t = T[lang];
+  // Its own read: the unkept glyph is the room's own ink, which follows the
+  // theme, while the kept one is the accent handed down from the screen.
+  const p = PALETTES[useFacilityStore((st) => st.theme)];
   return (
     <Pressable
       testID={testID}
@@ -60,7 +71,7 @@ function Star({
     >
       <Text
         testID={`${testID}-glyph`}
-        style={[style, { color: on ? accent : palette.advice.inkGhost }]}
+        style={[style, { color: on ? accent : p.advice.inkGhost }]}
       >
         {on ? STAR_ON : STAR_OFF}
       </Text>
@@ -71,6 +82,7 @@ function Star({
 // The doorway rule (spec §4): the one exit, top-left, fixed at 44px, drawn in
 // this room's own ink — never the shell's amber.
 function ExitAndLabel({ lang }: { lang: Lang }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   const setView = useFacilityStore((s) => s.setView);
   return (
     <View style={styles.headerLeft}>
@@ -88,6 +100,9 @@ function ExitAndLabel({ lang }: { lang: Lang }) {
 }
 
 export function AdviceScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const emotion = useFacilityStore((s) => s.emotion);
@@ -105,7 +120,7 @@ export function AdviceScreen() {
   // the room wears her dead grey, which sits nearer the unkept star's ghost
   // than any waking colour does — an unwoken building is not lit in a colour of
   // its own.
-  const accent = EMOTIONS[emotion].iris;
+  const accent = emotionText(EMOTIONS[emotion].iris, theme);
 
   // The deck lives in the room's store, so it lives as long as the APP does
   // rather than as long as the room is open (2026-09-22). Walking out at card
@@ -309,6 +324,7 @@ export function AdviceScreen() {
 // The cabinet's preview of this room, painted in its own colours — the one
 // place a module's theme shows through the shell's neutral chrome (spec §4).
 function AdviceTile({ onPress }: { onPress: () => void }) {
+  const tileStyles = TileStylesSheets[useFacilityStore((st) => st.theme)];
   const lang = useFacilityStore((s) => s.lang);
   const t = T[lang];
   return (
@@ -340,10 +356,10 @@ export const advice: ModuleDef = {
   },
 };
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.advice.bg,
+    backgroundColor: p.advice.bg,
   },
   header: {
     flexDirection: 'row',
@@ -353,7 +369,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderColor: palette.advice.rule,
+    borderColor: p.advice.rule,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -369,16 +385,16 @@ const styles = StyleSheet.create({
   },
   exitGlyph: {
     fontSize: ms(15),
-    color: palette.advice.inkSoft,
+    color: p.advice.inkSoft,
   },
   veraLabel: {
     fontSize: ms(10),
-    color: palette.advice.inkSoft,
+    color: p.advice.inkSoft,
   },
   headerLabel: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.14,
-    color: palette.advice.inkDim,
+    color: p.advice.inkDim,
   },
   modes: {
     flexDirection: 'row',
@@ -395,7 +411,7 @@ const styles = StyleSheet.create({
   mode: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.16,
-    color: palette.advice.inkGhost,
+    color: p.advice.inkGhost,
   },
   // The scroller takes the room left under the mode row so the attribution and
   // the counter stay pinned at the foot; the card inside it centres, and only a
@@ -410,9 +426,9 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
   },
   card: {
-    backgroundColor: palette.advice.card,
+    backgroundColor: p.advice.card,
     borderWidth: 1,
-    borderColor: palette.advice.cardBorder,
+    borderColor: p.advice.cardBorder,
     borderRadius: 14,
     paddingHorizontal: 22,
     paddingVertical: 26,
@@ -421,7 +437,7 @@ const styles = StyleSheet.create({
     fontFamily: serif(),
     fontSize: ms(20),
     lineHeight: ms(20) * 1.42,
-    color: palette.advice.ink,
+    color: p.advice.ink,
   },
   footer: {
     paddingHorizontal: 22,
@@ -443,13 +459,13 @@ const styles = StyleSheet.create({
     marginTop: 7,
     fontFamily: serifItalic(),
     fontSize: ms(12),
-    color: palette.advice.inkDim,
+    color: p.advice.inkDim,
   },
   hint: {
     marginTop: 12,
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.1,
-    color: palette.advice.inkGhost,
+    color: p.advice.inkGhost,
   },
   list: {
     flex: 1,
@@ -465,12 +481,12 @@ const styles = StyleSheet.create({
   },
   rowRule: {
     borderTopWidth: 1,
-    borderColor: palette.advice.rule,
+    borderColor: p.advice.rule,
   },
   rowIndex: {
     fontSize: ms(8.5),
     lineHeight: ms(13) * 1.45,
-    color: palette.advice.inkGhost,
+    color: p.advice.inkGhost,
     flexShrink: 0,
     minWidth: 24,
   },
@@ -483,30 +499,30 @@ const styles = StyleSheet.create({
     fontFamily: serif(),
     fontSize: ms(13),
     lineHeight: ms(13) * 1.45,
-    color: palette.advice.ink,
+    color: p.advice.ink,
   },
-});
+}));
 
-const tileStyles = StyleSheet.create({
+const TileStylesSheets = themed((p) => StyleSheet.create({
   // `height:86px; radius 14; padding:11px; justify-content:space-between`
   tile: {
     flex: 1,
     height: GRID_TILE_PX,
     borderRadius: 14,
-    backgroundColor: palette.advice.card,
+    backgroundColor: p.advice.card,
     borderWidth: 1,
-    borderColor: palette.advice.cardBorder,
+    borderColor: p.advice.cardBorder,
     justifyContent: 'space-between',
     padding: 11,
     overflow: 'hidden',
   },
   slot: {
     fontSize: ms(11),
-    color: palette.advice.inkGhost,
+    color: p.advice.inkGhost,
   },
   title: {
     fontSize: ms(13),
     lineHeight: ms(13) * 1.25,
-    color: palette.advice.ink,
+    color: p.advice.ink,
   },
-});
+}));

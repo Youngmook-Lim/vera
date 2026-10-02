@@ -1,7 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Lang } from '../../core/i18n';
-import { font, ms, palette } from '../../core/theme';
+import { useFacilityStore } from '../../core/store';
+import { PALETTES, font, ms, themed } from '../../core/theme';
 import { DISPLAY_ORDER } from './schedule';
 import { T } from './strings';
 
@@ -19,7 +20,10 @@ export function DayPicker({
   lang: Lang;
   accent?: string;
 }) {
-  const lit = accent ?? palette.notes.ink;
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
+  const lit = accent ?? p.notes.ink;
 
   const toggle = (day: number) =>
     onChange(
@@ -41,13 +45,13 @@ export function DayPicker({
             onPress={() => toggle(day)}
             style={[
               styles.day,
-              { borderColor: on ? lit : palette.notes.cardBorder },
+              { borderColor: on ? lit : p.notes.cardBorder },
             ]}
           >
             <Text
               style={[
                 styles.dayText,
-                { fontFamily: font('mono', 500, lang), color: on ? lit : palette.notes.inkDim },
+                { fontFamily: font('mono', 500, lang), color: on ? lit : p.notes.inkDim },
               ]}
             >
               {T[lang].dayNames[day]}
@@ -59,7 +63,7 @@ export function DayPicker({
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   row: { flexDirection: 'row', gap: 6 },
   day: {
     flex: 1,
@@ -70,4 +74,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dayText: { fontSize: ms(8.5) },
-});
+}));

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette, serif } from '../core/theme';
+import { PALETTES, font, ms, serif, themed } from '../core/theme';
 import { T } from './strings';
 
 // The ACCESS panel's replace-credential modal. Same input treatment as
@@ -12,6 +12,9 @@ import { T } from './strings';
 // only signals a *first* wake internally (`waking`), and returns true for any
 // accepted key, first or not.
 export function KeyPanel() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const lang = useFacilityStore((s) => s.lang);
   const activate = useFacilityStore((s) => s.activate);
   const removeKey = useFacilityStore((s) => s.removeKey);
@@ -43,7 +46,7 @@ export function KeyPanel() {
 
   return (
     <Modal transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
+      <View testID="access-backdrop" style={styles.backdrop}>
         <View style={styles.panel}>
           {/* ACCESS is the small mono eyebrow; her serif carries the question
               under it (4a) — the two were the wrong way round. */}
@@ -57,7 +60,7 @@ export function KeyPanel() {
               value={draft}
               onChangeText={onChangeText}
               placeholder={t.gatePh}
-              placeholderTextColor={palette.textFaint}
+              placeholderTextColor={p.textFaint}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
@@ -95,10 +98,10 @@ export function KeyPanel() {
 }
 
 // 4a's ACCESS modal, verbatim.
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#080806cc',
+    backgroundColor: p.scrimStrong,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 22,
@@ -110,20 +113,20 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     borderRadius: 18,
-    backgroundColor: palette.panelAlt,
+    backgroundColor: p.panelAlt,
     borderWidth: 1,
-    borderColor: palette.hairline,
+    borderColor: p.hairline,
     gap: 13,
   },
   eyebrow: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.24,
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   title: {
     fontSize: ms(19),
     lineHeight: ms(19) * 1.34,
-    color: palette.text,
+    color: p.text,
   },
   inputRow: {
     flexDirection: 'row',
@@ -131,26 +134,26 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 12,
     paddingHorizontal: 13,
-    backgroundColor: palette.bgDeep,
+    backgroundColor: p.bgDeep,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 11,
   },
   chevron: {
     fontSize: ms(10),
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   input: {
     flex: 1,
     padding: 0,
     fontSize: ms(12),
     letterSpacing: ms(12) * 0.06,
-    color: palette.text,
+    color: p.text,
   },
   error: {
     fontSize: ms(9),
     lineHeight: ms(9) * 1.6,
-    color: palette.dangerSoft,
+    color: p.dangerSoft,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -159,7 +162,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: palette.borderLift,
+    borderColor: p.borderLift,
     borderRadius: 11,
     paddingVertical: 12,
     alignItems: 'center',
@@ -167,13 +170,13 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.18,
-    color: palette.textDim,
+    color: p.textDim,
   },
   saveButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: palette.amberEdge,
-    backgroundColor: palette.amberWash,
+    borderColor: p.amberEdge,
+    backgroundColor: p.amberWash,
     borderRadius: 11,
     paddingVertical: 12,
     alignItems: 'center',
@@ -181,7 +184,7 @@ const styles = StyleSheet.create({
   saveText: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.18,
-    color: palette.amber,
+    color: p.amber,
   },
   // the one control that destroys something: red, because that is the state
   // the design shows when you are about to press it
@@ -190,7 +193,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.16,
-    color: palette.danger,
+    color: p.danger,
     textAlign: 'center',
   },
-});
+}));

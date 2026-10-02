@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette } from '../core/theme';
+import { font, ms, themed } from '../core/theme';
 
 // One preferences row, in one place, because modules contribute rows here too
 // and a room reproducing the shell's geometry from memory is how two of them
@@ -21,6 +21,8 @@ export function PrefRow({
   valueColor?: string;
   testID?: string;
 }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
   const lang = useFacilityStore((s) => s.lang);
   const body = (
     <>
@@ -47,7 +49,7 @@ export function PrefRow({
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -56,16 +58,16 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   rowLabel: {
     fontSize: ms(11),
     letterSpacing: ms(11) * 0.06,
-    color: palette.text,
+    color: p.text,
   },
   rowValue: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.16,
-    color: palette.amber,
+    color: p.amberText,
   },
-});
+}));

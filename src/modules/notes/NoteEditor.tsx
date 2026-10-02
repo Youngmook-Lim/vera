@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFacilityStore } from '../../core/store';
-import { font, ms, palette, serif } from '../../core/theme';
+import { PALETTES, font, ms, serif, themed } from '../../core/theme';
 import { DayPicker } from './DayPicker';
 import { MAX_TEXT, isSavable } from './schedule';
 import type { Note } from './stored';
@@ -12,6 +12,8 @@ import { TimePicker } from './TimePicker';
 // Writing one note. Held as local state and handed to the store whole on
 // SAVE, so a half-typed note is never on the disk and never scheduled.
 export function NoteEditor({
+  // The accent arrives already darkened from the room above; this is for the
+  // editor's own ink.
   note,
   onDone,
   accent,
@@ -20,6 +22,9 @@ export function NoteEditor({
   onDone: () => void;
   accent: string;
 }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const lang = useFacilityStore((s) => s.lang);
   const save = useNotesStore((s) => s.save);
   const remove = useNotesStore((s) => s.remove);
@@ -62,7 +67,7 @@ export function NoteEditor({
           setRefused(false);
         }}
         placeholder={t.placeholder}
-        placeholderTextColor={palette.notes.inkGhost}
+        placeholderTextColor={p.notes.inkGhost}
         maxLength={MAX_TEXT}
         multiline
       />
@@ -100,14 +105,14 @@ export function NoteEditor({
           accessibilityState={{ disabled: !savable }}
           disabled={!savable}
           onPress={() => void onSave()}
-          style={[styles.save, { borderColor: savable ? accent : palette.notes.cardBorder }]}
+          style={[styles.save, { borderColor: savable ? accent : p.notes.cardBorder }]}
         >
           <Text
             style={[
               styles.saveText,
               {
                 fontFamily: font('mono', 600, lang),
-                color: savable ? accent : palette.notes.inkGhost,
+                color: savable ? accent : p.notes.inkGhost,
               },
             ]}
           >
@@ -119,15 +124,15 @@ export function NoteEditor({
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   editor: { paddingHorizontal: 22, paddingTop: 14, gap: 14 },
   text: {
     minHeight: ms(60),
     fontSize: ms(17),
-    color: palette.notes.ink,
-    backgroundColor: palette.notes.card,
+    color: p.notes.ink,
+    backgroundColor: p.notes.card,
     borderWidth: 1,
-    borderColor: palette.notes.cardBorder,
+    borderColor: p.notes.cardBorder,
     borderRadius: 12,
     padding: 14,
     textAlignVertical: 'top',
@@ -135,11 +140,11 @@ const styles = StyleSheet.create({
   legend: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.22,
-    color: palette.notes.inkDim,
+    color: p.notes.inkDim,
   },
-  refused: { fontSize: ms(8.5), color: palette.danger },
+  refused: { fontSize: ms(8.5), color: p.danger },
   actions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 },
-  del: { fontSize: ms(8.5), letterSpacing: ms(8.5) * 0.16, color: palette.danger },
+  del: { fontSize: ms(8.5), letterSpacing: ms(8.5) * 0.16, color: p.danger },
   save: {
     marginLeft: 'auto',
     paddingHorizontal: 18,
@@ -148,4 +153,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   saveText: { fontSize: ms(8.5), letterSpacing: ms(8.5) * 0.16 },
-});
+}));

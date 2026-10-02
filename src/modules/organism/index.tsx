@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFacilityStore } from '../../core/store';
-import { font, ms, palette } from '../../core/theme';
+import { PALETTES, font, ms, themed } from '../../core/theme';
 import { T } from '../../shell/strings';
 import type { ModuleDef } from '../types';
 import { Blob, BLOB_SIZE } from './Blob';
@@ -19,6 +19,7 @@ const TILE_ICON_PX = 58; // matches Cabinet's current hardcoded mod01 row
 // The doorway rule (spec §4): this is the one exit, top-left, fixed at 44px,
 // drawn in the terrarium's own ink — never the shell's amber.
 function ExitAndLabel({ lang }: { lang: 'en' | 'ko' }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   const setView = useFacilityStore((s) => s.setView);
   return (
     <View style={styles.headerLeft}>
@@ -36,6 +37,9 @@ function ExitAndLabel({ lang }: { lang: 'en' | 'ko' }) {
 }
 
 export function OrganismScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   const insets = useSafeAreaInsets();
   const lang = useFacilityStore((s) => s.lang);
   const { hunger, feed } = useOrganism();
@@ -66,7 +70,7 @@ export function OrganismScreen() {
           <Text
             style={[
               styles.statusPill,
-              { color: hungry ? palette.organism.hungry : palette.organism.green },
+              { color: hungry ? p.organism.hungry : p.organism.green },
               { fontFamily: font('mono', 600, lang) },
             ]}
           >
@@ -115,7 +119,7 @@ export function OrganismScreen() {
                   styles.statBarFill,
                   {
                     width: `${pct}%`,
-                    backgroundColor: hungry ? palette.organism.hungry : palette.organism.green,
+                    backgroundColor: hungry ? p.organism.hungry : p.organism.green,
                   },
                 ]}
               />
@@ -139,7 +143,7 @@ export function OrganismScreen() {
             <Text
               style={[
                 styles.statValue,
-                { color: palette.organism.green },
+                { color: p.organism.green },
                 { fontFamily: font('display', 700, lang) },
               ]}
             >
@@ -176,6 +180,9 @@ export function OrganismScreen() {
 // hardcodes for its mod01 row, moved here so Task 18 can swap it in from the
 // registry (see registry.ts's comment for the shape it expects).
 function OrganismTile({ onPress }: { onPress: () => void }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const tileStyles = TileStylesSheets[theme];
+  const p = PALETTES[theme];
   const lang = useFacilityStore((s) => s.lang);
   const { hunger } = useOrganism();
   const t = T[lang];
@@ -196,7 +203,7 @@ function OrganismTile({ onPress }: { onPress: () => void }) {
           <Text
             style={[
               tileStyles.status,
-              { color: hungry ? palette.organism.hungry : palette.organism.green },
+              { color: hungry ? p.organism.hungry : p.organism.green },
               { fontFamily: font('mono', 500, lang) },
             ]}
           >
@@ -212,7 +219,7 @@ function OrganismTile({ onPress }: { onPress: () => void }) {
               tileStyles.hungerFill,
               {
                 width: `${pct}%`,
-                backgroundColor: hungry ? palette.organism.hungry : palette.organism.green,
+                backgroundColor: hungry ? p.organism.hungry : p.organism.green,
               },
             ]}
           />
@@ -232,10 +239,10 @@ export const organism: ModuleDef = {
   Screen: OrganismScreen,
 };
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.organism.bg,
+    backgroundColor: p.organism.bg,
   },
   header: {
     flexDirection: 'row',
@@ -245,7 +252,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -261,16 +268,16 @@ const styles = StyleSheet.create({
   },
   exitGlyph: {
     fontSize: ms(15),
-    color: palette.organism.ink,
+    color: p.organism.ink,
   },
   veraLabel: {
     fontSize: ms(10),
-    color: palette.organism.ink,
+    color: p.organism.ink,
   },
   title: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.14,
-    color: palette.organism.label,
+    color: p.organism.label,
   },
   body: {
     alignItems: 'center',
@@ -290,9 +297,9 @@ const styles = StyleSheet.create({
   dayPill: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.08,
-    color: palette.organism.label,
+    color: p.organism.label,
     borderWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -302,9 +309,9 @@ const styles = StyleSheet.create({
     width: VIVARIUM_PX,
     height: VIVARIUM_PX,
     borderRadius: VIVARIUM_PX / 2,
-    backgroundColor: palette.organism.well,
+    backgroundColor: p.organism.well,
     borderWidth: 1,
-    borderColor: palette.organism.wellBorder,
+    borderColor: p.organism.wellBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -317,13 +324,13 @@ const styles = StyleSheet.create({
     marginTop: 13,
     fontSize: ms(9.5),
     letterSpacing: ms(9.5) * 0.18,
-    color: palette.organism.label,
+    color: p.organism.label,
   },
   hint: {
     marginTop: 6,
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.1,
-    color: palette.organism.textBright,
+    color: p.organism.textBright,
   },
   statsRow: {
     marginTop: 15,
@@ -333,33 +340,33 @@ const styles = StyleSheet.create({
   },
   statTile: {
     flex: 1,
-    backgroundColor: palette.organism.card,
+    backgroundColor: p.organism.card,
     borderWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
     borderRadius: 12,
     padding: 10,
   },
   statLabel: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.1,
-    color: palette.organism.label,
+    color: p.organism.label,
   },
   statValue: {
     marginTop: 5,
     fontSize: ms(15),
-    color: palette.organism.textBright,
+    color: p.organism.textBright,
   },
   statSub: {
     marginTop: 5,
     fontSize: ms(8),
-    color: palette.organism.label,
+    color: p.organism.label,
   },
   statBarTrack: {
     marginTop: 6,
     height: 3,
     borderRadius: 2,
     overflow: 'hidden',
-    backgroundColor: palette.organism.wellBorder,
+    backgroundColor: p.organism.wellBorder,
   },
   statBarFill: {
     height: 3,
@@ -370,14 +377,14 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.16,
-    color: palette.organism.label,
+    color: p.organism.label,
   },
   mutLog: {
     marginTop: 8,
     width: '100%',
-    backgroundColor: palette.organism.card,
+    backgroundColor: p.organism.card,
     borderWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -388,11 +395,11 @@ const styles = StyleSheet.create({
   },
   mutRowBorder: {
     borderBottomWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
   },
   mutDate: {
     fontSize: ms(9),
-    color: palette.organism.label,
+    color: p.organism.label,
     flexShrink: 0,
     minWidth: 44,
   },
@@ -400,11 +407,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: ms(11),
     lineHeight: ms(11) * 1.45,
-    color: palette.organism.text,
+    color: p.organism.text,
   },
-});
+}));
 
-const tileStyles = StyleSheet.create({
+const TileStylesSheets = themed((p) => StyleSheet.create({
   // `gap:15px; padding:14px; border-radius:14px` (4a)
   row: {
     flexDirection: 'row',
@@ -412,18 +419,18 @@ const tileStyles = StyleSheet.create({
     gap: 15,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: palette.organism.card,
+    backgroundColor: p.organism.card,
     borderWidth: 1,
-    borderColor: palette.organism.cardBorder,
+    borderColor: p.organism.cardBorder,
   },
   blobWell: {
     width: TILE_ICON_PX,
     height: TILE_ICON_PX,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: palette.organism.well,
+    backgroundColor: p.organism.well,
     borderWidth: 1,
-    borderColor: palette.organism.wellBorder,
+    borderColor: p.organism.wellBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -443,7 +450,7 @@ const tileStyles = StyleSheet.create({
   name: {
     fontSize: ms(10),
     letterSpacing: ms(10) * 0.1,
-    color: palette.organism.textBright,
+    color: p.organism.textBright,
   },
   status: {
     fontSize: ms(7.5),
@@ -452,17 +459,17 @@ const tileStyles = StyleSheet.create({
   sub: {
     marginTop: 6,
     fontSize: ms(8),
-    color: palette.organism.inkDim,
+    color: p.organism.inkDim,
   },
   hungerTrack: {
     marginTop: 9,
     height: 3,
     borderRadius: 2,
     overflow: 'hidden',
-    backgroundColor: palette.organism.well,
+    backgroundColor: p.organism.well,
   },
   hungerFill: {
     height: 4,
     borderRadius: 2,
   },
-});
+}));

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { askBatteryUnrestricted, isBatteryUnrestricted } from '../core/power';
 import { useFacilityStore } from '../core/store';
-import { palette } from '../core/theme';
+import { usePalette } from '../core/useTheme';
 import { PrefRow } from './PrefRow';
 import { T } from './strings';
 
@@ -17,6 +17,8 @@ import { T } from './strings';
 // undo this in the OS at any time, and a row repeating its own last request
 // would go on claiming the cards are safe long after they had stopped coming.
 export function BatteryRow() {
+  // No sheet in this file at all — one inline colour, so the hook alone.
+  const p = usePalette();
   const lang = useFacilityStore((s) => s.lang);
   const t = T[lang];
 
@@ -43,7 +45,7 @@ export function BatteryRow() {
   // even when the read does not.
   const value = free === true ? t.batteryFree : free === false ? t.batteryHeld : t.batteryUnknown;
   const valueColor =
-    free === true ? undefined : free === false ? palette.danger : palette.textFaint;
+    free === true ? undefined : free === false ? p.danger : p.textFaint;
 
   return (
     <PrefRow

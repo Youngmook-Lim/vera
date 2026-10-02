@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExtractRecord, PromptRecord } from '../core/store';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette } from '../core/theme';
+import { font, ms, themed } from '../core/theme';
 import type { Memory } from '../vera/memory';
 import { MODES, soulConstName } from '../vera/modes/registry';
 import { CORE_SOUL_MD } from '../vera/soul';
@@ -177,6 +177,8 @@ const buildMemoryMd = (memory: Memory, cleared: number): string => {
 };
 
 export function FileScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
   const insets = useSafeAreaInsets();
   const view = useFacilityStore((s) => s.view);
   const lang = useFacilityStore((s) => s.lang);
@@ -215,6 +217,7 @@ export function FileScreen() {
 
   return (
     <View
+      testID="file-screen"
       style={[
         styles.screen,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
@@ -284,10 +287,10 @@ export function FileScreen() {
 }
 
 // 4a's file reader, verbatim.
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.bgFile,
+    backgroundColor: p.bgFile,
   },
   // `padding:16px 20px 13px; border-bottom:1px solid #221f18`
   header: {
@@ -298,7 +301,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 13,
     borderBottomWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -307,17 +310,17 @@ const styles = StyleSheet.create({
   },
   back: {
     fontSize: ms(11),
-    color: palette.textDim,
+    color: p.textDim,
   },
   name: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.14,
-    color: palette.text,
+    color: p.text,
   },
   meta: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.textGhostest,
+    color: p.textGhostest,
   },
   body: {
     flex: 1,
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
     fontSize: ms(10.5),
     lineHeight: ms(10.5) * 1.9,
     letterSpacing: ms(10.5) * 0.01,
-    color: palette.textMuted,
+    color: p.textMuted,
   },
   // `padding:14px 20px 20px; border-top:1px solid #221f18`
   footer: {
@@ -342,12 +345,12 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 20,
     borderTopWidth: 1,
-    borderColor: palette.borderSoft,
+    borderColor: p.borderSoft,
   },
   footerLeft: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.22,
-    color: palette.sealed,
+    color: p.sealed,
   },
   // The transcript's own CLEAR chrome, verbatim from LogScreen: one delete
   // should not look like two different controls depending on which file it is
@@ -360,17 +363,17 @@ const styles = StyleSheet.create({
   clear: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.18,
-    color: palette.danger,
+    color: p.danger,
   },
   keep: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   eraseChip: {
     borderWidth: 1,
-    borderColor: '#ff4a3d55',
-    backgroundColor: '#ff4a3d10',
+    borderColor: p.dangerEdge,
+    backgroundColor: p.dangerWash,
     borderRadius: 5,
     paddingVertical: 5,
     paddingHorizontal: 8,
@@ -378,11 +381,11 @@ const styles = StyleSheet.create({
   erase: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.16,
-    color: palette.danger,
+    color: p.danger,
   },
   footerRight: {
     fontSize: ms(7.5),
     letterSpacing: ms(7.5) * 0.12,
-    color: '#33302a',
+    color: p.footer,
   },
-});
+}));

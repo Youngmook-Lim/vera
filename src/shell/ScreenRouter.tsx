@@ -3,7 +3,7 @@ import React, { useEffect, type ComponentType } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 import type { View as ViewName } from '../core/store';
 import { useFacilityStore } from '../core/store';
-import { palette } from '../core/theme';
+import { themed } from '../core/theme';
 import { registry } from '../modules/registry';
 import type { ModuleId } from '../modules/types';
 import { isModule } from '../modules/types';
@@ -21,6 +21,9 @@ const MODULE_SCREENS: Partial<Record<ModuleId, ComponentType>> = Object.fromEntr
 );
 
 function CurrentView({ view }: { view: ViewName }) {
+  // Only the fallback surface below needs this, and only on an id with no
+  // folder behind it — but a dark blank on a pale app would read as a crash.
+  const styles = S[useFacilityStore((s) => s.theme)];
   switch (view) {
     case 'stage':
       return <Stage />;
@@ -50,6 +53,8 @@ function CurrentView({ view }: { view: ViewName }) {
 // The cabinet and the credential panel are overlays, not views — they sit on
 // top of whatever room is showing, and stepBack closes them before it moves.
 export function ScreenRouter() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
   const view = useFacilityStore((s) => s.view);
   const cabinetOpen = useFacilityStore((s) => s.cabinetOpen);
   const keyPanelOpen = useFacilityStore((s) => s.keyPanelOpen);
@@ -73,9 +78,9 @@ export function ScreenRouter() {
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   blank: {
     flex: 1,
-    backgroundColor: palette.bg,
+    backgroundColor: p.bg,
   },
-});
+}));
