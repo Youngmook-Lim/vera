@@ -6,7 +6,8 @@ import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
-import { ms, palette, voice } from '../../core/theme';
+import { DARK, LIGHT, emotionText, ms, palette, voice } from '../../core/theme';
+import { EMOTIONS } from '../../vera/emotions';
 import * as OpticModule from '../Optic';
 import { SEND_LATCH_MS, Stage, dockDots, keyboardShape } from '../Stage';
 import { T } from '../strings';
@@ -41,7 +42,7 @@ type Rendered = Awaited<ReturnType<typeof render>>;
 
 const awake = (over = {}) =>
   useFacilityStore.setState({
-    apiKey: 'sk-ant-api03-abcdefghijklmnop', emotion: 'calm', lang: 'en',
+    apiKey: 'sk-ant-api03-abcdefghijklmnop', emotion: 'calm', lang: 'en', theme: 'dark',
     line: '', shown: '', thinking: false, log: [], cabinetOpen: false,
     // Cleared explicitly: a notice left standing by an earlier test replaces
     // her line with the app's, and every assertion about what she said then
@@ -798,6 +799,95 @@ describe('the long-conversation mark', () => {
 // `1d`: the swipe handle under the stage became a button beside the input box.
 // The swipe went with it — the handle answered a tap OR an upward drag past
 // 22px, and the button answers a tap and nothing else.
+describe('the stage under both themes', () => {
+  it('takes its ground from the theme', async () => {
+    awake();
+    const dark = await render(<Stage />);
+    expect(flat(dark.getByTestId('stage').props.style).backgroundColor).toBe(DARK.bg);
+    await dark.unmount();
+
+    awake({ theme: 'light' });
+    const light = await render(<Stage />);
+    expect(flat(light.getByTestId('stage').props.style).backgroundColor).toBe(LIGHT.bg);
+    await light.unmount();
+  });
+
+  // Her iris is for the DOT, which keeps its hue in both themes — the design's
+  // "her iris keeps its hue". The 9px label beside it is type, and AMUSED's
+  // yellow is 1.10:1 on a pale strip.
+  it('darkens her emotion label on the pale strip, and not the dot', async () => {
+    awake({ emotion: 'amused', theme: 'light' });
+    const view = await render(<Stage />);
+    expect(flat(view.getByText('AMUSED').props.style).color)
+      .toBe(emotionText(EMOTIONS.amused.iris, 'light'));
+    expect(flat(view.getByTestId('strip-dot').props.style).backgroundColor)
+      .toBe(EMOTIONS.amused.iris);
+    await view.unmount();
+  });
+
+  it('leaves her label alone in the dark', async () => {
+    awake({ emotion: 'amused' });
+    const view = await render(<Stage />);
+    expect(flat(view.getByText('AMUSED').props.style).color).toBe(EMOTIONS.amused.iris);
+    await view.unmount();
+  });
+
+  // §3.1 of the spec: `color:` takes `amberText`, everything else takes
+  // `amber`. In DARK the two are the same hex, so a misclassified site is
+  // invisible there and wrong only here — which makes this the only test that
+  // can hold the classification at all.
+  it('splits amber by whether it is type, which only shows in the light', async () => {
+    awake({ theme: 'light', draft: 'something' });
+    const view = await render(<Stage />);
+
+    // Type. SEND needs a draft behind it: with the box empty it is inert and
+    // draws in `textFaint`, so an assertion there would pass whatever amber it
+    // had been given.
+    expect(flat(view.getByText('›').props.style).color).toBe(LIGHT.amberText);
+    expect(flat(view.getByText('SEND').props.style).color).toBe(LIGHT.amberText);
+
+    // An object: four 4px squares, so the hue is kept rather than darkened.
+    expect(flat(view.getByTestId('dock-dot-0').props.style).backgroundColor)
+      .toBe(LIGHT.amber);
+
+    await view.unmount();
+  });
+
+  // The caret is one blinking character and both candidates are amber, so it is
+  // the site where a misclassification would be hardest to see — which is the
+  // reason to pin it rather than to leave it. `caretOn` starts true and
+  // `typing` is `shown.length < line.length`, so a part-drawn line is the
+  // whole of the setup.
+  it('draws the caret as type, mid-sentence', async () => {
+    awake({ theme: 'light', line: 'Hello there.', shown: 'Hello' });
+    const view = await render(<Stage />);
+    expect(flat(view.getByTestId('caret').props.style).color).toBe(LIGHT.amberText);
+    await view.unmount();
+  });
+
+  // The handful of colours that are not in a sheet come off the live palette,
+  // and are the other half that is identical in dark.
+  it('takes its placeholder from the live palette', async () => {
+    awake({ theme: 'light' });
+    const view = await render(<Stage />);
+    expect(view.getByPlaceholderText('say something to her').props.placeholderTextColor)
+      .toBe(LIGHT.textFaint);
+    await view.unmount();
+  });
+
+  it('offers the slider once she is awake, and never before', async () => {
+    awake();
+    const view = await render(<Stage />);
+    expect(view.getByTestId('theme-slider')).toBeTruthy();
+    await view.unmount();
+
+    useFacilityStore.setState({ apiKey: '', emotion: 'dormant', log: [] });
+    const gated = await render(<Stage />);
+    expect(gated.queryByTestId('theme-slider')).toBeNull();
+    await gated.unmount();
+  });
+});
+
 describe('the cabinet dock', () => {
   beforeEach(() => awake());
 
@@ -862,7 +952,7 @@ describe('the cabinet dock', () => {
     const drawn = [0, 1, 2, 3, 4, 5].map(
       (i) => flat(view.getByTestId(`dock-dot-${i}`).props.style).backgroundColor,
     );
-    expect(drawn).toEqual(dockDots(false));
+    expect(drawn).toEqual(dockDots(false, DARK));
     await view.unmount();
 
     awake({ cabinetOpen: true });
@@ -870,7 +960,7 @@ describe('the cabinet dock', () => {
     const lit = [0, 1, 2, 3, 4, 5].map(
       (i) => flat(open.getByTestId(`dock-dot-${i}`).props.style).backgroundColor,
     );
-    expect(lit).toEqual(dockDots(true));
+    expect(lit).toEqual(dockDots(true, DARK));
     await open.unmount();
   });
 });
@@ -881,7 +971,7 @@ describe('the cabinet dock', () => {
 // dot 2 is still dim. They are a gradient, so slot 04 filling changes nothing.
 describe('dockDots', () => {
   it('rests in three tiers, brightest first', () => {
-    expect(dockDots(false)).toEqual([
+    expect(dockDots(false, DARK)).toEqual([
       palette.amber,
       palette.hairlineDim, palette.hairlineDim,
       palette.hairline, palette.hairline, palette.hairline,
@@ -891,7 +981,7 @@ describe('dockDots', () => {
   // The whole top row goes amber and the bottom row goes amber at the edge's
   // own strength: the icon fills with light rather than changing shape.
   it('fills with light when the drawer is open', () => {
-    expect(dockDots(true)).toEqual([
+    expect(dockDots(true, DARK)).toEqual([
       palette.amber, palette.amber, palette.amber,
       palette.amberEdge, palette.amberEdge, palette.amberEdge,
     ]);
@@ -899,8 +989,8 @@ describe('dockDots', () => {
 
   // The lead dot is the one thing that does not move between the two states.
   it('keeps its lead dot amber either way', () => {
-    expect(dockDots(false)[0]).toBe(palette.amber);
-    expect(dockDots(true)[0]).toBe(palette.amber);
+    expect(dockDots(false, DARK)[0]).toBe(DARK.amber);
+    expect(dockDots(true, DARK)[0]).toBe(DARK.amber);
   });
 });
 

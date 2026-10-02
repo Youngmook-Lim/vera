@@ -21,7 +21,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { longWarning } from '../core/conversation';
 import { useFacilityStore } from '../core/store';
-import { font, ms, palette, serif, voice } from '../core/theme';
+import {
+  PALETTES,
+  emotionText,
+  font,
+  ms,
+  serif,
+  themed,
+  voice,
+  type Palette,
+} from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
 import { KeyGate } from './KeyGate';
 import { ModePicker } from './ModePicker';
@@ -31,6 +40,7 @@ import { useKeyboardState } from 'react-native-keyboard-controller';
 import { useKeyboardInset, useKeyboardProgress } from './useKeyboardInset';
 import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
+import { ThemeSlider } from './ThemeSlider';
 import { ThinkingDots } from './ThinkingDots';
 
 // Nothing on the stage but her: an eye, a label, one line of dialogue, and one
@@ -101,11 +111,13 @@ const DOCK_TRACK_PX = DOCK_PX + DOCK_GAP_PX;
 // rooms they read exactly like one. The design hardwires them and its own
 // cabinet shows all three rooms while the second dot is still dim — so this is
 // a gradient, top-left brightest, and slot 04 filling changes nothing here.
-export const dockDots = (open: boolean): readonly string[] => {
-  const mid = open ? palette.amber : palette.hairlineDim;
-  const rest = open ? palette.amberEdge : palette.hairline;
+export const dockDots = (open: boolean, p: Palette): readonly string[] => {
+  const mid = open ? p.amber : p.hairlineDim;
+  const rest = open ? p.amberEdge : p.hairline;
   // The lead dot is the one thing that does not move: amber in both states.
-  return [palette.amber, mid, mid, rest, rest, rest];
+  // Amber as an OBJECT here — these are 4px squares, not type — so it takes
+  // `amber` rather than `amberText` in both themes.
+  return [p.amber, mid, mid, rest, rest, rest];
 };
 
 // Everything the keyboard changes the SHAPE of, as one function of how far it
@@ -183,14 +195,17 @@ function PulseDot({
   color,
   duration,
   size = HEADER_DOT_PX,
+  testID,
 }: {
   color: string;
   duration: number;
   size?: number;
+  testID?: string;
 }) {
   const style = usePulseOpacity(duration / 2, 1, 0.28);
   return (
     <Animated.View
+      testID={testID}
       style={[
         { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
         style,
@@ -249,6 +264,11 @@ export function Stage() {
   // system chrome, not instead of it.
   const insets = useSafeAreaInsets();
   const keyboardInset = useKeyboardInset();
+  // Both sheets were built at import; this picks one. `p` is for the handful of
+  // colours that are not in a sheet at all — the caret and the placeholder.
+  const theme = useFacilityStore((s) => s.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   // The inset is a shared value on the UI thread: it can move the stage but it
   // cannot decide what to render. This is the same library's JS-side view of
   // the same keyboard, and it is what puts the cabinet's button out of reach.
@@ -456,6 +476,7 @@ export function Stage() {
 
   return (
     <Animated.View
+      testID="stage"
       style={[styles.stage, { paddingTop: insets.top }, keyboardInset]}
       onTouchStart={(e) => aim(e.nativeEvent.pageX, e.nativeEvent.pageY)}
     >
@@ -468,13 +489,19 @@ export function Stage() {
             be level with neither. */}
         <ModePicker leading={<PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} />} />
         {awake ? (
-          // Three drawn dots, not a "•••" glyph — the design sets them at 3px
-          // with a 3px gap, which no bullet run reproduces.
-          <Pressable onPress={() => setView('sys')} hitSlop={12} style={styles.headerDots}>
-            <View style={styles.headerDot} />
-            <View style={styles.headerDot} />
-            <View style={styles.headerDot} />
-          </Pressable>
+          <View style={styles.headerRight}>
+            {/* The theme's switch sits level with the register tag on the other
+                side of the header, and immediately left of the dots — the
+                design's own `gap:4` between the two. */}
+            <ThemeSlider />
+            {/* Three drawn dots, not a "•••" glyph — the design sets them at
+                3px with a 3px gap, which no bullet run reproduces. */}
+            <Pressable onPress={() => setView('sys')} hitSlop={12} style={styles.headerDots}>
+              <View style={styles.headerDot} />
+              <View style={styles.headerDot} />
+              <View style={styles.headerDot} />
+            </Pressable>
+          </View>
         ) : null}
       </View>
 
@@ -556,9 +583,17 @@ export function Stage() {
           style={[styles.window, hasBody ? styles.windowOpen : null, windowGap]}
         >
           <View testID="status-strip" style={styles.strip}>
-            <PulseDot color={iris} duration={EMOTIONS[emotion].blinkMs} size={STRIP_DOT_PX} />
+            <PulseDot
+              testID="strip-dot"
+              color={iris}
+              duration={EMOTIONS[emotion].blinkMs}
+              size={STRIP_DOT_PX}
+            />
             <Text
-              style={[styles.emotionLabel, { color: iris, fontFamily: font('mono', 500, lang) }]}
+              style={[
+                styles.emotionLabel,
+                { color: emotionText(iris, theme), fontFamily: font('mono', 500, lang) },
+              ]}
             >
               {emotionLabel(emotion, lang)}
             </Text>
@@ -625,7 +660,7 @@ export function Stage() {
                     // colour but not opacity, so the blink is amber/transparent.
                     <Text
                       testID="caret"
-                      style={{ color: caretOn ? palette.amber : 'transparent' }}
+                      style={{ color: caretOn ? p.amberText : 'transparent' }}
                     >
                       {CARET}
                     </Text>
@@ -674,7 +709,7 @@ export function Stage() {
                 style={[styles.dock, cabinetOpen && styles.dockLit]}
               >
                 <View style={styles.dockGrid}>
-                  {dockDots(cabinetOpen).map((color, i) => (
+                  {dockDots(cabinetOpen, p).map((color, i) => (
                     <View
                       key={i}
                       testID={`dock-dot-${i}`}
@@ -692,7 +727,7 @@ export function Stage() {
                 value={draft}
                 onChangeText={setDraft}
                 placeholder={t.ask}
-                placeholderTextColor={palette.textFaint}
+                placeholderTextColor={p.textFaint}
                 onSubmitEditing={() => void send()}
               />
               {/* `lit` comes last so it wins over `inert`: a successful send
@@ -732,10 +767,10 @@ export function Stage() {
 
 // Every number below is read off 4a in `design/The Facility - Overhaul.dc.html`.
 // Layout is 1:1 with the mock; only type passes through ms().
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   stage: {
     flex: 1,
-    backgroundColor: palette.bg,
+    backgroundColor: p.bg,
   },
   // `padding:16px 20px 0`
   header: {
@@ -750,6 +785,12 @@ const styles = StyleSheet.create({
     zIndex: 30,
     elevation: 30,
   },
+  // `display:flex;align-items:center;gap:4px` — the slider and the dots.
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   headerDots: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -761,7 +802,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: palette.textGhost,
+    backgroundColor: p.textGhost,
   },
   // `padding:15px 0 0`, centred
   // 4a's 15, plus the tag pill's own vertical chrome and a little over. The
@@ -781,9 +822,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 22,
-    backgroundColor: palette.panel,
+    backgroundColor: p.panel,
     borderWidth: 1,
-    borderColor: palette.borderPill,
+    borderColor: p.borderPill,
   },
   hairlines: {
     gap: 2.5,
@@ -792,18 +833,18 @@ const styles = StyleSheet.create({
   hairline: {
     height: 1.5,
     borderRadius: 1,
-    backgroundColor: palette.hairlineDim,
+    backgroundColor: p.hairlineDim,
   },
   hairlineLong: { width: 11 },
   hairlineShort: { width: 7 },
   hairlineMid: { width: 9 },
   hairlineAmber: {
-    backgroundColor: palette.amber,
+    backgroundColor: p.amber,
   },
   pillText: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.2,
-    color: palette.textPill,
+    color: p.textPill,
   },
   // The eye and her window as one block, centred in the space left over. The
   // stage centred the eye and her line together like this before the window
@@ -834,9 +875,9 @@ const styles = StyleSheet.create({
   // border-radius:14px`
   window: {
     marginHorizontal: WINDOW_MARGIN,
-    backgroundColor: palette.panelAlt,
+    backgroundColor: p.panelAlt,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -857,9 +898,9 @@ const styles = StyleSheet.create({
     gap: 9,
     paddingVertical: 11,
     paddingHorizontal: 14,
-    backgroundColor: palette.panel,
+    backgroundColor: p.panel,
     borderBottomWidth: 1,
-    borderBottomColor: palette.borderSoft,
+    borderBottomColor: p.borderSoft,
   },
   // colour comes from the iris, not a fixed grey — applyEmotion sets it.
   emotionLabel: {
@@ -877,7 +918,7 @@ const styles = StyleSheet.create({
   status: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
-    color: palette.textDim,
+    color: p.textDim,
   },
   // The thread's length, in the app's error red — the same colour a notice
   // uses, because this is the app speaking about itself and not a state of
@@ -886,7 +927,7 @@ const styles = StyleSheet.create({
   longCount: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
-    color: palette.danger,
+    color: p.danger,
   },
   // `padding:20px 18px; overflow-y:auto`. `flexShrink` rather than `flex`: a
   // ScrollView claiming a flex share inside an auto-height parent collapses to
@@ -905,12 +946,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   line: {
-    color: palette.text,
+    color: p.text,
   },
   // Deliberately unlike her: the danger red, small, wide-tracked and mono.
   // Nothing on this screen looks like this except the system speaking.
   notice: {
-    color: palette.danger,
+    color: p.danger,
     fontSize: ms(9.5),
     lineHeight: ms(9.5) * 1.7,
     letterSpacing: ms(9.5) * 0.12,
@@ -937,9 +978,9 @@ const styles = StyleSheet.create({
     gap: 11,
     paddingVertical: 13,
     paddingHorizontal: 14,
-    backgroundColor: palette.panel,
+    backgroundColor: p.panel,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 12,
   },
   // The clip the collapse animates. `overflow:hidden` is what turns a shrinking
@@ -955,16 +996,16 @@ const styles = StyleSheet.create({
     marginRight: DOCK_GAP_PX,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.panel,
+    backgroundColor: p.panel,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: p.border,
     borderRadius: 12,
   },
   // The drawer open. SEND's idiom — the wash inside the edge — which is what
   // every lit control in the shell is drawn with.
   dockLit: {
-    backgroundColor: palette.amberWash,
-    borderColor: palette.amberEdge,
+    backgroundColor: p.amberWash,
+    borderColor: p.amberEdge,
   },
   // `grid-template-columns:repeat(3,4px);gap:2.5px`, which RN has no grid for:
   // six 4px children wrapping at three across is the same 17x10.5 block.
@@ -981,38 +1022,38 @@ const styles = StyleSheet.create({
   },
   chevron: {
     fontSize: ms(11),
-    color: palette.amber,
+    color: p.amberText,
   },
   input: {
     flex: 1,
     padding: 0,
     fontSize: ms(12.5),
-    color: palette.text,
+    color: p.text,
   },
   // a bordered button; amber because that is its hover state (see theme.ts)
   sendButton: {
     borderWidth: 1,
-    borderColor: palette.amberEdgeSoft,
+    borderColor: p.amberEdgeSoft,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 9,
   },
   // Held, and for SEND_LATCH_MS after the release.
   sendButtonLit: {
-    backgroundColor: palette.amberWash,
-    borderColor: palette.amberEdge,
+    backgroundColor: p.amberWash,
+    borderColor: p.amberEdge,
   },
   // Nothing to send, or a reply already in flight.
   sendButtonInert: {
-    borderColor: palette.border,
+    borderColor: p.border,
   },
   send: {
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.18,
-    color: palette.amber,
+    color: p.amberText,
   },
   sendInert: {
-    color: palette.textFaint,
+    color: p.textFaint,
   },
   // `padding:4px 0 14px; gap:8px`
-});
+}));
