@@ -1,4 +1,4 @@
-import { font, ms, palette, serif, serifItalic, voice } from '../theme';
+import { DARK, font, ms, serif, serifItalic, voice } from '../theme';
 
 test('ms scales mock px by 1.1 at half-dp precision', () => {
   expect(ms(10)).toBe(11);
@@ -28,14 +28,14 @@ test('serif is her voice only, and switches script with the language', () => {
 });
 
 test('token spot checks match the design doc 4a markup', () => {
-  expect(palette.bg).toBe('#14130f');
-  expect(palette.text).toBe('#f2e7d3');
-  expect(palette.amber).toBe('#f4b43a');
-  expect(palette.danger).toBe('#ff4a3d');
-  expect(palette.organism.bg).toBe('#0c110e');
-  expect(palette.organism.hungry).toBe('#ff8a4a');
-  expect(palette.advice.bg).toBe('#0f0f11');
-  expect(palette.advice.ink).toBe('#e9e6df');
+  expect(DARK.bg).toBe('#14130f');
+  expect(DARK.text).toBe('#f2e7d3');
+  expect(DARK.amber).toBe('#f4b43a');
+  expect(DARK.danger).toBe('#ff4a3d');
+  expect(DARK.organism.bg).toBe('#0c110e');
+  expect(DARK.organism.hungry).toBe('#ff8a4a');
+  expect(DARK.advice.bg).toBe('#0f0f11');
+  expect(DARK.advice.ink).toBe('#e9e6df');
 });
 
 // One size per script, not a ladder. The ladder shrank a long reply to fit and

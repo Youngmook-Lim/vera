@@ -46,7 +46,7 @@ export function KeyPanel() {
 
   return (
     <Modal transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.backdrop}>
+      <View testID="access-backdrop" style={styles.backdrop}>
         <View style={styles.panel}>
           {/* ACCESS is the small mono eyebrow; her serif carries the question
               under it (4a) — the two were the wrong way round. */}
@@ -101,7 +101,7 @@ export function KeyPanel() {
 const S = themed((p) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#080806cc',
+    backgroundColor: p.scrimStrong,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 22,

@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/react-native';
 import React from 'react';
 import { BackHandler } from 'react-native';
 import { useFacilityStore } from '../../core/store';
+import { DARK, LIGHT } from '../../core/theme';
 import { ScreenRouter } from '../ScreenRouter';
 
 // Rendering every room pulls in her whole surface area. Nothing here is
@@ -93,10 +94,22 @@ test('the rooms come from the registry', async () => {
   await mod01.unmount();
 
   // An id with no folder behind it — an empty slot, or a benched room — is a
-  // dark surface that back still works from, never a crash.
+  // blank surface that back still works from, never a crash. It takes the
+  // theme like everything else: a DARK blank on a pale app would read as the
+  // crash it was built not to be.
   useFacilityStore.setState({ view: 'mod04' });
   const empty = await render(<ScreenRouter />);
-  expect(empty.getByTestId('view-mod04')).toBeTruthy();
+  const ground = (v: Awaited<ReturnType<typeof render>>) =>
+    Object.assign(
+      {},
+      ...[v.getByTestId('view-mod04').props.style].flat(Infinity).filter(Boolean) as object[],
+    ).backgroundColor;
+  expect(ground(empty)).toBe(DARK.bg);
+  await empty.unmount();
+
+  useFacilityStore.setState({ view: 'mod04', theme: 'light' });
+  const pale = await render(<ScreenRouter />);
+  expect(ground(pale)).toBe(LIGHT.bg);
 });
 
 test('the cabinet is an overlay, not a view', async () => {

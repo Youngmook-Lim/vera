@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
-import { palette } from '../../../core/theme';
+import { DARK } from '../../../core/theme';
 import { storage } from '../../../core/storage';
 import { useFacilityStore } from '../../../core/store';
 import { advice } from '../index';
@@ -233,7 +233,7 @@ describe('Module 02', () => {
     const kept = StyleSheet.flatten(view.getByTestId('advice-row-3-star-glyph').props.style);
     const unkept = StyleSheet.flatten(view.getByTestId('advice-row-0-star-glyph').props.style);
     expect(kept.color).toBe(EMOTIONS.suspicious.iris);
-    expect(unkept.color).toBe(palette.advice.inkGhost);
+    expect(unkept.color).toBe(DARK.advice.inkGhost);
     await view.unmount();
   });
 

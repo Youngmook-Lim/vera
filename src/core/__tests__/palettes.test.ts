@@ -106,6 +106,17 @@ describe('onLight', () => {
   });
 });
 
+// The migration's own guard. A `palette` export would compile, would pass every
+// other test in this repo, and would silently pin whatever imported it to one
+// theme forever — which is exactly how it survived as a scaffold through six
+// tasks of this change.
+describe('no theme-blind palette', () => {
+  it('offers none to import', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    expect('palette' in require('../theme')).toBe(false);
+  });
+});
+
 describe('themed', () => {
   it('builds one sheet per theme, and builds each exactly once', () => {
     const make = jest.fn((p: typeof DARK) => ({ box: { backgroundColor: p.bg } }));

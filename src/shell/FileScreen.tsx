@@ -372,8 +372,8 @@ const S = themed((p) => StyleSheet.create({
   },
   eraseChip: {
     borderWidth: 1,
-    borderColor: '#ff4a3d55',
-    backgroundColor: '#ff4a3d10',
+    borderColor: p.dangerEdge,
+    backgroundColor: p.dangerWash,
     borderRadius: 5,
     paddingVertical: 5,
     paddingHorizontal: 8,

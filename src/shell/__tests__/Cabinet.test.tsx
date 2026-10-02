@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
-import { palette } from '../../core/theme';
+import { DARK } from '../../core/theme';
 import { Cabinet } from '../Cabinet';
 
 const flat = (style: unknown): Record<string, unknown> =>
@@ -96,7 +96,7 @@ describe('Cabinet', () => {
       marginBottom: 100,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: palette.hairline,
+      borderColor: DARK.hairline,
     });
   });
 

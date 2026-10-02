@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../../core/i18n';
 import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
-import { font, ms, palette, serif } from '../../core/theme';
+import { PALETTES, emotionText, font, ms, serif, themed } from '../../core/theme';
 import type { ModuleDef } from '../types';
 import { advance, current, goTo } from '../deck';
 import { displayOrder } from '../favorites';
@@ -49,6 +49,9 @@ function Star({
   style: TextStyle;
 }) {
   const t = T[lang];
+  // Its own read: the unkept glyph is the room's own ink, which follows the
+  // theme, while the kept one is the accent handed down from the screen.
+  const p = PALETTES[useFacilityStore((st) => st.theme)];
   return (
     <Pressable
       testID={testID}
@@ -60,7 +63,7 @@ function Star({
     >
       <Text
         testID={`${testID}-glyph`}
-        style={[style, { color: on ? accent : palette.horror.inkGhost }]}
+        style={[style, { color: on ? accent : p.horror.inkGhost }]}
       >
         {on ? STAR_ON : STAR_OFF}
       </Text>
@@ -71,6 +74,7 @@ function Star({
 // The doorway rule (spec §4): the one exit, top-left, fixed at 44px, drawn in
 // this room's own ink — never the shell's amber.
 function ExitAndLabel({ lang }: { lang: Lang }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
   const setView = useFacilityStore((s) => s.setView);
   return (
     <View style={styles.headerLeft}>
@@ -91,6 +95,7 @@ function ExitAndLabel({ lang }: { lang: Lang }) {
 // than one: a single rule reads as a divider, and what this has to read as is
 // a sentence that is being kept from you.
 function Redaction() {
+  const styles = S[useFacilityStore((st) => st.theme)];
   return (
     <View testID="horror-redaction" style={styles.redaction}>
       <View style={[styles.redactionBar, { width: '100%' }]} />
@@ -100,6 +105,9 @@ function Redaction() {
 }
 
 export function HorrorScreen() {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   // Full bleed means full bleed: the room paints under the status bar and the
   // gesture bar, so it has to pad itself back off them. Without this the
   // header sits underneath Android's own top bar. The advice room does the
@@ -111,7 +119,7 @@ export function HorrorScreen() {
 
   // The room is in her building, so it is lit in whatever she is wearing —
   // the same as the advice room, and for the same reasons set out there.
-  const accent = EMOTIONS[emotion].iris;
+  const accent = emotionText(EMOTIONS[emotion].iris, theme);
 
   // The deck lives in the room's store, so it lives as long as the APP does
   // rather than as long as the room is open (2026-09-22). Nothing is written
@@ -371,6 +379,7 @@ export function HorrorScreen() {
 // The cabinet's preview of this room, painted in its own colours — the one
 // place a module's theme shows through the shell's neutral chrome (spec §4).
 function HorrorTile({ onPress }: { onPress: () => void }) {
+  const tileStyles = TileStylesSheets[useFacilityStore((st) => st.theme)];
   const lang = useFacilityStore((s) => s.lang);
   const t = T[lang];
   return (
@@ -398,10 +407,10 @@ export const horror: ModuleDef = {
   },
 };
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.horror.bg,
+    backgroundColor: p.horror.bg,
   },
   header: {
     flexDirection: 'row',
@@ -411,7 +420,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderColor: palette.horror.rule,
+    borderColor: p.horror.rule,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -427,16 +436,16 @@ const styles = StyleSheet.create({
   },
   exitGlyph: {
     fontSize: ms(15),
-    color: palette.horror.inkSoft,
+    color: p.horror.inkSoft,
   },
   veraLabel: {
     fontSize: ms(10),
-    color: palette.horror.inkSoft,
+    color: p.horror.inkSoft,
   },
   headerLabel: {
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.14,
-    color: palette.horror.inkDim,
+    color: p.horror.inkDim,
   },
   modes: {
     flexDirection: 'row',
@@ -453,7 +462,7 @@ const styles = StyleSheet.create({
   mode: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.16,
-    color: palette.horror.inkGhost,
+    color: p.horror.inkGhost,
   },
   cardScroller: {
     flex: 1,
@@ -465,9 +474,9 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
   },
   card: {
-    backgroundColor: palette.horror.card,
+    backgroundColor: p.horror.card,
     borderWidth: 1,
-    borderColor: palette.horror.cardBorder,
+    borderColor: p.horror.cardBorder,
     borderRadius: 14,
     paddingHorizontal: 22,
     paddingVertical: 26,
@@ -477,12 +486,12 @@ const styles = StyleSheet.create({
     fontFamily: serif(),
     fontSize: ms(19),
     lineHeight: ms(19) * 1.45,
-    color: palette.horror.ink,
+    color: p.horror.ink,
   },
   // The turn is the room. It reads a shade brighter than the setup so the
   // second sentence lands as the thing arriving rather than more of the first.
   turn: {
-    color: palette.horror.ink,
+    color: p.horror.ink,
   },
   // Sized off the sentence's own line height, so the bars stand exactly where
   // the words will be and the card does not resize when it turns over.
@@ -493,7 +502,7 @@ const styles = StyleSheet.create({
   redactionBar: {
     height: ms(19),
     borderRadius: 3,
-    backgroundColor: palette.horror.redaction,
+    backgroundColor: p.horror.redaction,
   },
   footer: {
     paddingHorizontal: 22,
@@ -516,13 +525,13 @@ const styles = StyleSheet.create({
     fontFamily: font('mono', 500),
     fontSize: ms(9),
     letterSpacing: ms(9) * 0.1,
-    color: palette.horror.inkDim,
+    color: p.horror.inkDim,
   },
   hint: {
     marginTop: 12,
     fontSize: ms(8),
     letterSpacing: ms(8) * 0.1,
-    color: palette.horror.inkGhost,
+    color: p.horror.inkGhost,
   },
   list: {
     flex: 1,
@@ -538,12 +547,12 @@ const styles = StyleSheet.create({
   },
   rowRule: {
     borderTopWidth: 1,
-    borderColor: palette.horror.rule,
+    borderColor: p.horror.rule,
   },
   rowIndex: {
     fontSize: ms(8.5),
     lineHeight: ms(13) * 1.45,
-    color: palette.horror.inkGhost,
+    color: p.horror.inkGhost,
     flexShrink: 0,
     minWidth: 30,
   },
@@ -555,40 +564,40 @@ const styles = StyleSheet.create({
     fontFamily: serif(),
     fontSize: ms(13),
     lineHeight: ms(13) * 1.45,
-    color: palette.horror.ink,
+    color: p.horror.ink,
   },
   rowTurn: {
     fontFamily: serif(),
     fontSize: ms(13),
     lineHeight: ms(13) * 1.45,
-    color: palette.horror.inkSoft,
+    color: p.horror.inkSoft,
   },
   rowStar: {
     fontSize: ms(13),
     lineHeight: ms(13) * 1.45,
   },
-});
+}));
 
-const tileStyles = StyleSheet.create({
+const TileStylesSheets = themed((p) => StyleSheet.create({
   // `height:86px; radius 14; padding:11px; justify-content:space-between`
   tile: {
     flex: 1,
     height: GRID_TILE_PX,
     borderRadius: 14,
-    backgroundColor: palette.horror.card,
+    backgroundColor: p.horror.card,
     borderWidth: 1,
-    borderColor: palette.horror.cardBorder,
+    borderColor: p.horror.cardBorder,
     justifyContent: 'space-between',
     padding: 11,
     overflow: 'hidden',
   },
   slot: {
     fontSize: ms(11),
-    color: palette.horror.inkGhost,
+    color: p.horror.inkGhost,
   },
   title: {
     fontSize: ms(13),
     lineHeight: ms(13) * 1.25,
-    color: palette.horror.ink,
+    color: p.horror.ink,
   },
-});
+}));

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { font, ms, palette } from '../../core/theme';
+import { useFacilityStore } from '../../core/store';
+import { PALETTES, font, ms, themed } from '../../core/theme';
 import { MINUTE_STEP } from './schedule';
 
 // Two columns of numbers, built rather than imported. Android's own clock
@@ -27,6 +28,9 @@ function Column({
   onStep: (direction: 1 | -1) => void;
   accent: string;
 }) {
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
   return (
     <View style={styles.column}>
       <Pressable testID={`${name}-up`} onPress={() => onStep(1)} hitSlop={10}>
@@ -34,7 +38,7 @@ function Column({
       </Pressable>
       <Text
         testID={`picked-${name}`}
-        style={[styles.value, { fontFamily: font('mono', 600), color: palette.notes.ink }]}
+        style={[styles.value, { fontFamily: font('mono', 600), color: p.notes.ink }]}
       >
         {pad(value)}
       </Text>
@@ -56,7 +60,10 @@ export function TimePicker({
   onChange: (t: { hour: number; minute: number }) => void;
   accent?: string;
 }) {
-  const lit = accent ?? palette.notes.ink;
+  const theme = useFacilityStore((st) => st.theme);
+  const styles = S[theme];
+  const p = PALETTES[theme];
+  const lit = accent ?? p.notes.ink;
 
   return (
     <View style={styles.row}>
@@ -77,10 +84,10 @@ export function TimePicker({
   );
 }
 
-const styles = StyleSheet.create({
+const S = themed((p) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   column: { alignItems: 'center', gap: 6 },
   caret: { fontSize: ms(9) },
   value: { fontSize: ms(26), letterSpacing: ms(26) * 0.04 },
-  colon: { fontSize: ms(22), color: palette.notes.inkDim },
-});
+  colon: { fontSize: ms(22), color: p.notes.inkDim },
+}));

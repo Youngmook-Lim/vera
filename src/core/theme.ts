@@ -59,9 +59,13 @@ export interface Palette {
   amberEdgeSoft: string;
   danger: string;
   dangerSoft: string;
+  dangerWash: string;
+  dangerEdge: string;
   sealed: string;
   scrim: string;
+  scrimStrong: string;
   sheet: string;
+  youBg: string;
   emptyNum: string;
   footer: string;
   // The two register ids are spelled out rather than imported from vera/modes,
@@ -125,6 +129,10 @@ export const DARK: Palette = {
   amberEdgeSoft: '#f4b43a66', // hover of the SEND button's #35322a
   danger: '#ff4a3d',
   dangerSoft: '#ff6a5a',
+  // The destructive chip's skin, on the amber button's idiom: a wash inside an
+  // edge. Spelled out in LogScreen and FileScreen until the theme needed them.
+  dangerWash: '#ff4a3d10',
+  dangerEdge: '#ff4a3d55',
   sealed: '#9d8757',
 
   // Four surfaces that were raw literals until the theme needed them: the
@@ -132,9 +140,16 @@ export const DARK: Palette = {
   // `Cabinet.tsx`, and the timestamp footer that `LogScreen`, `FileScreen` and
   // `SystemScreen` each wrote out separately.
   scrim: '#08080699',
+  // The ACCESS panel's, which dims harder than the cabinet's: it is a modal
+  // over the stage rather than a sheet in front of it. From `KeyPanel.tsx`.
+  scrimStrong: '#080806cc',
   sheet: '#17171a',
   emptyNum: '#2b2820',
   footer: '#33302a',
+  // The subject's own bubble in the LOG. It exists only inside that thread,
+  // one notch further from the page than `panel` is, which is what makes it
+  // read as a bubble rather than as the panel it sits on.
+  youBg: '#1c1b17',
 
   // Her two registers, worn by the tag beside the wordmark and by each choice
   // in the picker. Each is the iris of the state that register is most often
@@ -260,12 +275,22 @@ export const LIGHT: Palette = {
   danger: '#c62a1c',
   // Derived: kept as the more vivid of the pair, as in dark.
   dangerSoft: '#e04a38',
+  // Derived: the light red at the dark pair's own alphas.
+  dangerWash: '#c62a1c10',
+  dangerEdge: '#c62a1c55',
   // Derived: type only, on the SEALED label. 5.96:1.
   sealed: '#6b5730',
   scrim: '#1a1f2440',
+  // Derived: the same dim, harder, as in dark.
+  scrimStrong: '#1a1f2466',
   sheet: '#f8f9fa',
   emptyNum: '#d0d5da',
   footer: '#a9b0b7',
+  // Derived: one notch FURTHER from the page than `panel`, which on a pale
+  // ground means darker where in dark it meant lighter. The relationship is
+  // what matters — the bubble has to be the most-separated surface on the
+  // screen, or it stops reading as a bubble.
+  youBg: '#dce1e5',
   // Derived: each register's accent takes amber's own two steps — the hue for
   // fills, a darkened form for type. Supportive's rose darkens to #c8534b.
   mode: {
@@ -318,13 +343,6 @@ export const LIGHT: Palette = {
 };
 
 export const PALETTES: Record<Theme, Palette> = { dark: DARK, light: LIGHT };
-
-// TEMPORARY. Removed in the last code task of
-// `docs/superpowers/plans/2026-09-29-light-theme.md`, and the removal is the
-// point: every call site still reading this is a file the migration has not
-// reached, and it would look in a diff and in a green suite exactly like a file
-// that was finished. Deleting the export is the only detector.
-export const palette = DARK;
 
 // Both sheets, built ONCE at import and indexed at render. Not memoised per
 // render: styles stay static, which several comments in this repo lean on,

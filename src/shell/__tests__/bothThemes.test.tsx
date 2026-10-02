@@ -5,6 +5,7 @@ import { DARK, LIGHT, type Palette } from '../../core/theme';
 import { Cabinet } from '../Cabinet';
 import { FileScreen } from '../FileScreen';
 import { KeyGate } from '../KeyGate';
+import { KeyPanel } from '../KeyPanel';
 import { LogScreen } from '../LogScreen';
 import { Splash } from '../Splash';
 import { SystemScreen } from '../SystemScreen';
@@ -53,6 +54,9 @@ const SURFACES: [string, React.ComponentType, string, (p: Palette) => string][] 
   ['FileScreen', FileScreen, 'file-screen', (p) => p.bgFile],
   ['KeyGate', KeyGate, 'key-gate', (p) => p.panelAlt],
   ['Cabinet', Cabinet, 'cabinet-sheet', (p) => p.sheet],
+  // The ACCESS panel dims harder than the cabinet: it is a modal over the
+  // stage rather than a sheet in front of it.
+  ['KeyPanel', KeyPanel, 'access-backdrop', (p) => p.scrimStrong],
 ];
 
 describe.each(SURFACES)('%s', (_name, Screen, testID, ground) => {
@@ -64,6 +68,41 @@ describe.each(SURFACES)('%s', (_name, Screen, testID, ground) => {
     useFacilityStore.setState({ theme: 'light' });
     const light = await render(<Screen />);
     expect(flat(light.getByTestId(testID).props.style).backgroundColor).toBe(ground(LIGHT));
+    await light.unmount();
+  });
+});
+
+// Four tokens that only moved into the palette because the theme needed them,
+// and that nothing else in the suite reads. The erase chip is the sharper of
+// the two: it is the app's own voice, and dark's #ff4a3d is 2.87:1 on a pale
+// ground.
+describe('the tokens the theme forced out of hiding', () => {
+  it('themes the subject\u2019s own bubble and the destructive chip', async () => {
+    useFacilityStore.setState({
+      log: [
+        { who: 'you', text: 'something', t: Date.now() },
+        { who: 'vera', text: 'Noted.', t: Date.now() },
+      ],
+      // The chip stands only mid-confirmation, which is the one state on this
+      // screen where KEEP and ERASE are the only things worth reading.
+      confirmingClear: true,
+    });
+
+    const dark = await render(<LogScreen />);
+    expect(flat(dark.getByTestId('you-bubble').props.style).backgroundColor).toBe(DARK.youBg);
+    expect(flat(dark.getByTestId('erase-chip').props.style)).toMatchObject({
+      borderColor: DARK.dangerEdge,
+      backgroundColor: DARK.dangerWash,
+    });
+    await dark.unmount();
+
+    useFacilityStore.setState({ theme: 'light' });
+    const light = await render(<LogScreen />);
+    expect(flat(light.getByTestId('you-bubble').props.style).backgroundColor).toBe(LIGHT.youBg);
+    expect(flat(light.getByTestId('erase-chip').props.style)).toMatchObject({
+      borderColor: LIGHT.dangerEdge,
+      backgroundColor: LIGHT.dangerWash,
+    });
     await light.unmount();
   });
 });

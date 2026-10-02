@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
-import { palette } from '../../core/theme';
+import { DARK } from '../../core/theme';
 import { registry } from '../../modules/registry';
 import { isModule } from '../../modules/types';
 import { providerFor } from '../../vera/providers';
@@ -86,15 +86,15 @@ describe('SystemScreen', () => {
     // 4a sets the mask as the row's dim sub-line; amber belongs to CHANGE.
     // What matters here is that one refusal leaves it unmarked.
     const style = StyleSheet.flatten(view.getByTestId('key-mask').props.style);
-    expect(style.color).toBe(palette.textFaint);
-    expect(style.color).not.toBe(palette.danger);
+    expect(style.color).toBe(DARK.textFaint);
+    expect(style.color).not.toBe(DARK.danger);
   });
 
   it('marks the credential once refusals repeat', async () => {
     useFacilityStore.setState({ authFails: 2 });
     const view = await render(<SystemScreen />);
     const style = StyleSheet.flatten(view.getByTestId('key-mask').props.style);
-    expect(style.color).toBe(palette.danger);
+    expect(style.color).toBe(DARK.danger);
     expect(useFacilityStore.getState().apiKey).toBe(RAW_KEY); // still hers to change
   });
 

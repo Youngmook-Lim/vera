@@ -6,7 +6,7 @@ import { useKeyboardState } from 'react-native-keyboard-controller';
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
-import { DARK, LIGHT, emotionText, ms, palette, voice } from '../../core/theme';
+import { DARK, LIGHT, emotionText, ms, voice } from '../../core/theme';
 import { EMOTIONS } from '../../vera/emotions';
 import * as OpticModule from '../Optic';
 import { SEND_LATCH_MS, Stage, dockDots, keyboardShape } from '../Stage';
@@ -556,7 +556,7 @@ describe('Stage', () => {
 
         expect(lit()).toBeUndefined();
         await fireEvent.press(view.getByTestId('send'));
-        expect(lit()).toBe(palette.amberWash);
+        expect(lit()).toBe(DARK.amberWash);
 
         await act(async () => {
           jest.advanceTimersByTime(SEND_LATCH_MS + 10);
@@ -768,7 +768,7 @@ describe('the long-conversation mark', () => {
 
     const mark = view.getByTestId('long-warning');
     expect(mark.props.children).toBe(LONG_AFTER + 3);
-    expect(StyleSheet.flatten(mark.props.style).color).toBe(palette.danger);
+    expect(StyleSheet.flatten(mark.props.style).color).toBe(DARK.danger);
     await view.unmount();
   });
 
@@ -930,16 +930,16 @@ describe('the cabinet dock', () => {
   it('fills with light while the drawer is open', async () => {
     const shut = await render(<Stage />);
     expect(flat(shut.getByTestId('cabinet-dock-button').props.style)).toMatchObject({
-      backgroundColor: palette.panel,
-      borderColor: palette.border,
+      backgroundColor: DARK.panel,
+      borderColor: DARK.border,
     });
     await shut.unmount();
 
     awake({ cabinetOpen: true });
     const open = await render(<Stage />);
     expect(flat(open.getByTestId('cabinet-dock-button').props.style)).toMatchObject({
-      backgroundColor: palette.amberWash,
-      borderColor: palette.amberEdge,
+      backgroundColor: DARK.amberWash,
+      borderColor: DARK.amberEdge,
     });
     await open.unmount();
   });
@@ -972,9 +972,9 @@ describe('the cabinet dock', () => {
 describe('dockDots', () => {
   it('rests in three tiers, brightest first', () => {
     expect(dockDots(false, DARK)).toEqual([
-      palette.amber,
-      palette.hairlineDim, palette.hairlineDim,
-      palette.hairline, palette.hairline, palette.hairline,
+      DARK.amber,
+      DARK.hairlineDim, DARK.hairlineDim,
+      DARK.hairline, DARK.hairline, DARK.hairline,
     ]);
   });
 
@@ -982,8 +982,8 @@ describe('dockDots', () => {
   // own strength: the icon fills with light rather than changing shape.
   it('fills with light when the drawer is open', () => {
     expect(dockDots(true, DARK)).toEqual([
-      palette.amber, palette.amber, palette.amber,
-      palette.amberEdge, palette.amberEdge, palette.amberEdge,
+      DARK.amber, DARK.amber, DARK.amber,
+      DARK.amberEdge, DARK.amberEdge, DARK.amberEdge,
     ]);
   });
 

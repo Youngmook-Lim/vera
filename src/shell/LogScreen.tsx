@@ -16,10 +16,6 @@ import { useKeyboardInset } from './useKeyboardInset';
 // The transcript, and the one thing the subject may burn. Her conclusions are
 // not here — they are in her record, and CLEAR does not reach them (spec §8).
 
-// The subject's own bubble. Not in `palette`: it exists only inside this
-// thread, one notch off panel, so her lines stay the lighter thing on screen.
-const YOU_BG = '#1c1b17';
-
 const hhmm = (t: number): string => {
   const d = new Date(t);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -33,7 +29,7 @@ function YouLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
   return (
     <View style={styles.youRow}>
       <Text style={[styles.stamp, { fontFamily: font('mono', 500, lang) }]}>{hhmm(entry.t)}</Text>
-      <View style={styles.youBubble}>
+      <View testID="you-bubble" style={styles.youBubble}>
         <Text style={[styles.youText, { fontFamily: font('mono', 500, lang) }]}>{entry.text}</Text>
       </View>
     </View>
@@ -138,7 +134,12 @@ export function LogScreen() {
             <Pressable onPress={() => setConfirmingClear(false)} hitSlop={10}>
               <Text style={[styles.keep, { fontFamily: font('mono', 500, lang) }]}>{t.keep}</Text>
             </Pressable>
-            <Pressable onPress={() => void clearTranscript()} hitSlop={10} style={styles.eraseChip}>
+            <Pressable
+              testID="erase-chip"
+              onPress={() => void clearTranscript()}
+              hitSlop={10}
+              style={styles.eraseChip}
+            >
               <Text style={[styles.erase, { fontFamily: font('mono', 500, lang) }]}>{t.erase}</Text>
             </Pressable>
           </View>
@@ -281,8 +282,8 @@ const S = themed((p) => StyleSheet.create({
   // the destructive half is the only chip on the screen
   eraseChip: {
     borderWidth: 1,
-    borderColor: '#ff4a3d55',
-    backgroundColor: '#ff4a3d10',
+    borderColor: p.dangerEdge,
+    backgroundColor: p.dangerWash,
     borderRadius: 5,
     paddingVertical: 5,
     paddingHorizontal: 8,
@@ -322,7 +323,7 @@ const S = themed((p) => StyleSheet.create({
     gap: 5,
   },
   youBubble: {
-    backgroundColor: YOU_BG,
+    backgroundColor: p.youBg,
     borderWidth: 1,
     borderColor: p.border,
     borderTopLeftRadius: 12,

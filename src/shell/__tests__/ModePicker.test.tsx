@@ -2,7 +2,7 @@ import React from 'react';
 import { Text as RNText } from 'react-native';
 import { fireEvent, render, within } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
-import { palette } from '../../core/theme';
+import { DARK } from '../../core/theme';
 import { MODES } from '../../vera/modes/registry';
 import { ModePicker } from '../ModePicker';
 
@@ -57,13 +57,13 @@ describe('the logo', () => {
   // amber for the default, affectionate's rose for the supportive.
   it('paints the tag in that register’s own colour', async () => {
     const view = await render(<ModePicker />);
-    expect(flat(view.getByTestId('mode-tag').props.style).color).toBe(palette.mode.default.ink);
+    expect(flat(view.getByTestId('mode-tag').props.style).color).toBe(DARK.mode.default.ink);
     await view.unmount();
 
     useFacilityStore.setState({ mode: 'supportive' });
     const supportive = await render(<ModePicker />);
     expect(flat(supportive.getByTestId('mode-tag').props.style).color)
-      .toBe(palette.mode.supportive.ink);
+      .toBe(DARK.mode.supportive.ink);
     await supportive.unmount();
   });
 
@@ -74,8 +74,8 @@ describe('the logo', () => {
     const view = await render(<ModePicker />);
 
     const pill = flat(view.getByTestId('mode-tag-pill').props.style);
-    expect(pill.backgroundColor).toBe(palette.mode.supportive.wash);
-    expect(pill.borderColor).toBe(palette.mode.supportive.edge);
+    expect(pill.backgroundColor).toBe(DARK.mode.supportive.wash);
+    expect(pill.borderColor).toBe(DARK.mode.supportive.edge);
     expect(pill.borderRadius).toBeGreaterThan(0);
 
     await view.unmount();
@@ -151,7 +151,7 @@ describe('the bubble', () => {
     const view = await render(<ModePicker />);
 
     expect(flat(view.getByTestId('mode-choice-supportive').props.style).borderLeftColor)
-      .toBe(palette.mode.supportive.ink);
+      .toBe(DARK.mode.supportive.ink);
 
     await view.unmount();
   });
