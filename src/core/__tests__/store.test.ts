@@ -542,6 +542,35 @@ describe('speak', () => {
     jest.restoreAllMocks();
   });
 
+  // The LOG carries both registers at once, so each of her lines has to say
+  // which one it was said in — and nothing else in the suite covers the write.
+  it('records the register she answered in', async () => {
+    callLlm.mockResolvedValue('{"emotion":"calm","line":"Noted."}');
+    useFacilityStore.setState({ mode: 'supportive' });
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+
+    const hers = useFacilityStore.getState().log.filter((e) => e.who === 'vera');
+    expect(hers).toHaveLength(1);
+    expect(hers[0].mode).toBe('supportive');
+  });
+
+  // The picker is reachable while she thinks, so reading the mode back AFTER
+  // the await would credit her line to the register the subject is in the
+  // middle of moving to. It is captured before.
+  it('credits the line to the register she started in, not the one she lands in', async () => {
+    let finish: (value: string) => void = () => {};
+    callLlm.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    useFacilityStore.setState({ mode: 'default' });
+
+    const reply = useFacilityStore.getState().speak('subject_spoke', 'hi');
+    useFacilityStore.setState({ mode: 'supportive' }); // the picker, mid-flight
+    finish('{"emotion":"calm","line":"Noted."}');
+    await reply;
+
+    const hers = useFacilityStore.getState().log.filter((e) => e.who === 'vera');
+    expect(hers[0].mode).toBe('default');
+  });
+
   it('does nothing without a key', async () => {
     useFacilityStore.setState({ apiKey: '' });
     await useFacilityStore.getState().speak('subject_spoke', 'hi');

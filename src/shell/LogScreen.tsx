@@ -2,11 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { longWarning } from '../core/conversation';
+import { longWarning, registerRules } from '../core/conversation';
 import { useFacilityStore } from '../core/store';
 import { systemTextFor } from './systemText';
 import { PALETTES, font, ms, serif, themed } from '../core/theme';
 import { EMOTIONS, emotionLabel, type EmotionKey } from '../vera/emotions';
+import { MODES, type Mode } from '../vera/modes/registry';
 import type { LogEntry } from '../core/store';
 import type { Lang } from '../core/i18n';
 import { T } from './strings';
@@ -63,9 +64,33 @@ function HerLine({ entry, lang }: { entry: LogEntry; lang: Lang }) {
   return (
     <View style={[styles.herRow, { borderLeftColor: iris }]}>
       <Text style={[styles.herTag, { fontFamily: font('mono', 500, lang) }]}>
-        {`V.E.R.A. · ${emotionLabel(emotion, lang)}`}
+        {entry.mode
+          ? `V.E.R.A. · ${MODES[entry.mode].tag[lang]} · ${emotionLabel(emotion, lang)}`
+          : `V.E.R.A. · ${emotionLabel(emotion, lang)}`}
       </Text>
       <Text style={[styles.herText, { fontFamily: serif(lang) }]}>{entry.text}</Text>
+    </View>
+  );
+}
+
+// Where her register changes. It names the register that STARTS here, and it
+// is also the point her replay was cut — `modeSetAt` is the same boundary, so
+// this is the one thing on the screen that says where her memory of the
+// conversation begins.
+//
+// Drawn in the shell's own ink rather than the register's: `palette.mode`'s
+// rose for SUPPORTIVE is the same hex as affectionate's iris, which already
+// draws the rule down the left of her lines, so a coloured divider would say
+// nothing a reader could separate.
+function RegisterRule({ mode, lang, at }: { mode: Mode; lang: Lang; at: number }) {
+  const styles = S[useFacilityStore((st) => st.theme)];
+  return (
+    <View testID={`register-rule-${at}`} style={styles.registerRow}>
+      <View style={styles.registerLine} />
+      <Text style={[styles.registerTag, { fontFamily: font('mono', 500, lang) }]}>
+        {MODES[mode].tag[lang]}
+      </Text>
+      <View style={styles.registerLine} />
     </View>
   );
 }
@@ -79,6 +104,7 @@ export function LogScreen() {
   const lang = useFacilityStore((s) => s.lang);
   const log = useFacilityStore((s) => s.log);
   const long = longWarning(log);
+  const rules = registerRules(log);
   const emotion = useFacilityStore((s) => s.emotion);
   const draft = useFacilityStore((s) => s.draft);
   const thinking = useFacilityStore((s) => s.thinking);
@@ -179,15 +205,21 @@ export function LogScreen() {
             <Text style={[styles.emptyLine, { fontFamily: serif(lang) }]}>{t.gone}</Text>
           </View>
         ) : (
-          log.map((entry, i) =>
-            entry.who === 'system' ? (
-              <SystemLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
-            ) : entry.who === 'you' ? (
-              <YouLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
-            ) : (
-              <HerLine key={`${entry.t}-${i}`} entry={entry} lang={lang} />
-            ),
-          )
+          log.map((entry, i) => {
+            const rule = rules.get(i);
+            return (
+              <React.Fragment key={`${entry.t}-${i}`}>
+                {rule ? <RegisterRule mode={rule} lang={lang} at={i} /> : null}
+                {entry.who === 'system' ? (
+                  <SystemLine entry={entry} lang={lang} />
+                ) : entry.who === 'you' ? (
+                  <YouLine entry={entry} lang={lang} />
+                ) : (
+                  <HerLine entry={entry} lang={lang} />
+                )}
+              </React.Fragment>
+            );
+          })
         )}
       </ScrollView>
 
@@ -241,6 +273,24 @@ const S = themed((p) => StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
+  },
+  // `1px` rules either side of the register's name, which is the quietest way
+  // to say "from here" without taking a line of its own.
+  registerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingVertical: 14,
+  },
+  registerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: p.borderSoft,
+  },
+  registerTag: {
+    fontSize: ms(7.5),
+    letterSpacing: ms(7.5) * 0.24,
+    color: p.textGhostest,
   },
   emotionLabel: {
     fontSize: ms(7.5),
