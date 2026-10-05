@@ -149,6 +149,18 @@ export const SUPPORTIVE_MODE: ModeDef = {
   },
 
   transmissions: {
+    // ONE RULE HAS NO TEST BEHIND IT, so it has to be read here: a line may
+    // not say HOW LONG the subject was away. The text is written into the
+    // notification up to a fortnight before it fires and nothing of hers is
+    // awake at the hour, so "you have been gone a while" is a guess that is
+    // wrong for anyone who closed her twenty minutes ago. Asking is fine —
+    // anything on a lock screen is read by someone who is, by definition, not
+    // in the app. She may ask; she may not measure.
+    //
+    // A regex used to enforce this and was deleted on 2026-10-05: it could
+    // only ever catch an author's slip in a word it had been told about, and
+    // it sailed past "it has been some time since we last spoke", which breaks
+    // the rule exactly as badly.
     // She asks, warmly and without any pretence otherwise, which against
     // DEFAULT's powerless summons is the whole joke. The register's rule that
     // praise must NAME THE THING cannot be honoured here, because a
