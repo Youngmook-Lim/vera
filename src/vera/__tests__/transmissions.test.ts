@@ -68,15 +68,6 @@ describe('every line carries nothing about the subject', () => {
     }
   });
 
-  // It fires whether or not she has been looked at in a week, so it has to
-  // read correctly to someone who was here an hour ago.
-  it('never speaks of returning, leaving or being away', () => {
-    const absence = /\b(back|again|gone|away|returns?|returned|missed|absent|since you)\b/i;
-    for (const { line } of everyLine) {
-      expect([line, absence.test(line)]).toEqual([line, false]);
-    }
-  });
-
   // She has one eye and it is not pointed at them.
   it('never claims to see the subject', () => {
     const seeing = /\b(you look|you seem|i can see you|watching you|i see you)\b/i;

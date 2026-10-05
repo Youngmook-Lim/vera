@@ -42,6 +42,10 @@ export interface LogEntry {
   text: string;
   t: number;
   emotion?: EmotionKey;
+  // The register she said it in. Absent on everything written before
+  // 2026-10-02, and the LOG shows nothing rather than guessing: the screen
+  // carries both registers at once, so a wrong one would be worse than none.
+  mode?: Mode;
   code?: SystemCode;
 }
 
@@ -622,6 +626,12 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // Started before the branch so the bank path is timed too — a bank line
       // taking any measurable time at all would itself be the finding.
       const startedAt = Date.now();
+      // The register she is ANSWERING in, captured before the await rather
+      // than read back after it: the picker is reachable while she thinks, so
+      // `get().mode` at the end of a reply can already be the register she is
+      // about to move to, and crediting her line to it would misattribute the
+      // one turn whose register the subject was in the middle of changing.
+      const spokenMode = get().mode;
       let outcome: SpeechOutcome;
       if (trigger === 'subject_spoke') {
         const s = get();
@@ -720,7 +730,8 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const log = live
         ? [...get().log, notice
             ? { who: 'system' as const, text: '', code: notice, t: Date.now() }
-            : { who: 'vera' as const, text: line, t: Date.now(), emotion }].slice(-LOG_CAP)
+            : { who: 'vera' as const, text: line, t: Date.now(), emotion, mode: spokenMode }]
+            .slice(-LOG_CAP)
         : get().log;
 
       // A refusal leaves the key exactly where it is — she is never sent

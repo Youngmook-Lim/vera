@@ -1,9 +1,10 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { KEYS } from '../../core/storage';
 import { LONG_AFTER } from '../../core/conversation';
 import { useFacilityStore } from '../../core/store';
+import { emotionLabel } from '../../vera/emotions';
 import { LogScreen } from '../LogScreen';
 
 // SEND reaches speak(), which would otherwise reach the network. Nothing in
@@ -194,6 +195,62 @@ describe('the long-conversation mark', () => {
 
     expect(view.queryByTestId('long-warning')).toBeNull();
     expect(view.getByText('ERASE ALL')).toBeTruthy();
+    await view.unmount();
+  });
+});
+
+// The LOG has always carried both registers at once — `buildMessages` filters
+// a copy on the way to the model and the stored log is never truncated by a
+// switch — so until now the screen mixed two voices with nothing to tell them
+// apart.
+describe('the register in the thread', () => {
+  const her = (mode: 'default' | 'supportive' | undefined, text: string, t: number) =>
+    ({ who: 'vera' as const, text, t, emotion: 'calm' as const, mode });
+
+  it('names her register in the tag above each of her lines', async () => {
+    useFacilityStore.setState({
+      lang: 'en',
+      log: [her('supportive', 'Warmly.', 1), her('default', 'Flatly.', 2)],
+    });
+    const view = await render(<LogScreen />);
+    expect(view.getByText('V.E.R.A. · SUPPORTIVE · CALM')).toBeTruthy();
+    expect(view.getByText('V.E.R.A. · DEFAULT · CALM')).toBeTruthy();
+    await view.unmount();
+  });
+
+  it('stands a rule at each change, naming the register that starts there', async () => {
+    useFacilityStore.setState({
+      lang: 'en',
+      log: [
+        her('supportive', 'Warmly.', 1),
+        her('supportive', 'Still warmly.', 2),
+        her('default', 'Flatly.', 3),
+      ],
+    });
+    const view = await render(<LogScreen />);
+    // One rule per change, not one per line.
+    expect(view.getAllByTestId(/^register-rule-/)).toHaveLength(2);
+    expect(view.getByTestId('register-rule-0')).toBeTruthy();
+    expect(view.getByTestId('register-rule-2')).toBeTruthy();
+    await view.unmount();
+  });
+
+  // Everything written before the field existed carries no register, and a
+  // guessed one would be a confident lie about history.
+  it('says nothing about a line that carries no register', async () => {
+    useFacilityStore.setState({ lang: 'en', log: [her(undefined, 'From before.', 1)] });
+    const view = await render(<LogScreen />);
+    expect(view.getByText('V.E.R.A. · CALM')).toBeTruthy();
+    expect(view.queryAllByTestId(/^register-rule-/)).toHaveLength(0);
+    await view.unmount();
+  });
+
+  it('reads the register in the reading language', async () => {
+    useFacilityStore.setState({ lang: 'ko', log: [her('supportive', '따뜻하게.', 1)] });
+    const view = await render(<LogScreen />);
+    // Both renderings of it, which is why a bare text match finds two.
+    expect(within(view.getByTestId('register-rule-0')).getByText('든든한')).toBeTruthy();
+    expect(view.getByText(`V.E.R.A. · 든든한 · ${emotionLabel('calm', 'ko')}`)).toBeTruthy();
     await view.unmount();
   });
 });

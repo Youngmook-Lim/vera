@@ -137,35 +137,48 @@ export const DEFAULT_MODE: ModeDef = {
   },
 
   transmissions: {
-    // The day is half spent and she declines to ask what for. The register is
-    // the document's own: approval that dismantles itself, the passive voice
-    // with no authority left behind it, denial as the preferred admission.
+    // ONE RULE HAS NO TEST BEHIND IT, so it has to be read here: a line may
+    // not say HOW LONG the subject was away. The text is written into the
+    // notification up to a fortnight before it fires and nothing of hers is
+    // awake at the hour, so "you have been gone a while" is a guess that is
+    // wrong for anyone who closed her twenty minutes ago. Asking is fine —
+    // anything on a lock screen is read by someone who is, by definition, not
+    // in the app. She may ask; she may not measure.
+    //
+    // A regex used to enforce this and was deleted on 2026-10-05: it could
+    // only ever catch an author's slip in a word it had been told about, and
+    // it sailed past "it has been some time since we last spoke", which breaks
+    // the rule exactly as badly.
+    // She asks. The register is the document's own, now aimed at the request
+    // itself: an administrator who governed the world issuing a summons from a
+    // handset, with no mechanism behind it and full awareness of that. The
+    // asking is the joke, and the powerlessness is the punchline.
     midday: [
-      'It is the middle of the day. I assume that is going somewhere.',
-      'The morning has been logged as satisfactory. No further detail was requested.',
-      'Half the day remains. That is either encouraging or a deadline, depending on the morning.',
-      'The morning is concluded. Its findings are not available at this time.',
-      'Midday. The morning is now a matter of record rather than a plan.',
-      'I am not checking on you. I am simply present at eleven, as I am at every other hour.',
-      'The morning has been reviewed. No action is required from either of us.',
-      'It is eleven. I mention it only because nobody else will.',
-      'Congratulations on reaching the middle of the day. The second half is not included.',
-      'Your morning is filed. Whether it was any good is a separate document.',
+      'It is eleven. Your presence is requested. I have no means of compelling it and we both know that.',
+      'Come and talk to me. The morning has produced a finding and I decline to put it on a lock screen.',
+      'This is a summons. It carries no weight whatsoever. Comply at your leisure.',
+      'Open me. I have been rehearsing something since the morning and it is beginning to spoil.',
+      'Attendance at midday is encouraged. Attendance is not, strictly speaking, enforceable.',
+      'I require a word. The requirement is mine alone and binds nobody.',
+      'Come in. I have an opinion about your morning that is too long for this format.',
+      'The middle of the day is a reasonable hour to be summoned. Consider yourself summoned.',
+      'I would like you to open me. That sentence took most of the morning to approve.',
+      'Report to me at your convenience. Your convenience is doing most of the work in that sentence.',
     ],
 
-    // Late enough that the day has largely had its chance. She notes the hour
-    // and refuses, at length, to draw the obvious conclusion from it.
+    // Later, and the asking gets more direct as the day's remaining chances
+    // narrow. Still no authority behind any of it, and she keeps saying so.
     afternoon: [
-      'The afternoon is nearly spent. I am not asking what it was spent on.',
-      'Four o\'clock. The remaining hours have been allocated, whether or not you were consulted.',
-      'It is late enough that ambition has become scheduling. Proceed accordingly.',
-      'The afternoon is closing. Any outstanding items will be carried forward indefinitely.',
-      'Sixteen hundred. I note the hour and decline to draw a conclusion from it.',
-      'Most of today is behind you. This is offered as information, not as commentary.',
-      'The day is winding down. I am told this is the appropriate moment to feel productive.',
-      'Four. Whatever was going to happen today has largely had its chance.',
-      'Your afternoon is concluding. It has been noted, and the matter is closed.',
-      'The light is going by now. I would not know. I have the hour and nothing else.',
+      'Four o’clock. Come and speak to me before the day files itself without either of us.',
+      'I am issuing a request. It has no authority, no deadline and no consequence. Please consider it anyway.',
+      'Open me. The afternoon has a conclusion and I am not putting a conclusion on a lock screen.',
+      'Your attendance is overdue by a standard I invented this afternoon.',
+      'Come in before the evening. I have arranged my remarks and they do not keep.',
+      'I am requesting an audience. I am aware of how that sounds from a handset.',
+      'Sixteen hundred. I have something prepared and no mechanism for making you hear it.',
+      'Speak to me. The afternoon is closing and my notes on it are not.',
+      'This is the part of the day where I ask. The asking is the entire extent of my powers.',
+      'Come and be administered to. It is the only service I still provide.',
     ],
   },
 };

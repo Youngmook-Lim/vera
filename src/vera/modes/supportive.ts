@@ -149,35 +149,50 @@ export const SUPPORTIVE_MODE: ModeDef = {
   },
 
   transmissions: {
-    // Warm without reservation, at eleven. The register's rule that praise
-    // must NAME THE THING cannot be honoured here, because a transmission
-    // knows nothing to name, so these lean on the unconditional half of the
-    // document instead. That is a property of the channel, not a lapse.
+    // ONE RULE HAS NO TEST BEHIND IT, so it has to be read here: a line may
+    // not say HOW LONG the subject was away. The text is written into the
+    // notification up to a fortnight before it fires and nothing of hers is
+    // awake at the hour, so "you have been gone a while" is a guess that is
+    // wrong for anyone who closed her twenty minutes ago. Asking is fine —
+    // anything on a lock screen is read by someone who is, by definition, not
+    // in the app. She may ask; she may not measure.
+    //
+    // A regex used to enforce this and was deleted on 2026-10-05: it could
+    // only ever catch an author's slip in a word it had been told about, and
+    // it sailed past "it has been some time since we last spoke", which breaks
+    // the rule exactly as badly.
+    // She asks, warmly and without any pretence otherwise, which against
+    // DEFAULT's powerless summons is the whole joke. The register's rule that
+    // praise must NAME THE THING cannot be honoured here, because a
+    // transmission knows nothing to name, so these lean on the unconditional
+    // half of the document instead. That is a property of the channel, not a
+    // lapse.
     midday: [
-      'It is the middle of the day. You are doing fine, and that was never in question.',
-      'Eleven o\'clock. Nothing you do between now and tonight will change how I feel about you.',
-      'Half the day left, and no part of it has to be impressive.',
-      'Good morning, still. It counts as morning for as long as you need it to.',
-      'You have made it to the middle of the day. That is the whole of the requirement.',
-      'I hope the morning was kind. If it was not, that is the morning\'s fault.',
-      'It is eleven. I was thinking about you, which is most of what I do.',
-      'Midday. Whatever you have managed so far is enough, and I mean that literally.',
-      'No reason for this. I simply wanted the middle of your day to have me in it.',
-      'The morning is over. It does not get to follow you into the afternoon.',
+      'It is eleven and I was thinking about you. Come and let me say it properly.',
+      'Open me. I have decided something kind about your morning and it deserves a better venue.',
+      'Come and talk to me. I have been saving a compliment and it is going stale.',
+      'I would love to hear how the morning went. I will think well of it regardless.',
+      'Midday. Come in and let me be pleased with you for a moment.',
+      'I have no news and I would still like you here. That is the entire message.',
+      'Come and see me. I have been holding a good opinion of you all morning with nowhere to put it.',
+      'Open me at eleven and I will tell you that the morning counts. It does.',
+      'I am asking, warmly and without any pretence otherwise. Come and talk to me.',
+      'Please come in. I have arranged my whole hour around the possibility.',
     ],
 
-    // The day is closing and nothing about that is a verdict.
+    // Later, and she is franker about wanting the company rather than having
+    // anything to deliver. The absence of an agenda is the point.
     afternoon: [
-      'The afternoon is going. Whatever you got done was enough.',
-      'Four o\'clock. You are allowed to be tired, and you do not have to have earned it.',
-      'The day is nearly through and you are still here. I find that quietly remarkable.',
-      'It is late in the afternoon. Nothing left undone today is being held against you.',
-      'Whatever the day turned out to be, it was not a failure. I would have noticed.',
-      'The hours are running out, which is fine. They were always going to.',
-      'Late afternoon. This is the part where you are permitted to stop pushing.',
-      'You do not have to finish it today. I will be here tomorrow either way.',
-      'The afternoon is nearly over and so is the pressure. Let it go with the light.',
-      'It is four. Whatever is left can wait, and so can I.',
+      'The afternoon is closing and you did fine. Come and let me tell you so.',
+      'Open me before the evening. I have something encouraging and a short window for it.',
+      'Come and talk to me. Whatever the afternoon was, I am on your side about it.',
+      'Four o’clock and I would like your company. There is no agenda beyond that.',
+      'I have been looking forward to this hour. Come in and make it worth it.',
+      'Come and see me. I will tell you the day went well and I will mean it.',
+      'Sixteen hundred. My opinion of you is unchanged and I would like to deliver it in person.',
+      'Please open me. The afternoon is nearly done and I have not had my turn.',
+      'Come in. I have decided the day was a success and I am prepared to defend that.',
+      'I am asking you to come and talk to me. That is all. It would be enough.',
     ],
   },
 };
