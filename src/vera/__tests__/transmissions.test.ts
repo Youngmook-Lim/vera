@@ -68,10 +68,19 @@ describe('every line carries nothing about the subject', () => {
     }
   });
 
-  // It fires whether or not she has been looked at in a week, so it has to
-  // read correctly to someone who was here an hour ago.
-  it('never speaks of returning, leaving or being away', () => {
-    const absence = /\b(back|again|gone|away|returns?|returned|missed|absent|since you)\b/i;
+  // A line is baked into the notification up to a fortnight before it fires, so
+  // she cannot know what the subject did in between. That rules out exactly one
+  // kind of claim: HOW LONG they were away.
+  //
+  // It does NOT rule out saying they are not here now. Anything on a lock
+  // screen is read by someone who is, by definition, not in the app — so an
+  // invitation is tautologically well founded, where "you have been gone a
+  // while" is a guess that is wrong for anyone who closed her twenty minutes
+  // ago. This used to ban `back` and `again` alongside the duration words and
+  // was over-broad for that reason (2026-10-05): she may ask, she may not
+  // measure.
+  it('never says how long the subject was away', () => {
+    const absence = /\b(gone|away|returned|missed|absent|lately|since you|a while|all day|for days)\b/i;
     for (const { line } of everyLine) {
       expect([line, absence.test(line)]).toEqual([line, false]);
     }
