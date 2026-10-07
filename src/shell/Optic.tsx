@@ -54,7 +54,6 @@ const WAKE_MS = 1150;
 
 // Static layout constants — none of these vary by emotion OR by theme, so they
 // live here rather than in opticGeometry's tested contract or in ART below.
-const RING_INSETS = [0.1, 0.2] as const; // the socket's `inset:10%` / `inset:20%`
 const FIBRE_COUNT = 100; // repeating-conic-gradient at 3.6° pitch
 const FIBRE_OUTER = 1; // the striation fills the iris, `inset:0`
 const FIBRE_SLANT_DEG = 0.6; // half of the design's 1.2° coloured arc
@@ -66,6 +65,11 @@ const FIBRE_GROUP_OPACITY = 0.6;
 // wider-than-tall box, so CSS sizes it farthest-corner and the ellipse crops
 // what spills past its top and bottom. The box is the same in both themes;
 // only the core, the falloff stop and the blur move (see ART).
+//
+// These percentages are of the CANVAS here and of the SOCKET in the design,
+// which puts the bloom about 2px up and left of where the mock draws it at the
+// shipping size. Pre-existing, shared by both themes, and signed off on the
+// device in the dark — left alone rather than moved under a light-theme change.
 const CATCHLIGHT_LEFT = 0.25;
 const CATCHLIGHT_TOP = 0.2;
 const CATCHLIGHT_W = 0.22;
@@ -83,7 +87,11 @@ const IRIS_CENTRE = [0.42, 0.36] as const;
 
 // 1f's `inset:22%` ring inside the iris, drawn in the darkened iris. Light
 // only; ART.innerRing carries its alpha, and null leaves it undrawn.
-const INNER_RING_INSET = 0.22;
+//
+// `inset: 22%` pulls 22% in from EVERY edge, so the inner box is 56% of the
+// iris's width and its radius is 0.56r — not 0.78r. The `1 - inset` reading is
+// wrong by double, and `ringRadii` below carries the same trap.
+const INNER_RING_RADIUS = 1 - 2 * 0.22;
 
 // 1f's knurled rim: `repeating-conic-gradient(from 0deg, #15181b30 0deg .7deg,
 // transparent .7deg 2.6deg)` masked to the outer 3.5px of the bezel. 360/2.6 is
@@ -124,7 +132,12 @@ interface OpticArt {
   bezelSweep: readonly string[] | null;
   /** `inset 0 1px 0` — the lip of light along the bezel's top edge. */
   bezelSheen: string;
-  /** `0 0 0 1px` — the hairline round the housing. null = none. */
+  /**
+   * `0 0 0 1px` — the hairline round the housing. null = none. The design's is
+   * NOT inset, so it belongs just outside `bezelRadius`, where the canvas ends;
+   * it is drawn just inside instead. Same clipping that dropped the cast
+   * shadow, and the only version of it that can be seen at this canvas size.
+   */
   bezelEdge: string | null;
   /** The knurl's ink. null = no knurl. */
   knurl: string | null;
@@ -137,6 +150,16 @@ interface OpticArt {
   /** The two engraved rings. null takes her iris, as the dark optic does. */
   ringInk: string | null;
   ringAlphas: readonly [number, number];
+  /**
+   * Their radii, as fractions of the socket's. The design writes them as
+   * `inset:10%` / `inset:20%`, which is 0.8 and 0.6 — an inset comes off every
+   * edge. The dark eye has drawn them at 0.9 and 0.8 since it was built, from
+   * reading that as `1 - inset`, and it keeps those: it was signed off on the
+   * device on 2026-08-11 and this design changes nothing dark. Light is new and
+   * takes the design's own numbers. Do not unify these without re-checking the
+   * dark eye on a phone.
+   */
+  ringRadii: readonly [number, number];
   /** The iris well, as a mix of her hue toward a base at each end. */
   irisCore: { mix: number; base: string };
   /** A mix like irisCore, or a fixed colour where the hue does not reach. */
@@ -196,6 +219,8 @@ const ART: Record<Theme, OpticArt> = {
     socketShade: null,
     ringInk: null,
     ringAlphas: [0.16, 0.07],
+    ringRadii: [0.9, 0.8], // as built, not as the design reads — see above
+
     // color-mix(in srgb, var(--iris) 34%, #000) — the iris at a third strength
     // over black, which is what makes the well read as deep rather than lit.
     irisCore: { mix: 0.34, base: '#000000' },
@@ -256,6 +281,7 @@ const ART: Record<Theme, OpticArt> = {
     // machining on the housing instead of as light from her.
     ringInk: '#15181b',
     ringAlphas: [0.18, 0.102], // #15181b2e / #15181b1a
+    ringRadii: [0.8, 0.6], // `inset:10%` / `inset:20%`, read correctly
     irisCore: { mix: 0.5, base: '#ffffff' },
     irisEdge: { mix: 0.8, base: '#000000' },
     irisStops: [0, 0.92],
@@ -517,7 +543,7 @@ export function Optic({
   );
 
   // 1f's ring inside the iris, which has to follow the iris as it opens.
-  const innerRingRadius = useDerivedValue(() => irisRadius.value * (1 - INNER_RING_INSET));
+  const innerRingRadius = useDerivedValue(() => irisRadius.value * INNER_RING_RADIUS);
 
   // Gaze is a plain prop-driven clamp (opticGeometry.gazeLimitPx, already in
   // pixels), not itself an emotion the canvas animates through — an
@@ -683,7 +709,7 @@ export function Optic({
         <Circle
           cx={center}
           cy={center}
-          r={geometry.socketRadius * (1 - RING_INSETS[0])}
+          r={geometry.socketRadius * art.ringRadii[0]}
           style="stroke"
           strokeWidth={1}
           color={art.ringInk ?? irisColor}
@@ -692,7 +718,7 @@ export function Optic({
         <Circle
           cx={center}
           cy={center}
-          r={geometry.socketRadius * (1 - RING_INSETS[1])}
+          r={geometry.socketRadius * art.ringRadii[1]}
           style="stroke"
           strokeWidth={1}
           color={art.ringInk ?? irisColor}
