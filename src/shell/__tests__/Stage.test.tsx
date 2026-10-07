@@ -637,6 +637,21 @@ describe('Stage', () => {
     // she has let the look go. The prototype never has to arbitrate this —
     // its live eye tracks and never drifts, and its drifting grid cells are
     // not touchable — so running both at once was ours to get wrong.
+    // The stage is the one surface that DOES follow the theme, so it is the one
+    // that has to say so. Nothing in the tree can show which eye was drawn, so
+    // the handover is the only observable half.
+    it.each(['dark', 'light'] as const)('hands the eye the %s ground it is on', async (theme) => {
+      const spy = jest.spyOn(OpticModule, 'Optic');
+      try {
+        awake({ theme });
+        const view = await render(<Stage />);
+        expect(spy.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ theme }));
+        await view.unmount();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
     it('stops the idle drift while she is following your touch', async () => {
       jest.useFakeTimers();
       const spy = jest.spyOn(OpticModule, 'Optic');

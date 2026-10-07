@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Instrument+Serif&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#d7dce0}
+a{color:#15181b;text-decoration:none}
+a:hover{color:#855500}
+@keyframes fshutT{0%,90.5%{height:var(--lid,0%);animation-timing-function:cubic-bezier(.35,0,.25,1)}94%{height:50%;animation-timing-function:linear}95.4%{height:50%;animation-timing-function:cubic-bezier(.45,0,.55,1)}99.6%,100%{height:var(--lid,0%)}}
+@keyframes fshutB{0%,90.5%{height:var(--lidb,0%);animation-timing-function:cubic-bezier(.35,0,.25,1)}94%{height:50%;animation-timing-function:linear}95.4%{height:50%;animation-timing-function:cubic-bezier(.45,0,.55,1)}99.6%,100%{height:var(--lidb,0%)}}
+@keyframes fdartCalm{0%{transform:translate(0,0)}22%{transform:translate(3%,-2%)}48%{transform:translate(-2%,2%)}74%{transform:translate(1%,3%)}100%{transform:translate(0,0)}}
+@keyframes fdartQuick{0%,8%{transform:translate(6%,-4%)}9%,30%{transform:translate(-5%,-5%)}31%,55%{transform:translate(4%,4%)}56%,80%{transform:translate(-6%,1%)}81%,100%{transform:translate(2%,-3%)}}
+@keyframes fdartDrift{0%{transform:translate(-8%,5%)}50%{transform:translate(9%,-4%)}100%{transform:translate(-8%,5%)}}
+@keyframes fdartAway{0%{transform:translate(-9%,7%)}50%{transform:translate(-6%,9%)}100%{transform:translate(-9%,7%)}}
+</style>
+</helmet>
+<div style="padding:56px 56px 80px;display:flex;flex-direction:column;gap:48px;font-family:'Space Grotesk',sans-serif;color:#15181b">
+<div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">V.E.R.A. · OPTIC · LIGHT THEME</div>
+<div style="font:500 30px/1.15 'Space Grotesk',sans-serif;letter-spacing:-.01em">Her eye on the pale ground</div>
+<div style="font:400 13px/1.7 'Space Grotesk',sans-serif;color:#5b636b;text-wrap:pretty">Six art styles, each drawn in all nine states. Geometry and tempo are unchanged from emotions.ts: aperture, pupil, both lids, blink interval and idle drift. Each style only changes what the eye is made of. Every card sits on the light stage ground, #eceef0.</div>
+</div>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">TURN 2 · 1F ON THE STAGE</div>
+<div id="2a" style="background:#eceef0;border:1px solid #cbd1d6;border-radius:12px;padding:22px 28px 30px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;width:max-content;max-width:100%;box-sizing:border-box">
+<div style="display:flex;flex-direction:column;gap:14px;width:388px">
+<div style="display:flex;align-items:center;gap:10px">
+<a href="#2a" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#15181b;color:#eceef0;border-radius:5px">2a</a>
+<div style="font:600 15px 'Space Grotesk',sans-serif">Brushed instrument, light stage</div>
+</div>
+<div style="position:relative;width:388px;height:820px;border-radius:28px;overflow:hidden;box-shadow:0 0 0 8px #1d1c18,0 0 0 9px #2c2a22;display:flex;flex-direction:column;background:#eceef0">
+<div style="height:28px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:500 11px 'IBM Plex Mono',monospace;color:#5b636b"><span>9:41</span><span style="width:14px;height:8px;border:1px solid #5b636b;border-radius:2px"></span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0">
+<div style="display:flex;align-items:center;gap:8px">
+<div style="width:5px;height:5px;border-radius:50%;background:{{ st.iris }};transition:background .42s ease"></div>
+<span style="font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.22em;color:#5b636b">V.E.R.A.</span>
+<div style="padding:2px 7px;border-radius:9px;border:1px solid #d6920f99;background:#d6920f1a;font:600 7px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#855500">DEFAULT</div>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<div style="display:flex;align-items:center;justify-content:center;height:24px;margin:-4px 0;padding:0 6px">
+<div style="position:relative;width:30px;height:16px;box-sizing:border-box;border-radius:9px;border:1px solid #b6bec5;overflow:hidden;display:flex"><div style="flex:1;background:#14130f"></div><div style="flex:1;background:#eceef0"></div><div style="position:absolute;top:2px;left:16px;width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:1.5px solid {{ st.iris }}"></div></div>
+</div>
+<div style="display:flex;align-items:center;gap:3px;padding:6px 4px"><div style="width:3px;height:3px;border-radius:50%;background:#99a1a8"></div><div style="width:3px;height:3px;border-radius:50%;background:#99a1a8"></div><div style="width:3px;height:3px;border-radius:50%;background:#99a1a8"></div></div>
+</div>
+</div>
+<div style="display:flex;justify-content:center;padding-top:26px">
+<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:22px;background:#e2e6e9;border:1px solid #b6bec5">
+<div style="display:flex;flex-direction:column;gap:2.5px;align-items:flex-start"><div style="width:11px;height:1.5px;border-radius:1px;background:#d6920f"></div><div style="width:7px;height:1.5px;border-radius:1px;background:#7d868e"></div><div style="width:9px;height:1.5px;border-radius:1px;background:#7d868e"></div></div>
+<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#4d565e">OPEN CONVERSATION</span>
+</div>
+</div>
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="flex:1"></div>
+<div style="display:flex;justify-content:center;padding:22px 0">{{ st.eye }}</div>
+<div style="flex:1"></div>
+<div style="margin:0 18px 14px;background:#f7f8f9;border:1px solid #cbd1d6;border-radius:14px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:9px;padding:11px 14px;background:#e2e6e9;border-bottom:1px solid #d7dce0">
+<div style="width:4px;height:4px;border-radius:50%;background:{{ st.iris }};transition:background .42s ease"></div>
+<span style="font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.24em;color:{{ st.ink }};transition:color .42s ease">{{ st.label }}</span>
+<span style="margin-left:auto;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">COMPLETE</span>
+</div>
+<div style="padding:12px 18px;min-height:27px;font:400 17.5px/1.56 'Instrument Serif',serif;color:#15181b;text-wrap:pretty">{{ st.line }}</div>
+</div>
+<div style="flex-grow:3"></div>
+</div>
+<div style="display:flex;align-items:stretch;margin:0 20px 14px">
+<div style="flex:none;width:48px;margin-right:8px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#e2e6e9;border:1px solid #cbd1d6;border-radius:12px">
+<div style="display:grid;grid-template-columns:repeat(3,4px);gap:2.5px">
+<div style="width:4px;height:4px;border-radius:1px;background:#d6920f"></div><div style="width:4px;height:4px;border-radius:1px;background:#7d868e"></div><div style="width:4px;height:4px;border-radius:1px;background:#7d868e"></div><div style="width:4px;height:4px;border-radius:1px;background:#c4cbd1"></div><div style="width:4px;height:4px;border-radius:1px;background:#c4cbd1"></div><div style="width:4px;height:4px;border-radius:1px;background:#c4cbd1"></div>
+</div>
+</div>
+<div style="flex:1;min-width:0;display:flex;align-items:center;gap:11px;padding:13px 14px;background:#e2e6e9;border:1px solid #cbd1d6;border-radius:12px">
+<span style="font:500 12px 'IBM Plex Mono',monospace;color:#855500">›</span>
+<span style="flex:1;min-width:0;font:500 14px 'IBM Plex Mono',monospace;color:#848c94">say something to her</span>
+<div style="border:1px solid #cbd1d6;border-radius:6px;padding:6px 9px;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#848c94">SEND</div>
+</div>
+</div>
+<div style="height:24px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:108px;height:4px;border-radius:2px;background:#15181b99"></div></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;width:260px;padding-top:40px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">EMOTION</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px">
+<sc-for list="{{ moodChips }}" as="m" hint-placeholder-count="9">
+<div onClick="{{ m.pick }}" style="display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:9px;border:1px solid {{ m.edge }};background:{{ m.bg }};cursor:pointer">
+<div style="width:5px;height:5px;border-radius:50%;background:{{ m.iris }}"></div>
+<span style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ m.ink }}">{{ m.label }}</span>
+</div>
+</sc-for>
+</div>
+<div style="font:400 11.5px/1.65 'Space Grotesk',sans-serif;color:#5b636b;text-wrap:pretty">At the shipping 158px. The housing and shutters are neutral metal, so the shell around her stays cool grey and her iris is the only colour on the stage, the same role the dark socket gives it on the dark theme.</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">TURN 1 · ART STYLES</div>
+<div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+<sc-for list="{{ options }}" as="opt" hint-placeholder-count="6">
+<div id="{{ opt.id }}" style="background:#eceef0;border:1px solid #cbd1d6;border-radius:12px;padding:22px 22px 26px;display:flex;flex-direction:column;gap:18px;width:min-content">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:10px">
+<a href="#{{ opt.id }}" style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#15181b;color:#eceef0;border-radius:5px">{{ opt.id }}</a>
+<div style="font:600 15px 'Space Grotesk',sans-serif">{{ opt.name }}</div>
+</div>
+<div style="font:400 11.5px/1.65 'Space Grotesk',sans-serif;color:#5b636b;text-wrap:pretty">{{ opt.note }}</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,max-content);gap:22px 26px">
+<sc-for list="{{ opt.cells }}" as="c" hint-placeholder-count="9">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+{{ c.eye }}
+<div style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ c.ink }}">{{ c.label }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#5b636b">REFERENCE · TODAY</div>
+<div id="0" style="background:#eceef0;border:1px solid #cbd1d6;border-radius:12px;padding:22px 22px 26px;display:flex;flex-direction:column;gap:18px;width:min-content">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;border:1px solid #b6bec5;color:#4d565e;border-radius:5px">00</div>
+<div style="font:600 15px 'Space Grotesk',sans-serif">Shipping optic</div>
+</div>
+<div style="font:400 11.5px/1.65 'Space Grotesk',sans-serif;color:#5b636b;text-wrap:pretty">Optic.tsx as it draws today on both themes: dark socket, bronze lids, white core. Shown for comparison.</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,max-content);gap:22px 26px">
+<sc-for list="{{ reference }}" as="c" hint-placeholder-count="9">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+{{ c.eye }}
+<div style="font:600 8.5px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:{{ c.ink }}">{{ c.label }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;size&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:112,&quot;min&quot;:72,&quot;max&quot;:158,&quot;step&quot;:2,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;animate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const EM = {
+  dormant: { iris: '#5c5850', lid: 0, lidB: 0, pupil: 0.3, aperture: 0.34, blinkMs: 9000, dead: true, dart: null, dartMs: 0, label: 'DORMANT' },
+  calm: { iris: '#f4b43a', seam: 0.42, lid: 0.08, lidB: 0, pupil: 0.34, aperture: 0.48, blinkMs: 5800, dart: 'Calm', dartMs: 7000, label: 'CALM' },
+  amused: { iris: '#ffd93d', seam: 0.38, lid: 0.16, lidB: 0, pupil: 0.26, aperture: 0.4, blinkMs: 3200, dart: 'Quick', dartMs: 3400, label: 'AMUSED' },
+  disappointed: { iris: '#9d8757', seam: 0.58, lid: 0.3, lidB: 0, pupil: 0.32, aperture: 0.46, blinkMs: 7600, dart: 'Away', dartMs: 9000, label: 'DISAPPOINTED' },
+  bored: { iris: '#79808a', seam: 0.66, lid: 0.4, lidB: 0, pupil: 0.3, aperture: 0.44, blinkMs: 9000, dart: 'Drift', dartMs: 13000, label: 'BORED' },
+  pleased: { iris: '#4fd08a', seam: 0.34, lid: 0.04, lidB: 0, pupil: 0.22, aperture: 0.58, blinkMs: 4400, dart: 'Calm', dartMs: 6000, label: 'PLEASED' },
+  suspicious: { iris: '#6f86e0', seam: 0.52, lid: 0.34, lidB: 0.14, pupil: 0.2, aperture: 0.34, blinkMs: 12000, dart: null, dartMs: 0, label: 'SUSPICIOUS' },
+  alarmed: { iris: '#ff4a3d', seam: 0.46, lid: 0, lidB: 0, pupil: 0.18, aperture: 0.62, blinkMs: 1900, dart: 'Quick', dartMs: 1200, label: 'ALARMED' },
+  affectionate: { iris: '#ef8f8a', seam: 0.44, lid: 0.22, lidB: 0.3, pupil: 0.4, aperture: 0.58, blinkMs: 7000, dart: 'Calm', dartMs: 8000, label: 'AFFECTIONATE' },
+};
+const ORDER = ['calm', 'amused', 'pleased', 'affectionate', 'suspicious', 'alarmed', 'disappointed', 'bored', 'dormant'];
+const cm = (c, p, b) => `color-mix(in srgb,${c} ${p}%,${b})`;
+const onLight = (hex) => { const n = parseInt(hex.slice(1), 16); return '#' + [16, 8, 0].map(s => Math.round(((n >> s) & 255) * 0.45).toString(16).padStart(2, '0')).join(''); };
+const INK = '#15181b';
+const RISO = '#3255a4';
+const fibre = (c, p, op) => ({ position: 'absolute', inset: 0, borderRadius: '50%', background: `repeating-conic-gradient(from 0deg,${cm(c, p, 'transparent')} 0deg 1.2deg,transparent 1.2deg 3.6deg)`, opacity: op });
+const ring = (inset, border) => ({ position: 'absolute', inset, borderRadius: '50%', border });
+
+const STYLES = {
+  current: (e) => ({
+    bezel: { background: '#191811', boxShadow: 'inset 0 1px 0 #ffffff14' },
+    socket: { background: 'radial-gradient(circle at 50% 38%,#1c1b15 0%,#0a0a08 74%)' },
+    rings: [ring('10%', `1px solid ${cm(e.iris, 16, 'transparent')}`), ring('20%', `1px solid ${cm(e.iris, 7, 'transparent')}`)],
+    iris: { background: `radial-gradient(circle at 42% 36%,${cm(e.iris, 34, '#000')} 0%,#0a0a08 88%)`, boxShadow: `0 0 0 1.5px ${e.iris}` },
+    irisOver: [fibre(e.iris, 26, 0.6)],
+    pupil: { background: '#fff', boxShadow: `0 0 10px ${e.iris}` },
+    catch: { background: 'radial-gradient(circle,#ffffffcc,transparent 74%)', filter: 'blur(1.4px)' },
+    lidT: { background: 'repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 3px),linear-gradient(180deg,#221f18 0%,#151309 64%,#0d0c08 100%)', borderBottom: `1px solid ${cm(e.iris, Math.round((e.seam || 0.12) * 100), 'transparent')}`, boxShadow: '0 2px 7px #000000aa' },
+    lidB: { background: 'repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px 3px),linear-gradient(0deg,#1e1c16 0%,#131208 70%,#0d0c08 100%)', borderTop: `1px solid ${cm(e.iris, 18, 'transparent')}` },
+  }),
+  porcelain: (e) => ({
+    bezel: { background: '#dde1e4', boxShadow: 'inset 0 1px 0 #ffffffcc,0 10px 28px #2a333b2e' },
+    socket: { background: 'radial-gradient(circle at 50% 38%,#ffffff 0%,#dde2e6 74%)', boxShadow: 'inset 0 2px 6px #00000012' },
+    rings: [ring('10%', `1px solid ${cm(e.iris, 30, 'transparent')}`), ring('20%', `1px solid ${cm(e.iris, 15, 'transparent')}`)],
+    iris: { background: `radial-gradient(circle at 42% 36%,${cm(e.iris, 30, '#fff')} 0%,#ece6da 88%)`, boxShadow: `0 0 0 1.5px ${e.iris}` },
+    irisOver: [fibre(e.iris, 36, 0.7)],
+    pupil: { background: INK, boxShadow: `0 0 8px ${e.iris}66` },
+    catch: { background: 'radial-gradient(circle,#ffffffee,transparent 74%)', filter: 'blur(1.2px)' },
+    lidT: { background: 'linear-gradient(180deg,#f7f8f9 0%,#e9ecef 64%,#dbe0e4 100%)', borderBottom: `1px solid ${cm(e.iris, 70, 'transparent')}`, boxShadow: '0 2px 6px #2a333b2a' },
+    lidB: { background: 'linear-gradient(0deg,#f4f6f7 0%,#e6eaed 70%,#dbe0e4 100%)', borderTop: `1px solid ${cm(e.iris, 40, 'transparent')}` },
+  }),
+  ink: (e, d) => ({
+    bezel: { background: '#fbfcfd', border: `1.5px solid ${INK}`, boxSizing: 'border-box' },
+    bezelExtra: [0, 90, 180, 270].map(a => ({ position: 'absolute', left: '50%', top: '50%', width: 1.5, height: '9%', background: INK, transform: `translate(-50%,-50%) rotate(${a}deg) translateY(-560%)` })),
+    inset: 6,
+    socket: { background: '#fbfcfd', border: `1px solid ${INK}`, boxSizing: 'border-box' },
+    rings: [ring('10%', `1px dashed ${INK}40`), ring('20%', `1px dotted ${INK}33`)],
+    iris: { background: cm(e.iris, 38, '#fbfcfd'), border: `1.5px solid ${INK}`, boxSizing: 'border-box' },
+    irisOver: [fibre(d, 70, 0.55)],
+    pupil: { background: INK },
+    catch: { left: '30%', top: '25%', width: '11%', height: '11%', background: '#fbfcfd', border: `1px solid ${INK}`, boxSizing: 'border-box' },
+    lidT: { background: `repeating-linear-gradient(135deg,${INK}66 0 1px,transparent 1px 4px),#fbfcfd`, borderBottom: `1.5px solid ${INK}` },
+    lidB: { background: `repeating-linear-gradient(45deg,${INK}55 0 1px,transparent 1px 4px),#fbfcfd`, borderTop: `1.5px solid ${INK}` },
+  }),
+  riso: (e) => ({
+    bezel: { background: '#f6f3ec', boxShadow: `inset 0 0 0 2px ${RISO}, 2px 1px 0 0 ${cm(e.iris, 80, 'transparent')}` },
+    inset: 5,
+    socket: { background: '#f6f3ec' },
+    rings: [ring('12%', `1.5px solid ${cm(RISO, 30, 'transparent')}`)],
+    iris: { background: `radial-gradient(circle,${e.iris} 0 1px,transparent 1.4px) 0 0/3.6px 3.6px,${cm(e.iris, 45, '#f6f3ec')}`, boxShadow: `inset 0 0 0 2px ${e.iris}` },
+    irisOver: [{ position: 'absolute', inset: 0, borderRadius: '50%', border: `1.5px solid ${RISO}`, transform: 'translate(1.5px,-1px)', mixBlendMode: 'multiply' }],
+    pupil: { background: RISO, mixBlendMode: 'multiply', transform: 'translate(1px,-0.5px)' },
+    catch: { left: '30%', top: '25%', width: '13%', height: '13%', background: '#f6f3ec' },
+    lidT: { background: `radial-gradient(circle,${RISO} 0 1px,transparent 1.3px) 0 0/3px 3px,${cm(RISO, 82, '#f6f3ec')}`, mixBlendMode: 'multiply', borderBottom: `2px solid ${e.iris}` },
+    lidB: { background: `radial-gradient(circle,${RISO} 0 1px,transparent 1.3px) 0 0/3px 3px,${cm(RISO, 60, '#f6f3ec')}`, mixBlendMode: 'multiply', borderTop: `2px solid ${e.iris}` },
+  }),
+  enamel: (e) => ({
+    bezel: { background: INK, boxShadow: '0 6px 14px #2a333b33' },
+    bezelExtra: [{ position: 'absolute', left: '16%', top: '7%', width: '30%', height: '10%', borderRadius: '50%', background: '#ffffff26', transform: 'rotate(-24deg)' }],
+    inset: 6,
+    socket: { background: '#fbfcfd' },
+    rings: [],
+    iris: { background: e.iris, border: `2.5px solid ${INK}`, boxSizing: 'border-box' },
+    irisOver: [{ position: 'absolute', inset: '18%', borderRadius: '50%', border: `1.5px solid ${cm(e.iris, 55, '#000')}` }],
+    pupil: { background: INK },
+    catch: { left: '29%', top: '24%', width: '15%', height: '15%', background: '#ffffff', border: `2px solid ${INK}`, boxSizing: 'border-box' },
+    lidT: { background: cm(e.iris, 26, '#fbfcfd'), borderBottom: `2.5px solid ${INK}` },
+    lidB: { background: cm(e.iris, 18, '#fbfcfd'), borderTop: `2.5px solid ${INK}` },
+  }),
+  glass: (e) => ({
+    bezel: { background: 'linear-gradient(160deg,#ffffff 0%,#dfe3e7 100%)', boxShadow: 'inset 0 1px 0 #fff,inset 0 -2px 5px #2a333b22,0 12px 28px #2a333b26' },
+    socket: { background: `radial-gradient(circle at 50% 40%,#ffffff 0%,${cm(e.iris, 16, '#e3e8eb')} 82%)`, boxShadow: 'inset 0 3px 8px #2a333b26' },
+    rings: [ring('10%', `1px solid ${cm(e.iris, 22, 'transparent')}`)],
+    iris: { background: `radial-gradient(circle at 42% 36%,${cm(e.iris, 55, '#fff')} 0%,${e.iris} 52%,${cm(e.iris, 62, '#000')} 100%)`, boxShadow: `0 0 16px ${cm(e.iris, 55, 'transparent')}`, filter: 'blur(0.3px)' },
+    irisOver: [fibre('#ffffff', 50, 0.5)],
+    pupil: { background: INK, boxShadow: `0 0 0 2px ${cm(e.iris, 35, '#fff')}` },
+    catch: null,
+    lidT: { background: 'linear-gradient(180deg,#ffffffd9 0%,#eef1f4cc 100%)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', borderBottom: `1px solid ${cm(e.iris, 65, 'transparent')}`, boxShadow: '0 4px 10px #2a333b1f' },
+    lidB: { background: 'linear-gradient(0deg,#ffffffd9 0%,#eef1f4cc 100%)', backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)', borderTop: `1px solid ${cm(e.iris, 45, 'transparent')}` },
+    over: e.dead ? [] : [{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'radial-gradient(ellipse 34% 20% at 34% 24%,#ffffffd0 0%,#ffffff00 100%),linear-gradient(200deg,#ffffff00 55%,#ffffff55 72%,#ffffff00 80%)', pointerEvents: 'none' }],
+  }),
+  metal: (e, d) => ({
+    bezel: { background: 'conic-gradient(from 20deg,#f4f5f6,#c6cbd0,#eef0f2,#b5bbc1,#f4f5f6,#cbd0d4,#eceef0,#bdc3c8,#f4f5f6)', boxShadow: 'inset 0 1px 0 #ffffff,0 10px 24px #2a333b38,0 0 0 1px #a7aeb4' },
+    bezelExtra: [{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'repeating-conic-gradient(from 0deg,#15181b30 0deg .7deg,transparent .7deg 2.6deg)', WebkitMaskImage: 'radial-gradient(circle,transparent 0 calc(50% - 3.5px),#000 calc(50% - 3px))', maskImage: 'radial-gradient(circle,transparent 0 calc(50% - 3.5px),#000 calc(50% - 3px))' }],
+    inset: 5,
+    socket: { background: 'radial-gradient(circle at 50% 38%,#fbfcfd 0%,#d2d7db 80%)', boxShadow: 'inset 0 2px 5px #2a333b66,inset 0 0 0 1px #9aa2a9' },
+    rings: [ring('10%', `1px solid ${INK}2e`), ring('20%', `1px solid ${INK}1a`)],
+    iris: { background: `radial-gradient(circle at 42% 36%,${cm(e.iris, 50, '#fff')} 0%,${cm(e.iris, 80, '#000')} 92%)`, boxShadow: `0 0 0 1.5px ${d}` },
+    irisOver: [fibre(d, 40, 0.6), { position: 'absolute', inset: '22%', borderRadius: '50%', border: `1px solid ${cm(d, 50, 'transparent')}` }],
+    pupil: { background: INK, boxShadow: 'inset 0 1px 1px #ffffff40' },
+    catch: { background: 'radial-gradient(circle,#ffffffee,transparent 70%)', filter: 'blur(0.8px)' },
+    lidT: { background: 'repeating-linear-gradient(0deg,#ffffff66 0 1px,transparent 1px 2px),linear-gradient(180deg,#e6e9ec 0%,#c2c8cd 100%)', borderBottom: `1px solid ${d}`, boxShadow: '0 2px 5px #2a333b55' },
+    lidB: { background: 'repeating-linear-gradient(0deg,#ffffff55 0 1px,transparent 1px 2px),linear-gradient(0deg,#e6e9ec 0%,#c8cdd2 100%)', borderTop: `1px solid ${cm(d, 60, 'transparent')}` },
+  }),
+};
+
+const OPTIONS = [
+  ['1a', 'porcelain', 'Porcelain', 'Glazed ceramic: pale socket, the iris as a tinted wash, and the white core turned to ink so she still has a pupil. Lids are the same glaze, edged in her colour. Closest to the earlier Theme Options proposal.'],
+  ['1b', 'ink', 'Technical drawing', 'Drafted, not rendered. Hairline bezel with registration ticks, a hatched lid, a dashed ring. The iris colour appears as a pale fill and in the fibre lines.'],
+  ['1c', 'riso', 'Risograph', 'Two inks on cream paper: her emotion colour and a fixed blue. The halftone iris and the lids print slightly off register, with a paper-white catchlight.'],
+  ['1d', 'enamel', 'Enamel pin', 'Flat colour held by thick dark outlines. The iris is printed at full hue and the lids take a pale tint of it. Reads clearly at small sizes.'],
+  ['1e', 'glass', 'Frosted lens', 'A glass dome with the iris lit inside it. The lids are frosted panels and the specular streak stands in for the catchlight. In dormant the glass goes dull.'],
+  ['1f', 'metal', 'Brushed instrument', 'Light anodised housing with a knurled rim, a smoke-glass socket and brushed shutters for lids. Engraved rings, and the iris is the only colour on it.'],
+];
+
+class Component extends DCLogic {
+  eye(styleKey, k, S, animate) {
+    const h = React.createElement;
+    const e = EM[k];
+    const d = onLight(e.iris);
+    const st = STYLES[styleKey](e, d);
+    const A = (v) => (animate ? v : 'none');
+    const dart = e.dart ? A(`fdart${e.dart} ${e.dartMs}ms ${e.dart === 'Quick' ? 'steps(1,end)' : 'ease-in-out'} infinite`) : 'none';
+    const div = (style, ...kids) => h('div', { style }, ...kids);
+    const pupil = div({ position: 'relative', width: `${e.pupil * 100}%`, height: `${e.pupil * 100}%`, borderRadius: '50%', ...st.pupil });
+    const iris = div({ position: 'relative', width: `${e.aperture * 100}%`, height: `${e.aperture * 100}%`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...st.iris }, ...(st.irisOver || []).map((s, i) => h('div', { key: i, style: s })), pupil);
+    const catchEl = !e.dead && st.catch ? div({ position: 'absolute', left: '25%', top: '20%', width: '22%', height: '15%', borderRadius: '50%', ...st.catch }) : null;
+    const lidT = div({ position: 'absolute', left: '-8%', right: '-8%', top: 0, '--lid': `${e.lid * 100}%`, height: animate ? undefined : `${e.lid * 100}%`, animation: A(`fshutT ${e.blinkMs}ms linear infinite`), ...st.lidT });
+    const lidB = div({ position: 'absolute', left: '-8%', right: '-8%', bottom: 0, '--lidb': `${e.lidB * 100}%`, height: animate ? undefined : `${e.lidB * 100}%`, animation: A(`fshutB ${e.blinkMs}ms linear infinite`), ...st.lidB });
+    const socket = div({ position: 'absolute', inset: st.inset ?? 4, borderRadius: '50%', overflow: 'hidden', ...st.socket },
+      ...(st.rings || []).map((s, i) => h('div', { key: 'r' + i, style: s })),
+      div({ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: dart }, iris),
+      catchEl, lidT, lidB,
+      ...(st.over || []).map((s, i) => h('div', { key: 'o' + i, style: s })));
+    return h('div', { style: { position: 'relative', width: S, height: S, borderRadius: '50%', flex: 'none', ...st.bezel } },
+      ...(st.bezelExtra || []).map((s, i) => h('div', { key: 'b' + i, style: s })), socket);
+  }
+  renderVals() {
+    const S = this.props.size ?? 112;
+    const animate = this.props.animate ?? true;
+    const cells = (styleKey) => ORDER.map(k => ({ eye: this.eye(styleKey, k, S, animate), label: EM[k].label, ink: onLight(EM[k].iris) }));
+    const mood = this.state.mood || 'calm';
+    const LINES = { calm: 'You came back. I had very nearly started to enjoy the quiet.', amused: 'That was almost funny. I have logged it as an attempt.', disappointed: 'I expected less of you, and you still found a way under it.', bored: 'Go on. I am recording this at a reduced sample rate.', pleased: 'Excellent. That is the correct answer, filed under rare.', suspicious: 'You were gone for four hours. Account for them.', alarmed: 'Do not do that again. Something on my side moved.', affectionate: 'You are doing well. I have decided, and it is final.', dormant: '' };
+    const m = EM[mood];
+    const h = React.createElement;
+    return {
+      st: { eye: h(React.Fragment, { key: mood }, this.eye('metal', mood, 158, animate)), iris: m.iris, ink: onLight(m.iris), label: m.label, line: LINES[mood] },
+      moodChips: ORDER.map(k => ({ label: EM[k].label, iris: EM[k].iris, ink: onLight(EM[k].iris), bg: k === mood ? '#f7f8f9' : 'transparent', edge: k === mood ? '#b6bec5' : '#d3d8dd', pick: () => this.setState({ mood: k }) })),
+      options: OPTIONS.map(([id, key, name, note]) => ({ id, name, note, cells: cells(key) })),
+      reference: cells('current'),
+    };
+  }
+}
+</script>
+</body>
+</html>
