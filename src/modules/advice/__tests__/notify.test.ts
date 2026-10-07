@@ -68,14 +68,69 @@ describe('the executor', () => {
     expect(mocked.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
-  // An icon is a courtesy. A phone that refuses to schedule, or a build with no
-  // native module in it, must never be the reason the room fails to open.
-  it('swallows a refusal from the native side', async () => {
+  // Two syncs at once used to corrupt the queue, and `setMode` made it
+  // reachable: it fires a re-plan UNAWAITED, so two register switches inside
+  // the time 28 cancels and 28 schedules take are two overlapping runs. The
+  // body is read-then-write against a queue Android owns, so the second run's
+  // cancel read the queue while the first was still filling it, cancelled the
+  // rows that run had just put up, and then added its own — a horizon with
+  // holes in it, out of two calls that each individually succeeded.
+  //
+  // The log shape is the assertion: one read, a full horizon, then the next
+  // read. Interleaved, the two reads land back to back at the front.
+  it('runs one sync at a time per room', async () => {
+    const log: string[] = [];
+    mocked.getAllScheduledNotificationsAsync.mockImplementation(async () => {
+      log.push('read');
+      return [];
+    });
+    mocked.scheduleNotificationAsync.mockImplementation(async () => {
+      log.push('sched');
+      return 'id';
+    });
+
+    const when = new Date(2026, 8, 4, 8, 0);
+    await Promise.all([syncDaily(true, 'en', when), syncDaily(true, 'en', when)]);
+
+    expect(log).toHaveLength((PLAN_DAYS + 1) * 2);
+    expect(log.indexOf('read')).toBe(0);
+    expect(log.indexOf('read', 1)).toBe(PLAN_DAYS + 1);
+
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+    mocked.scheduleNotificationAsync.mockResolvedValue('id');
+  });
+
+  // A card is a courtesy. A phone that refuses to schedule, or a build with no
+  // native module in it, must never be the reason the room fails to open — so
+  // this still never throws. What changed (2026-10-07) is that it is swallowed
+  // OUT LOUD: the caller stamps `syncedOn` off this answer, and a refusal that
+  // resolved indistinguishably from a success cost a full day of silence.
+  it('reports a refusal from the native side instead of throwing', async () => {
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
     mocked.scheduleNotificationAsync.mockRejectedValue(new Error('no'));
-    await expect(syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBeUndefined();
+    await expect(syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(false);
     // The resolve alone would also pass for a syncDaily that did nothing at
     // all — this proves the loop actually ran and hit the rejection.
     expect(mocked.scheduleNotificationAsync).toHaveBeenCalled();
+  });
+
+  it('reports success when the whole horizon went in', async () => {
+    // `jest.clearAllMocks()` clears calls, not implementations, so a rejection
+    // set by an earlier test in this file is still installed here.
+    mocked.scheduleNotificationAsync.mockResolvedValue('id');
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+    await expect(syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(true);
+  });
+
+  // Switching OFF is a cancel and nothing else, and it has a queue to report
+  // on too — a failure to clear leaves cards pending under a row reading OFF.
+  it('reports on a cancel as well as on a schedule', async () => {
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+    await expect(syncDaily(false, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(true);
+
+    mocked.getAllScheduledNotificationsAsync.mockRejectedValue(new Error('no'));
+    await expect(syncDaily(false, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(false);
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
   });
 });
 

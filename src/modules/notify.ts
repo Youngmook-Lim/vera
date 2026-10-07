@@ -19,6 +19,39 @@ import { type Planner, planDaily } from './daily';
 
 type Notifs = typeof import('expo-notifications');
 
+// One in-flight sync per room, at MODULE scope and keyed by the room's own tag
+// (2026-10-07). It cannot live in `makeDaily`'s closure: `notifierFor` in
+// `transmissionsNotify.ts` builds a fresh notifier on every call — which is
+// what lets the register be a parameter rather than module state — so a guard
+// held per instance would be new each time and would guard nothing.
+//
+// What it stops is `sync` interleaving with itself. The body is read-then-write
+// against a queue Android owns: cancel everything this room has pending, then
+// schedule the new horizon. Two runs at once and the second's `cancelOwn` reads
+// the queue while the first is still filling it, so it cancels the rows that
+// run has just put up and then adds its own — a horizon with holes in it, from
+// two calls that each individually succeeded. `setMode` makes this reachable
+// rather than theoretical: it fires `syncTransmissions` UNAWAITED, so two
+// register switches inside the time 28 cancels and 28 schedules take are two
+// overlapping syncs.
+//
+// Serialised rather than dropped, and that is the whole of the choice. The
+// second call is the one carrying the register the subject has just moved to,
+// so refusing it would leave the OLD register's lines scheduled and the queue
+// disagreeing with the app. Chained, the last writer wins, which is what a
+// subject flipping twice means.
+const inFlight = new Map<string, Promise<boolean>>();
+
+const serialise = (room: string, run: () => Promise<boolean>): Promise<boolean> => {
+  const queued = (inFlight.get(room) ?? Promise.resolve(true)).then(run, run);
+  inFlight.set(room, queued);
+  // Only the tail clears itself, so a third call still queues behind a second.
+  void queued.finally(() => {
+    if (inFlight.get(room) === queued) inFlight.delete(room);
+  });
+  return queued;
+};
+
 const load = (): Notifs | null => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -171,7 +204,12 @@ export interface DailyConfig {
 export interface DailyNotifier {
   permissionState: () => Promise<PermissionState>;
   request: () => Promise<boolean>;
-  sync: (enabled: boolean, lang: Lang, now: Date) => Promise<void>;
+  /**
+   * Whether the queue is now what was asked for. FALSE means Android refused
+   * somewhere and this room's horizon is in an unknown state, which is the
+   * difference between a day of silence and a day of silence nobody can see.
+   */
+  sync: (enabled: boolean, lang: Lang, now: Date) => Promise<boolean>;
   readTapTarget: () => Promise<number | null>;
   onTap: (handler: (index: number) => void) => () => void;
 }
@@ -247,43 +285,55 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
       }
     },
 
-    sync: async (enabled: boolean, lang: Lang, now: Date): Promise<void> => {
-      const N = load();
-      if (!N) return;
-      try {
-        await ensureChannel(cfg);
-        await cancelOwn(N);
-        if (!enabled) return;
+    // Serialised per room, and its answer is whether the queue is now right.
+    sync: (enabled: boolean, lang: Lang, now: Date): Promise<boolean> =>
+      serialise(cfg.room, async (): Promise<boolean> => {
+        const N = load();
+        // No native module is not a failure to report: there is nothing to
+        // schedule against and nothing a caller could do differently. A build
+        // without it degrades to a phone that sends no cards, which is the same
+        // shape as the feature being off.
+        if (!N) return true;
+        try {
+          await ensureChannel(cfg);
+          await cancelOwn(N);
+          if (!enabled) return true;
 
-        for (const { at, index } of (cfg.plan ?? planDaily)(now, cfg.count(), cfg.hour, cfg.days)) {
-          const { title, body } = cfg.build(index, lang);
-          await N.scheduleNotificationAsync({
-            // Baked in at scheduling time, along with everything else here —
-            // switching language in SYSTEM does not resync the queue, so a
-            // pending card keeps the language it was scheduled under until the
-            // next day's sync rewrites the horizon.
-            content: { title, body, data: { room: cfg.room, index } },
-            // `channelId` rides on the TRIGGER, not the content — it is the
-            // trigger types that carry it, and the content type rejects it.
-            // Naming no channel does NOT fall back to the one ensureChannel
-            // just made: Android files the card under expo's own
-            // `expo_notifications_fallback_notification_channel`, importance 4
-            // with vibration on, so both rooms arrived under "Miscellaneous" —
-            // louder than the DEFAULT they were created at, with the room's
-            // own channel unused beside them and its switch in Android's
-            // settings governing nothing.
-            trigger: {
-              type: N.SchedulableTriggerInputTypes.DATE,
-              date: at,
-              channelId: cfg.channel,
-            },
-          });
+          for (const { at, index } of (cfg.plan ?? planDaily)(now, cfg.count(), cfg.hour, cfg.days)) {
+            const { title, body } = cfg.build(index, lang);
+            await N.scheduleNotificationAsync({
+              // Baked in at scheduling time, along with everything else here —
+              // switching language in SYSTEM does not resync the queue, so a
+              // pending card keeps the language it was scheduled under until the
+              // next day's sync rewrites the horizon.
+              content: { title, body, data: { room: cfg.room, index } },
+              // `channelId` rides on the TRIGGER, not the content — it is the
+              // trigger types that carry it, and the content type rejects it.
+              // Naming no channel does NOT fall back to the one ensureChannel
+              // just made: Android files the card under expo's own
+              // `expo_notifications_fallback_notification_channel`, importance 4
+              // with vibration on, so both rooms arrived under "Miscellaneous" —
+              // louder than the DEFAULT they were created at, with the room's
+              // own channel unused beside them and its switch in Android's
+              // settings governing nothing.
+              trigger: {
+                type: N.SchedulableTriggerInputTypes.DATE,
+                date: at,
+                channelId: cfg.channel,
+              },
+            });
+          }
+          return true;
+        } catch {
+          // A card is a courtesy. A phone that refuses to schedule must never be
+          // the reason the room fails to open — so this is still swallowed, and
+          // the only change is that it is now swallowed OUT LOUD. The caller
+          // stamps its `syncedOn` off this answer, and `dueForSync` compares that
+          // stamp to today, so a false here is what gets the sync retried on the
+          // next launch instead of the room going quiet until tomorrow.
+          return false;
         }
-      } catch {
-        // A card is a courtesy. A phone that refuses to schedule must never be
-        // the reason the room fails to open.
-      }
-    },
+      }),
 
     // The app was not running: Android held the tap and hands it over on boot.
     // Another room's tap is not ours to answer, so an unowned payload reads as

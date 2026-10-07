@@ -35,14 +35,21 @@ const notifierFor = (slot: TransmissionSlot, hour: number, mode: Mode) =>
     build: (index) => ({ title: TITLE, body: linesFor(mode, slot)[index] }),
   });
 
+// True only if EVERY slot's queue is now what was asked for. Her two slots are
+// one feature and share one `transmissionsSyncedOn`, so a stamp that landed on
+// a half-synced pair would read as a finished day and cost the failed slot
+// until tomorrow. Both run either way — the second is not skipped because the
+// first failed, since a slot that can be scheduled should be.
 export const syncTransmissions = async (
   on: boolean,
   mode: Mode,
   now: Date,
-): Promise<void> => {
+): Promise<boolean> => {
+  let ok = true;
   for (const { slot, hour } of SLOTS) {
-    await notifierFor(slot, hour, mode).sync(on, 'en', now);
+    if (!(await notifierFor(slot, hour, mode).sync(on, 'en', now))) ok = false;
   }
+  return ok;
 };
 
 // Permission and the channel belong to neither slot, so either notifier can

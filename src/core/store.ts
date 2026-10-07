@@ -901,9 +901,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     if (on && !(await requestTransmissions())) return false;
 
     const now = new Date();
-    const transmissionsSyncedOn = on ? now.toDateString() : null;
-    set({ transmissions: on, transmissionsSyncedOn });
-    await syncTransmissions(on, get().mode, now);
+    // The switch is written FIRST and the stamp only after the work, and the
+    // two are separate facts: `transmissions` is what the subject asked for,
+    // `transmissionsSyncedOn` is whether Android took it. Stamping before the
+    // sync made a refusal indistinguishable from a success — and since
+    // `dueForSync` compares that stamp to today, a failure here used to buy a
+    // full day of silence under a row still reading ON.
+    set({ transmissions: on });
+    const ok = await syncTransmissions(on, get().mode, now);
+    set({ transmissionsSyncedOn: on && ok ? now.toDateString() : null });
     await saveSoul(get());
     return on;
   },
@@ -915,8 +921,13 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
     if (!transmissions) return;
     if (!dueForSync(transmissionsSyncedOn, now)) return;
 
+    // Stamped on the way out, not the way in. The re-entrancy this used to
+    // guard against is `sync`'s own business now (see `serialise` in
+    // notify.ts), so the stamp is free to mean what it says: the horizon for
+    // today is actually in Android's queue.
+    if (!(await syncTransmissions(true, get().mode, now))) return;
+
     set({ transmissionsSyncedOn: now.toDateString() });
-    await syncTransmissions(true, get().mode, now);
     await saveSoul(get());
   },
 

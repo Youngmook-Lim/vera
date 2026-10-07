@@ -20,7 +20,7 @@ const { callLlm, AuthError, QuotaError } = jest.requireMock('../../vera/llm');
 
 // Her lock-screen cards. Mocked whole: nothing here may reach expo.
 jest.mock('../../vera/transmissionsNotify', () => ({
-  syncTransmissions: jest.fn(async () => {}),
+  syncTransmissions: jest.fn(async () => true),
   requestTransmissions: jest.fn(async () => true),
   transmissionPermission: jest.fn(async () => 'granted'),
 }));
@@ -1821,6 +1821,34 @@ describe('her transmissions', () => {
 
     await useFacilityStore.getState().syncTransmissionsIfDue(now);
     expect(syncTransmissions).toHaveBeenCalledTimes(1);
+  });
+
+  // The stamp is the whole of what `dueForSync` reads, so one that lands on a
+  // failed sync costs a full day of silence — and `sync` swallows its own
+  // errors, so nothing else could ever tell the two apart. Before 2026-10-07
+  // the stamp went down BEFORE the work and this was unreachable.
+  it('does not mark the day done when the sync failed', async () => {
+    useFacilityStore.setState({ transmissions: true, transmissionsSyncedOn: null });
+    const now = new Date(2026, 8, 21, 8, 0);
+    syncTransmissions.mockImplementationOnce(async () => false);
+
+    await useFacilityStore.getState().syncTransmissionsIfDue(now);
+    expect(useFacilityStore.getState().transmissionsSyncedOn).toBeNull();
+
+    // So the next launch tries again rather than waiting out the day.
+    await useFacilityStore.getState().syncTransmissionsIfDue(now);
+    expect(syncTransmissions).toHaveBeenCalledTimes(2);
+    expect(useFacilityStore.getState().transmissionsSyncedOn).toBe(now.toDateString());
+  });
+
+  // The switch and the stamp are separate facts: she stays ON, because that is
+  // what the subject asked for, and the day stays unstamped so it is retried.
+  it('leaves the switch on but the day unstamped when the sync failed', async () => {
+    syncTransmissions.mockImplementationOnce(async () => false);
+
+    expect(await useFacilityStore.getState().setTransmissions(true)).toBe(true);
+    expect(useFacilityStore.getState().transmissions).toBe(true);
+    expect(useFacilityStore.getState().transmissionsSyncedOn).toBeNull();
   });
 
   it('refreshes it again once the day turns over', async () => {

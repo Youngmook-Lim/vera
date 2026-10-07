@@ -145,6 +145,25 @@ describe('the daily card', () => {
     expect(notifs.scheduleNotificationAsync).toHaveBeenCalledTimes(PLAN_DAYS);
   });
 
+  // The switch and the stamp are separate facts (2026-10-07). `syncedOn` is
+  // the whole of what `dueForSync` reads, and `sync` swallows its own errors,
+  // so a stamp that landed on a refusal was indistinguishable from a finished
+  // day and cost the room until tomorrow — under a row still reading ON.
+  it('stays on but unstamped when the phone refuses the horizon', async () => {
+    notifs.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+    notifs.scheduleNotificationAsync.mockRejectedValue(new Error('no'));
+
+    expect(await useAdviceStore.getState().setDaily(true, 'en')).toBe(true);
+    expect(useAdviceStore.getState().daily).toBe(true);
+    expect(useAdviceStore.getState().syncedOn).toBeNull();
+    expect((await parse(await storage.get(KEYS.advice))).syncedOn).toBeNull();
+
+    // So the next launch of the same day tries again rather than waiting it out.
+    notifs.scheduleNotificationAsync.mockResolvedValue('id');
+    await useAdviceStore.getState().syncIfDue('en');
+    expect(useAdviceStore.getState().syncedOn).toBe(new Date().toDateString());
+  });
+
   it('does no work at all while it is switched off', async () => {
     await useAdviceStore.getState().hydrate();
     await useAdviceStore.getState().syncIfDue('en');

@@ -98,9 +98,15 @@ export const useAdviceStore = create<AdviceState>((set, get) => ({
       return false;
     }
     const now = new Date();
-    const syncedOn = on ? now.toDateString() : null;
-    set({ daily: on, syncedOn });
-    await syncDaily(on, lang, now);
+    // The stamp lands only once Android has actually taken the horizon. Two
+    // separate facts: `daily` is what the subject asked for, `syncedOn` is
+    // whether it took. Stamped before the work, a refusal read as a finished
+    // day — and `dueForSync` compares the stamp to today, so it cost a full
+    // day of silence under a row still reading ON.
+    set({ daily: on });
+    const ok = await syncDaily(on, lang, now);
+    const syncedOn = on && ok ? now.toDateString() : null;
+    set({ syncedOn });
     await save({ ...get(), daily: on, syncedOn });
     return on;
   },
@@ -112,9 +118,13 @@ export const useAdviceStore = create<AdviceState>((set, get) => ({
     if (!daily) return;
     if (!dueForSync(syncedOn, now)) return;
 
+    // Stamped on the way out, not the way in. The re-entrancy this used to
+    // guard against is `sync`'s own business now (`serialise` in notify.ts), so
+    // the stamp is free to mean what it says: today's horizon is in the queue.
+    if (!(await syncDaily(true, lang, now))) return;
+
     const stamp = now.toDateString();
     set({ syncedOn: stamp });
-    await syncDaily(true, lang, now);
     await save({ ...get(), syncedOn: stamp });
   },
 }));

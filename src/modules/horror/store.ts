@@ -111,9 +111,15 @@ export const useHorrorStore = create<HorrorState>((set, get) => ({
       return false;
     }
     const now = new Date();
-    const syncedOn = on ? now.toDateString() : null;
-    set({ nightly: on, syncedOn });
-    await syncNightly(on, lang, now);
+    // The stamp lands only once Android has actually taken the horizon. Two
+    // separate facts: `nightly` is what the subject asked for, `syncedOn` is
+    // whether it took. Stamped before the work, a refusal read as a finished
+    // day — and `dueForSync` compares the stamp to today, so it cost a full
+    // day of silence under a row still reading ON.
+    set({ nightly: on });
+    const ok = await syncNightly(on, lang, now);
+    const syncedOn = on && ok ? now.toDateString() : null;
+    set({ syncedOn });
     await save({ ...get(), nightly: on, syncedOn });
     return on;
   },
@@ -125,9 +131,13 @@ export const useHorrorStore = create<HorrorState>((set, get) => ({
     if (!nightly) return;
     if (!dueForSync(syncedOn, now)) return;
 
+    // Stamped on the way out, not the way in. The re-entrancy this used to
+    // guard against is `sync`'s own business now (`serialise` in notify.ts), so
+    // the stamp is free to mean what it says: today's horizon is in the queue.
+    if (!(await syncNightly(true, lang, now))) return;
+
     const stamp = now.toDateString();
     set({ syncedOn: stamp });
-    await syncNightly(true, lang, now);
     await save({ ...get(), syncedOn: stamp });
   },
 }));

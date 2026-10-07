@@ -50,6 +50,22 @@ describe('the nightly horror row', () => {
     await view.unmount();
   });
 
+  // The switch and the stamp are separate facts (2026-10-07). A refused
+  // PERMISSION leaves the room off (below); a refused SCHEDULE leaves it on,
+  // because that is what the subject asked for — but unstamped, so the next
+  // launch retries instead of reading as a day already done. `syncedOn` is the
+  // whole of what `dueForSync` sees, and `sync` swallows its own errors.
+  it('stays on but unstamped when the phone refuses the horizon', async () => {
+    notifs.scheduleNotificationAsync.mockRejectedValue(new Error('no'));
+    const view = await render(<Settings />);
+    await fireEvent.press(view.getByTestId('pref-nightly'));
+
+    await waitFor(() => expect(useHorrorStore.getState().nightly).toBe(true));
+    expect(view.getByTestId('pref-nightly').props.children).toBe('ON');
+    expect(useHorrorStore.getState().syncedOn).toBeNull();
+    await view.unmount();
+  });
+
   // Android never re-prompts once refused, so a refusal has to leave the store
   // off — a row reading ON over a phone that will never show a story is worse
   // than one that reads OFF.

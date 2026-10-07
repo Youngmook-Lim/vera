@@ -70,10 +70,21 @@ describe('the nightly story', () => {
     }
   });
 
-  it('swallows a refusal from the native side', async () => {
+  // Never throws, but says so now (2026-10-07) — the caller's `syncedOn` is
+  // stamped off this, and a silent refusal cost the room a day.
+  it('reports a refusal from the native side instead of throwing', async () => {
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
     mocked.scheduleNotificationAsync.mockRejectedValue(new Error('no'));
-    await expect(syncNightly(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBeUndefined();
+    await expect(syncNightly(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(false);
     expect(mocked.scheduleNotificationAsync).toHaveBeenCalled();
+  });
+
+  it('reports success when the whole horizon went in', async () => {
+    // `jest.clearAllMocks()` clears calls, not implementations, so the
+    // rejection the test above installed is still in place here.
+    mocked.scheduleNotificationAsync.mockResolvedValue('id');
+    mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+    await expect(syncNightly(true, 'en', new Date(2026, 8, 4, 8, 0))).resolves.toBe(true);
   });
 });
 
