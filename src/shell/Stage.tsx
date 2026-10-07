@@ -567,6 +567,7 @@ export function Stage() {
               tracking={tracking && follows}
               onPress={poke}
               waking={waking}
+              theme={theme}
             />
           </View>
         </View>

@@ -365,7 +365,7 @@ export const themed = <T,>(make: (p: Palette) => T): Record<Theme, T> => ({
 // that clears it, and does so at 4.50:1 exactly, which rounding could tip; 45%
 // clears all eight waking states with room and is not a visibly different
 // choice. `palettes.test.ts` holds every state to the number.
-const LIGHT_MIX = 0.45;
+export const LIGHT_MIX = 0.45;
 
 export const onLight = (hex: string): string => {
   const n = parseInt(hex.slice(1), 16);
@@ -375,8 +375,11 @@ export const onLight = (hex: string): string => {
     .join('')}`;
 };
 
-// Her iris where it is used as TYPE. Objects — the pulse dots, the slider's
-// ring, the optic itself — take the raw iris in both themes.
+// Her iris where it is used as TYPE. Objects — the pulse dots and the slider's
+// ring — take the raw iris in both themes. The optic takes both: its iris is
+// filled from the raw hue, and everything DRAWN in her colour there (the iris
+// ring, the fibre, the lid seams) is darkened on the pale ground for the same
+// reason type is. See ART in `Optic.tsx`.
 export const emotionText = (iris: string, theme: Theme): string =>
   theme === 'light' ? onLight(iris) : iris;
 

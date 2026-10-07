@@ -60,6 +60,22 @@ describe('Splash', () => {
     }
   });
 
+  // This screen is theme-invariant and the eye has to be too (2026-10-07). Its
+  // ground is `iconBg`, fixed in app.json at build time, so handing the optic a
+  // stored `light` would put 1f's pale brushed housing on a near-black square —
+  // the exact inverse of the read 1f was drawn to fix. Passing NO theme is how
+  // that is said, so the absence is the assertion.
+  it('never tells the eye which ground to use', async () => {
+    const spy = jest.spyOn(OpticModule, 'Optic');
+    try {
+      const view = await render(<Splash hasKey now={NOW} />);
+      expect(spy.mock.calls.at(-1)?.[0].theme).toBeUndefined();
+      await view.unmount();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   // The title card is the one screen her name is the subject of, so it carries
   // the acronym's expansion. The stage's logo deliberately does not.
   it('spells the acronym out underneath it', async () => {
