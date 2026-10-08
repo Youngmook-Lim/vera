@@ -1,7 +1,7 @@
 // src/core/__tests__/launcher.test.ts
 import AppIcon from '../../../modules/app-icon/src/AppIconModule';
 import { faceFor } from '../appIcon';
-import { launcherResult, readLauncherFace, syncLauncherIcon } from '../launcher';
+import { launcherResult, readLauncherFace, syncLaunchTheme, syncLauncherIcon } from '../launcher';
 
 // The native module is stubbed in jest.setup.ts; these tests drive that stub to
 // stand in for a launcher that takes the swap, one that refuses it, and one
@@ -9,15 +9,17 @@ import { launcherResult, readLauncherFace, syncLauncherIcon } from '../launcher'
 const icon = AppIcon as unknown as {
   getIcon: () => string;
   setIcon: (face: string) => boolean;
+  setNightMode?: (dark: boolean) => boolean;
 };
 
 const NOW = Date.UTC(2026, 8, 1);
 const TODAY = faceFor(NOW, true);
 
-const original = { getIcon: icon.getIcon, setIcon: icon.setIcon };
+const original = { getIcon: icon.getIcon, setIcon: icon.setIcon, setNightMode: icon.setNightMode };
 afterEach(() => {
   icon.getIcon = original.getIcon;
   icon.setIcon = original.setIcon;
+  icon.setNightMode = original.setNightMode;
 });
 
 // A launcher that takes the swap and one that quietly does not used to be the
@@ -29,7 +31,7 @@ describe('syncLauncherIcon', () => {
     icon.setIcon = (face) => { worn = face; return true; };
     icon.getIcon = () => worn;
 
-    syncLauncherIcon(true, NOW);
+    syncLauncherIcon(true, 'dark', NOW);
     expect(worn).toBe(TODAY);
     expect(launcherResult()).toBeNull();
   });
@@ -41,7 +43,7 @@ describe('syncLauncherIcon', () => {
     icon.setIcon = () => false;
     icon.getIcon = () => 'Bored';
 
-    syncLauncherIcon(true, NOW);
+    syncLauncherIcon(true, 'dark', NOW);
     expect(launcherResult()).toBe(`asked for ${TODAY}, launcher reports Bored`);
   });
 
@@ -49,7 +51,7 @@ describe('syncLauncherIcon', () => {
     icon.setIcon = () => false;
     icon.getIcon = () => '';
 
-    syncLauncherIcon(true, NOW);
+    syncLauncherIcon(true, 'dark', NOW);
     expect(launcherResult()).toBe(`asked for ${TODAY}, launcher reports nothing`);
   });
 
@@ -58,19 +60,19 @@ describe('syncLauncherIcon', () => {
   it('keeps the throw off the background transition, and keeps its wording', () => {
     icon.setIcon = () => { throw new Error('component not found'); };
 
-    expect(() => syncLauncherIcon(true, NOW)).not.toThrow();
+    expect(() => syncLauncherIcon(true, 'dark', NOW)).not.toThrow();
     expect(launcherResult()).toBe('component not found');
   });
 
   it('clears a stale complaint once the swap works again', () => {
     icon.setIcon = () => { throw new Error('component not found'); };
-    syncLauncherIcon(true, NOW);
+    syncLauncherIcon(true, 'dark', NOW);
     expect(launcherResult()).not.toBeNull();
 
     let worn = 'Dormant';
     icon.setIcon = (face) => { worn = face; return true; };
     icon.getIcon = () => worn;
-    syncLauncherIcon(true, NOW);
+    syncLauncherIcon(true, 'dark', NOW);
     expect(launcherResult()).toBeNull();
   });
 
@@ -79,7 +81,7 @@ describe('syncLauncherIcon', () => {
     icon.setIcon = (face) => { worn = face; return true; };
     icon.getIcon = () => worn;
 
-    syncLauncherIcon(false, NOW);
+    syncLauncherIcon(false, 'dark', NOW);
     expect(worn).toBe('Dormant');
   });
 });
@@ -100,5 +102,52 @@ describe('readLauncherFace', () => {
   it('is null rather than an empty string when no alias is enabled', () => {
     icon.getIcon = () => '';
     expect(readLauncherFace()).toBeNull();
+  });
+});
+
+// The same day, the other drawing (2026-10-08).
+describe('syncLauncherIcon on the light ground', () => {
+  it("asks for the light drawing of today's face", () => {
+    let worn = 'Dormant';
+    icon.setIcon = (face) => { worn = face; return true; };
+    icon.getIcon = () => worn;
+
+    syncLauncherIcon(true, 'light', NOW);
+    expect(worn).toBe(`Light_${TODAY}`);
+    expect(launcherResult()).toBeNull();
+  });
+
+  it('asks for the light dormant face with no key', () => {
+    let worn = 'Dormant';
+    icon.setIcon = (face) => { worn = face; return true; };
+    icon.getIcon = () => worn;
+
+    syncLauncherIcon(false, 'light', NOW);
+    expect(worn).toBe('Light_Dormant');
+  });
+});
+
+// The first frame of the next launch is drawn by Android from the app's own
+// night mode, so the theme has to be handed to the system ahead of time.
+describe('syncLaunchTheme', () => {
+  it('tells Android the dark ground is night and the light one is day', () => {
+    const asked: boolean[] = [];
+    icon.setNightMode = (dark) => { asked.push(dark); return true; };
+
+    syncLaunchTheme('dark');
+    syncLaunchTheme('light');
+    expect(asked).toEqual([true, false]);
+  });
+
+  // A dev build made before the function existed has the module and not the
+  // method. Calling undefined on the way to the background must not throw.
+  it('does nothing on a build that predates it', () => {
+    icon.setNightMode = undefined;
+    expect(() => syncLaunchTheme('light')).not.toThrow();
+  });
+
+  it('swallows a refusal, as the icon does', () => {
+    icon.setNightMode = () => { throw new Error('no'); };
+    expect(() => syncLaunchTheme('light')).not.toThrow();
   });
 });

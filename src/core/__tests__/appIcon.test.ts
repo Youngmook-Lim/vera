@@ -1,5 +1,11 @@
-import { DORMANT, FACES, faceFor } from '../appIcon';
+import { DORMANT, FACES, LIGHT_PREFIX, aliasFor, faceFor } from '../appIcon';
 import faces from '../faces.json';
+
+// Plain Node under jest. The repo carries no @types/node, so the one call this
+// file needs is typed here rather than a dependency added for it.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { existsSync } = require('fs') as { existsSync: (path: string) => boolean };
+declare const __dirname: string;
 
 const DAY = 86_400_000;
 // A Thursday, and epoch day 20688 — 20688 % 8 === 0, so this lands on Calm.
@@ -75,5 +81,35 @@ describe('faces.json', () => {
   it('is what the rotation actually uses', () => {
     expect(FACES).toEqual(faces.order);
     expect(DORMANT).toBe(faces.dormant);
+  });
+});
+
+// The light set (2026-10-08). The day picks the face; the theme picks only which
+// drawing of it, so the two grounds can never disagree about what day it is.
+describe('aliasFor', () => {
+  it('names the dark drawing by the face alone, as every alias before it did', () => {
+    for (const face of [DORMANT, ...FACES]) expect(aliasFor(face, 'dark')).toBe(face);
+  });
+
+  // AppIconModule.kt keys on everything after `.Icon_`, so this string IS the
+  // alias the plugin declares — `.Icon_Light_Calm`.
+  it('prefixes the light drawing, dormant included', () => {
+    for (const face of [DORMANT, ...FACES]) {
+      expect(aliasFor(face, 'light')).toBe(`${LIGHT_PREFIX}${face}`);
+    }
+    expect(LIGHT_PREFIX).toBe(faces.lightPrefix);
+  });
+
+  // The plugin fails a prebuild over a missing face; this fails the suite
+  // first, which is a great deal cheaper than an EAS round trip.
+  it('has artwork for every face on both grounds', () => {
+    const asset = (name: string) => existsSync(`${__dirname}/../../../assets/${name}`);
+    for (const face of [DORMANT, ...FACES]) {
+      expect(asset(`icon-fg-${face.toLowerCase()}.png`)).toBe(true);
+      expect(asset(`icon-fg-light-${face.toLowerCase()}.png`)).toBe(true);
+    }
+    expect(asset('icon-bg-light.png')).toBe(true);
+    // And it does notice a missing one, or the loop above proves nothing.
+    expect(asset('icon-fg-light-nobody.png')).toBe(false);
   });
 });

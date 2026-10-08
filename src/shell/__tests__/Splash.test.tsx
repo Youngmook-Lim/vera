@@ -3,7 +3,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { DORMANT, FACES, faceFor } from '../../core/appIcon';
 import { EMOTIONS } from '../../vera/emotions';
-import { DARK } from '../../core/theme';
+import { DARK, LIGHT } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SPLASH_HOLD_MS, Splash, faceEmotion } from '../Splash';
 
@@ -60,16 +60,49 @@ describe('Splash', () => {
     }
   });
 
-  // This screen is theme-invariant and the eye has to be too (2026-10-07). Its
-  // ground is `iconBg`, fixed in app.json at build time, so handing the optic a
-  // stored `light` would put 1f's pale brushed housing on a near-black square —
-  // the exact inverse of the read 1f was drawn to fix. Passing NO theme is how
-  // that is said, so the absence is the assertion.
-  it('never tells the eye which ground to use', async () => {
+  // The splash follows the theme now (2026-10-08) — the native frame under it
+  // does too, through per-app night mode — so the ground, the type and the
+  // eye's finish all change together, and nothing about the composition does.
+  it.each(['dark', 'light'] as const)('draws the %s splash whole', async (theme) => {
+    const spy = jest.spyOn(OpticModule, 'Optic');
+    try {
+      const view = await render(<Splash hasKey now={NOW} theme={theme} />);
+      const palette = theme === 'dark' ? DARK : LIGHT;
+      expect(flat(view.getByTestId('splash').props.style).backgroundColor).toBe(palette.iconBg);
+      expect(flat(view.getByText('V.E.R.A.').props.style).color).toBe(palette.textSoft);
+      expect(spy.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({ theme, size: 234, emotion: faceFor(NOW, true).toLowerCase() }),
+      );
+      await view.unmount();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  // It still rotates on the pale ground: the day decides the face, the theme
+  // decides only how it is drawn.
+  it('wears the launcher\'s face on the light ground too, every day of the cycle', async () => {
+    const spy = jest.spyOn(OpticModule, 'Optic');
+    try {
+      for (let i = 0; i < FACES.length; i += 1) {
+        const now = NOW + i * DAY;
+        const view = await render(<Splash hasKey now={now} theme="light" />);
+        expect(spy.mock.calls.at(-1)?.[0].emotion).toBe(faceFor(now, true).toLowerCase());
+        await view.unmount();
+      }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  // Anything that renders it without saying gets the splash every build before
+  // this one showed, and the dark eye with it.
+  it('defaults to the dark splash', async () => {
     const spy = jest.spyOn(OpticModule, 'Optic');
     try {
       const view = await render(<Splash hasKey now={NOW} />);
-      expect(spy.mock.calls.at(-1)?.[0].theme).toBeUndefined();
+      expect(flat(view.getByTestId('splash').props.style).backgroundColor).toBe(DARK.iconBg);
+      expect(spy.mock.calls.at(-1)?.[0].theme).toBe('dark');
       await view.unmount();
     } finally {
       spy.mockRestore();

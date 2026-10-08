@@ -1,6 +1,7 @@
 {
-  "comment": "The nine launcher faces. Read by src/core/appIcon.ts for the rotation and by plugins/withRotatingIcons.js for the activity-alias entries, so the two halves cannot drift. Each name needs assets/icon-fg-<lowercase>.png; the plugin fails the prebuild if one is missing.",
+  "comment": "The nine launcher faces. Read by src/core/appIcon.ts for the rotation and by plugins/withRotatingIcons.js for the activity-alias entries, so the two halves cannot drift. Each name needs assets/icon-fg-<lowercase>.png; the plugin fails the prebuild if one is missing. The LIGHT set (2026-10-08) is the same nine with `lightPrefix` on the alias and `light-` in the file name — assets/icon-fg-light-<lowercase>.png — and is checked by the plugin the same way.",
   "dormant": "Dormant",
+  "lightPrefix": "Light_",
   "order": [
     "Calm",
     "Amused",

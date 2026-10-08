@@ -1,7 +1,9 @@
 package expo.modules.appicon
 
+import android.app.UiModeManager
 import android.content.ComponentName
 import android.content.pm.PackageManager
+import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -48,9 +50,34 @@ class AppIconModule : Module() {
       all.forEach { if (it != target) enable(pm, pkg, it, false) }
       true
     }
+
+    // Sets this app's own night mode. Android persists it per app and uses it
+    // to choose the splash theme it draws BEFORE any of our code runs — which
+    // is the only frame of a launch the JS side cannot reach. app.json's
+    // expo-splash-screen block puts the light ground in `values` and the dark
+    // one in `values-night`, so this is what picks between them.
+    //
+    // API 31 and up only; older Android has no per-app night mode and the
+    // first frame follows the system's. Returns whether it was set. MainActivity
+    // already declares uiMode in configChanges (Expo's template), so this does
+    // not recreate the activity the subject is in.
+    Function("setNightMode") { dark: Boolean ->
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return@Function false
+      val context = appContext.reactContext ?: return@Function false
+      val ui = context.getSystemService(UiModeManager::class.java) ?: return@Function false
+      ui.setApplicationNightMode(
+        if (dark) UiModeManager.MODE_NIGHT_YES else UiModeManager.MODE_NIGHT_NO,
+      )
+      true
+    }
   }
 
   private fun packageManager(): PackageManager? = appContext.reactContext?.packageManager
+
+  // On this module rather than its own because it answers the same question
+  // the aliases do — what the subject sees before the app is running — and a
+  // new local module costs a build.gradle that, missing, crashes on first use
+  // (modules/power, 2026-09-10).
 
   private fun packageName(): String? = appContext.reactContext?.packageName
 

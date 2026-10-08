@@ -14,6 +14,7 @@
 // and the two greys sit either side of the loudest face, so a dull week never
 // happens. Reordering it changes which face a given day wears.
 import faces from './faces.json';
+import type { Theme } from './theme';
 
 export type Face = string;
 
@@ -39,3 +40,13 @@ export const faceFor = (now: number, hasKey: boolean): Face => {
   const index = ((day % FACES.length) + FACES.length) % FACES.length;
   return FACES[index];
 };
+
+// Which alias carries a face on a given ground (2026-10-08). The light set is
+// the same nine faces drawn in 1f's finish, so the DAY decides the face and the
+// THEME decides only which drawing of it — the two never disagree about what
+// day it is. The prefix lives in faces.json because the config plugin builds
+// the alias names from it.
+export const LIGHT_PREFIX: string = faces.lightPrefix;
+
+export const aliasFor = (face: Face, theme: Theme): string =>
+  theme === 'light' ? `${LIGHT_PREFIX}${face}` : face;

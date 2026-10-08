@@ -43,7 +43,7 @@ jest.mock('./modules/power/src/PowerModule', () => ({
 // here is only the PackageManager call that puts it on the home screen.
 jest.mock('./modules/app-icon/src/AppIconModule', () => ({
   __esModule: true,
-  default: { getIcon: () => '', setIcon: () => false },
+  default: { getIcon: () => '', setIcon: () => false, setNightMode: () => true },
 }));
 
 // Native, with no jsdom counterpart. Mocked globally rather than per-file

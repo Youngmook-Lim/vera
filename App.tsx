@@ -18,15 +18,16 @@ import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { syncLauncherIcon } from './src/core/launcher';
+import { syncLaunchTheme, syncLauncherIcon } from './src/core/launcher';
 import { useFacilityStore } from './src/core/store';
 import { registry } from './src/modules/registry';
 import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
 import { SPLASH_HOLD_MS, Splash } from './src/shell/Splash';
 
-// The native splash is the bare `#131011` ground and nothing else (2026-09-10
-// — Splash.tsx carries the reasoning), held until the JS splash can paint the
+// The native splash is a bare ground and nothing else (2026-09-10 — Splash.tsx
+// carries the reasoning), in the colour of the theme stored on the previous
+// launch (2026-10-08 — `syncLaunchTheme`), held until the JS splash can paint the
 // day's face on the same colour. Holding it is what makes the handover
 // invisible: without this the native splash ends the instant the root view
 // mounts, and the app flashes whatever is behind it while the fonts load.
@@ -51,6 +52,7 @@ export default function App() {
   });
 
   const apiKey = useFacilityStore((s) => s.apiKey);
+  const theme = useFacilityStore((s) => s.theme);
   const hydrated = useFacilityStore((s) => s.hydrated);
   // Hydration decides whether she has a key at all, so the greeting can only
   // be asked for once it has settled. greetOnce holds the once-per-session
@@ -100,7 +102,13 @@ export default function App() {
       // swap disables the alias the app is running under, which Android is
       // unreliable about in the foreground. Nothing is lost by waiting —
       // the home screen is not visible from inside the app.
-      syncLauncherIcon(Boolean(useFacilityStore.getState().apiKey));
+      //
+      // The theme rides it too (2026-10-08): it picks which DRAWING of today's
+      // face the launcher wears, and the colour of the next launch's first
+      // frame. A switch made inside the app reaches both on the way out.
+      const { apiKey: key, theme: ground } = useFacilityStore.getState();
+      syncLauncherIcon(Boolean(key), ground);
+      syncLaunchTheme(ground);
     });
 
     return () => {
@@ -129,7 +137,7 @@ export default function App() {
     return () => clearTimeout(id);
   }, [ready]);
 
-  if (!ready || !held) return <Splash hasKey={Boolean(apiKey)} />;
+  if (!ready || !held) return <Splash hasKey={Boolean(apiKey)} theme={theme} />;
 
   return (
     <SafeAreaProvider>

@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { faceFor } from '../core/appIcon';
-import { DARK, font, ms } from '../core/theme';
+import { font, ms, themed, type Theme } from '../core/theme';
 import { EMOTIONS, isEmotionKey, type EmotionKey } from '../vera/emotions';
 import { Optic } from './Optic';
 
@@ -26,7 +26,8 @@ import { Optic } from './Optic';
 // edge and reads as cropped on four sides, and there is no lid, because the
 // art is a flat render and the lid belongs to the optic's geometry.
 //
-// So the native splash is now the bare `#131011` ground and nothing else. It
+// So the native splash is now a bare ground and nothing else — `#131011`, or
+// `#eceef0` when the subject has chosen light (2026-10-08; see the styles). It
 // gets there by way of `assets/splash-blank.png`, a 108² fully transparent PNG,
 // rather than by omitting the image — **omitting it does not build.**
 // `withAndroidSplashStyles` writes `windowSplashScreenAnimatedIcon` →
@@ -105,7 +106,10 @@ export const faceEmotion = (face: string): EmotionKey => {
 // key. Drawn with a border rather than as an arc: four border colours on a
 // circle give three quarters of hairline and one quarter lit, with no path and
 // nothing for Skia to do.
-function WakingSpinner({ colour }: { colour: string }) {
+// The lit arc is her raw iris on both grounds: it is an object beside her eye,
+// like the slider's ring, not type.
+function WakingSpinner({ colour, theme }: { colour: string; theme: Theme }) {
+  const styles = S[theme];
   const turn = useSharedValue(0);
   useEffect(() => {
     turn.value = withRepeat(
@@ -125,14 +129,28 @@ function WakingSpinner({ colour }: { colour: string }) {
   );
 }
 
-export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: number }) {
+// `theme` is a prop and not a store read for the reason the optic's is: this
+// screen is drawn before the store has hydrated, sitting unseen behind the
+// native splash, and only becomes visible once it has — so App.tsx hands over
+// the settled theme, and anything that renders this without one gets the dark
+// splash every build before 2026-10-08 showed.
+export function Splash({
+  hasKey,
+  now = Date.now(),
+  theme = 'dark',
+}: {
+  hasKey: boolean;
+  now?: number;
+  theme?: Theme;
+}) {
   const emotion = faceEmotion(faceFor(now, hasKey));
+  const styles = S[theme];
 
   return (
     <View testID="splash" style={styles.splash}>
       <View testID="splash-above-eye" style={styles.aboveEye} />
 
-      <Optic emotion={emotion} size={OPTIC_PX} />
+      <Optic emotion={emotion} size={OPTIC_PX} theme={theme} />
 
       <View testID="splash-between" style={styles.between} />
 
@@ -145,7 +163,7 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
         <Text style={[styles.expansion, { fontFamily: font('mono', 500) }]}>
           Very Emotional Robot Assistant
         </Text>
-        <WakingSpinner colour={EMOTIONS[emotion].iris} />
+        <WakingSpinner colour={EMOTIONS[emotion].iris} theme={theme} />
       </View>
 
       <View testID="splash-below-title" style={styles.belowTitle} />
@@ -153,20 +171,24 @@ export function Splash({ hasKey, now = Date.now() }: { hasKey: boolean; now?: nu
   );
 }
 
-// Every number read off 2a. The ground is the icon's #131011, not the stage's
-// #14130f, so the native splash underneath and this one are the same colour and
-// the handover has no seam in it.
-// DARK in both themes, and not an oversight. This screen's ground is `iconBg`,
-// which `app.json` fixes at build time and which therefore cannot know what
-// theme is stored — so its type cannot change either: the light palette's
-// graphite on a near-black splash would be unreadable. A light-theme launch
-// shows this screen dark and then crosses to a pale app, which is the seam
-// recorded in the spec as unfixable from here.
-const styles = StyleSheet.create({
+// Every number read off 2a. The ground is the icon's, not the stage's, so the
+// native splash underneath and this one are the same colour and the handover
+// has no seam in it.
+//
+// **It follows the theme now (2026-10-08), and that used to be impossible.**
+// This screen sits on the native splash, whose colour is fixed at build time —
+// so until then it was DARK in both themes, and a light-theme launch went dark
+// splash → pale app. What closed it is not anything here: `syncLaunchTheme`
+// tells Android this app's own night mode, Android persists it, and app.json
+// gives the day half of the native splash the light ground. So the native
+// frame, this screen, the light launcher icon and the light stage are one
+// ground. Composition, sizes and timings are identical in both — only the
+// palette and the optic's finish change.
+const S = themed((p) => StyleSheet.create({
   splash: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: DARK.iconBg,
+    backgroundColor: p.iconBg,
   },
   aboveEye: {
     flex: ABOVE_EYE,
@@ -194,7 +216,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: WORDMARK_PX,
     letterSpacing: WORDMARK_PX * 0.38,
-    color: DARK.textSoft,
+    color: p.textSoft,
   },
   // Hairline for three quarters of the ring, the day's colour for the fourth.
   // borderTopColor is overridden at render; the rest stays the app's own line.
@@ -204,7 +226,7 @@ const styles = StyleSheet.create({
     height: SPIN_PX,
     borderRadius: SPIN_PX / 2,
     borderWidth: 2,
-    borderColor: DARK.hairline,
+    borderColor: p.hairline,
   },
   // Dim against the wordmark on purpose: two lines at one weight would read as
   // a sentence rather than a name and a gloss on it.
@@ -214,6 +236,6 @@ const styles = StyleSheet.create({
     marginTop: 9,
     fontSize: EXPANSION_PX,
     letterSpacing: EXPANSION_PX * 0.2,
-    color: DARK.textGhost,
+    color: p.textGhost,
   },
-});
+}));

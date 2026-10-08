@@ -1,5 +1,6 @@
 import AppIcon from '../../modules/app-icon/src/AppIconModule';
-import { faceFor, type Face } from './appIcon';
+import { aliasFor, faceFor, type Face } from './appIcon';
+import type { Theme } from './theme';
 
 // The effectful half of the rotation: `appIcon.ts` decides the face, this puts
 // it on the launcher. Kept apart so the decision stays testable without a
@@ -35,8 +36,12 @@ export const readLauncherFace = (): Face | null => {
   }
 };
 
-export const syncLauncherIcon = (hasKey: boolean, now: number = Date.now()): void => {
-  const want = faceFor(now, hasKey);
+export const syncLauncherIcon = (
+  hasKey: boolean,
+  theme: Theme,
+  now: number = Date.now(),
+): void => {
+  const want = aliasFor(faceFor(now, hasKey), theme);
   try {
     AppIcon.setIcon(want);
     // `setIcon` returns false both for "already showing" and for "no such
@@ -52,5 +57,27 @@ export const syncLauncherIcon = (hasKey: boolean, now: number = Date.now()): voi
     // reason the app goes down on the way to the background — so this is still
     // caught. It is no longer silent: the SYSTEM screen reads it.
     lastResult = error instanceof Error ? error.message : String(error);
+  }
+};
+
+// The colour of the very first frame of the next launch (2026-10-08). Android
+// draws it from the splash theme before any of our code runs, so the only way
+// to make it the subject's theme is to tell the SYSTEM which one that is ahead
+// of time: `setNightMode` sets this app's own night mode, which Android
+// persists and reads when it next builds the splash. app.json gives the day
+// half the light ground and the night half the dark one.
+//
+// Ridden on the background transition beside the icon, for the same reason:
+// it only matters to a launch that has not happened yet. Android 11 and older
+// have no per-app night mode, and there the first frame follows the system's.
+//
+// Guarded by `typeof` as well as a catch, because a dev build made before this
+// function existed has the module but not the method — and calling undefined
+// is a TypeError on the way to the background, which is no place for one.
+export const syncLaunchTheme = (theme: Theme): void => {
+  try {
+    if (typeof AppIcon.setNightMode === 'function') AppIcon.setNightMode(theme === 'dark');
+  } catch {
+    // A launch frame is cosmetic, exactly as the icon is.
   }
 };

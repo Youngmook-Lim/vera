@@ -36,30 +36,43 @@ const ANYDPI = 'mipmap-anydpi-v26';
 // @mipmap/ic_launcher.
 const faces = require('../src/core/faces.json');
 const DORMANT = faces.dormant;
+const LIGHT = faces.lightPrefix;
 
-const assetFor = (projectRoot, face) =>
-  path.join(projectRoot, 'assets', `icon-fg-${face.toLowerCase()}.png`);
+// The light set (2026-10-08) is the same nine faces in 1f's finish, rendered by
+// tools/build-icons.mjs. Its aliases are the dark names with `lightPrefix` in
+// front — `.Icon_Light_Calm` — which AppIconModule.kt needs no change for: it
+// enumerates aliases from the manifest and keys on everything after `.Icon_`.
+const assetFor = (projectRoot, face, light = false) =>
+  path.join(projectRoot, 'assets', `icon-fg-${light ? 'light-' : ''}${face.toLowerCase()}.png`);
 
 // Fails the prebuild rather than the build: a face with no artwork would
 // otherwise reach Gradle as an alias pointing at a drawable that is not there,
 // and cost a full EAS round trip to discover.
 function facesFrom(projectRoot) {
-  const missing = [DORMANT, ...faces.order].filter((f) => !fs.existsSync(assetFor(projectRoot, f)));
-  if (missing.length > 0) {
-    throw new Error(
-      `withRotatingIcons: src/core/faces.json names ${missing.join(', ')}, `
-        + `but assets/icon-fg-${missing[0].toLowerCase()}.png is missing.`,
-    );
+  for (const light of [false, true]) {
+    const missing = [DORMANT, ...faces.order].filter((f) => !fs.existsSync(assetFor(projectRoot, f, light)));
+    if (missing.length > 0) {
+      throw new Error(
+        `withRotatingIcons: src/core/faces.json names ${missing.join(', ')}, `
+          + `but ${path.relative(projectRoot, assetFor(projectRoot, missing[0], light))} is missing.`
+          + (light ? ' Run `node tools/build-icons.mjs` to render the light set.' : ''),
+      );
+    }
   }
   return faces.order;
 }
 
-const resourceFor = (face) => `ic_launcher_${face.toLowerCase()}`;
+const resourceFor = (face, light = false) =>
+  `ic_launcher_${light ? 'light_' : ''}${face.toLowerCase()}`;
 
-const adaptiveXml = (resource) =>
+// Expo generates the dark background from app.json's adaptiveIcon; the light
+// one is generated here, beside its faces.
+const LIGHT_BACKGROUND = 'ic_launcher_light_background';
+
+const adaptiveXml = (resource, background) =>
   `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@mipmap/ic_launcher_background"/>
+    <background android:drawable="@mipmap/${background}"/>
     <foreground android:drawable="@mipmap/${resource}_foreground"/>
 </adaptive-icon>
 `;
@@ -78,8 +91,6 @@ const withGeneratedFaces = (config) =>
     async (cfg) => {
       const projectRoot = cfg.modRequest.projectRoot;
       const res = path.join(projectRoot, RES);
-      const bgSrc = path.join(projectRoot, 'assets', 'icon-bg.png');
-
       // The aliases share Expo's generated background, which exists only
       // because app.json sets adaptiveIcon.backgroundImage. Fail loudly rather
       // than emit XML pointing at a drawable that is not there.
@@ -93,13 +104,37 @@ const withGeneratedFaces = (config) =>
 
       await fs.promises.mkdir(path.join(res, ANYDPI), { recursive: true });
 
-      for (const face of facesFrom(projectRoot)) {
-        const resource = resourceFor(face);
-        const fgSrc = assetFor(projectRoot, face);
+      const lightBgSrc = path.join(projectRoot, 'assets', 'icon-bg-light.png');
+      if (!fs.existsSync(lightBgSrc)) {
+        throw new Error(
+          'withRotatingIcons: assets/icon-bg-light.png is missing. '
+            + 'Run `node tools/build-icons.mjs` to render the light set.',
+        );
+      }
+      for (const { folder, scale } of DPI) {
+        const dir = path.join(res, folder);
+        await fs.promises.mkdir(dir, { recursive: true });
+        await fs.promises.writeFile(
+          path.join(dir, `${LIGHT_BACKGROUND}.webp`),
+          await scaled(projectRoot, lightBgSrc, ADAPTIVE_BASELINE_PX * scale, 'transparent'),
+        );
+      }
+
+      // The dark eight (dormant is the app's own icon), then all nine light —
+      // light dormant included, since nothing else would ever draw it.
+      const work = [
+        ...facesFrom(projectRoot).map((face) => ({ face, light: false })),
+        ...[DORMANT, ...faces.order].map((face) => ({ face, light: true })),
+      ];
+
+      for (const { face, light } of work) {
+        const resource = resourceFor(face, light);
+        const fgSrc = assetFor(projectRoot, face, light);
+        const bgSrc = light ? lightBgSrc : path.join(projectRoot, 'assets', 'icon-bg.png');
 
         await fs.promises.writeFile(
           path.join(res, ANYDPI, `${resource}.xml`),
-          adaptiveXml(resource),
+          adaptiveXml(resource, light ? LIGHT_BACKGROUND : 'ic_launcher_background'),
           'utf8',
         );
 
@@ -138,6 +173,8 @@ const isLauncher = (filter) =>
 
 const aliasFor = (face, resource) => ({
   $: {
+    // `face` is the alias's whole suffix — `Calm` or `Light_Calm` — and only
+    // dark Dormant (`DORMANT` exactly) ships enabled.
     'android:name': `.Icon_${face}`,
     'android:targetActivity': '.MainActivity',
     // Dormant is the face a fresh install wears — it has no key yet — so it is
@@ -169,10 +206,11 @@ const withAliases = (config) =>
     // disabled cannot launch, so MainActivity is never a thing we toggle.
     main['intent-filter'] = (main['intent-filter'] ?? []).filter((f) => !isLauncher(f));
 
-    const faces = [DORMANT, ...facesFrom(cfg.modRequest.projectRoot)];
-    app['activity-alias'] = faces.map((face) =>
-      aliasFor(face, face === DORMANT ? 'ic_launcher' : resourceFor(face)),
-    );
+    const dark = [DORMANT, ...facesFrom(cfg.modRequest.projectRoot)];
+    app['activity-alias'] = [
+      ...dark.map((face) => aliasFor(face, face === DORMANT ? 'ic_launcher' : resourceFor(face))),
+      ...dark.map((face) => aliasFor(`${LIGHT}${face}`, resourceFor(face, true))),
+    ];
 
     return cfg;
   });

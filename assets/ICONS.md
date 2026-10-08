@@ -56,3 +56,32 @@ first face is correct before any code runs.
 
 Two caveats: some launchers cache the icon until a reboot or home-screen
 redraw, and an alias swap can drop a pinned shortcut.
+
+## Light set (2026-10-08)
+
+The same nine faces in the light theme's finish — `1f BRUSHED INSTRUMENT`
+from `design/Light Optic Options.dc.html` — on `icon-bg-light.png`, whose edge
+is `#eceef0`, the light stage. Rendered, not exported: there is no design for
+them. Regenerate with:
+
+```sh
+node tools/build-icons.mjs                 # writes the light set
+node tools/build-icons.mjs --check <dir>   # renders the DARK set into <dir>
+```
+
+The second command is how the renderer is trusted: it redraws this table's
+nine and they land within a mean 3.9/255 of the files above.
+
+| file | alias |
+| --- | --- |
+| `icon-bg-light.png` | shared light adaptive background |
+| `icon-fg-light-dormant.png` | `.Icon_Light_Dormant` |
+| `icon-fg-light-<face>.png` | `.Icon_Light_<Face>` |
+
+Same day rule: the day picks the face, the theme picks the drawing.
+
+What the recipe above leaves out, measured off the dark set and applied to
+both: "seam ×1.36" is a stroke width (iris ring, seam, engraved rings); the
+socket is inset 5, not 4; lids rest at 0.87 of the live eye's height; the iris
+ring is a band inside the iris edge; one engraved ring; no fibre, no lid grain.
+

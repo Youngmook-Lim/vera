@@ -238,10 +238,13 @@ export const LIGHT: Palette = {
   bgDeep: '#e8ebed',
   // Derived: continues `bg → bgDeep`'s own step (−4,−3,−3) one rung further.
   bgFile: '#e4e8ea',
-  // NOT themed. `app.json` fixes the native splash's ground at build time and
-  // cannot know what theme is stored, so the JS frame must agree with the
-  // native one rather than flash twice.
-  iconBg: '#131011',
+  // The light icon's ground, and so the light splash's (2026-10-08). It was
+  // pinned to the dark value while the native splash could not know the stored
+  // theme; per-app night mode lets it, so app.json's day half carries this
+  // colour and the JS frame agrees with it. Equal to `bg` deliberately: a light
+  // launch goes native frame → splash → stage on ONE ground, where the dark one
+  // has to cross from #131011 to #14130f.
+  iconBg: '#eceef0',
   panel: '#e2e6e9',
   panelAlt: '#f7f8f9',
   border: '#cbd1d6',

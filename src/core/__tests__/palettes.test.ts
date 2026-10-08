@@ -43,10 +43,27 @@ describe('the two palettes', () => {
     expect(LIGHT.amberText).not.toBe(LIGHT.amber);
   });
 
-  // The launcher ground is a build-time asset in app.json and cannot know what
-  // theme is stored, so the JS splash must not disagree with it.
-  it('keeps the icon ground out of the theme', () => {
-    expect(LIGHT.iconBg).toBe(DARK.iconBg);
+  // Reversed on 2026-10-08. The native splash now follows the app's own night
+  // mode, so each ground has its own icon colour — and the light one IS the
+  // stage, so a light launch never changes colour at all.
+  it('gives each ground its own icon colour, the light one equal to its stage', () => {
+    expect(LIGHT.iconBg).not.toBe(DARK.iconBg);
+    expect(LIGHT.iconBg).toBe(LIGHT.bg);
+  });
+
+  // The splash is two colours handed over three times — native frame, JS
+  // splash, launcher icon — and app.json is the one place no test reaches by
+  // import. Read as text, so a palette edit that forgets the native half fails
+  // here rather than as a flash on the phone.
+  it('matches app.json, day half light and night half dark', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const plugins = require('../../../app.json').expo.plugins as unknown[];
+    const splash = plugins.find(
+      (p): p is [string, { backgroundColor: string; dark: { backgroundColor: string } }] =>
+        Array.isArray(p) && p[0] === 'expo-splash-screen',
+    )![1];
+    expect(splash.backgroundColor).toBe(LIGHT.iconBg);
+    expect(splash.dark.backgroundColor).toBe(DARK.iconBg);
   });
 
   // Benched since 2026-09-07 and unreachable. Twelve invented greens for a room
