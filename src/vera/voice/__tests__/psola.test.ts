@@ -43,6 +43,36 @@ describe('psola', () => {
     for (let i = 600; i < 4200; i++) expect(Math.abs(y[i] - x[i])).toBeLessThan(1e-4);
   });
 
+  // Two near-equal peaks a sliver of a cycle apart, trading places seven times
+  // a second. Marking each cycle at its loudest sample jumped between them, and
+  // the misaligned grains cancelled into static (2026-10-12).
+  it('keeps every cycle the same shape when the loudest peak keeps changing places', () => {
+    const x = Float32Array.from({ length: RATE / 2 }, (_, i) => {
+      const ph = (i % (RATE / 200)) / (RATE / 200);
+      const d = 0.04 * Math.sin((2 * Math.PI * 7 * i) / RATE);
+      const bump = (at: number, a: number) => a * Math.exp(-(((ph - at) / 0.03) ** 2));
+      return bump(0.2, 0.5 + d) + bump(0.35, 0.5 - d) - 0.25 * Math.sin(2 * Math.PI * ph);
+    });
+    const { frames, hop } = track(x, RATE);
+    const y = psola(x, RATE, frames, frames.map((f) => (f.f0 === null ? null : 170)), hop);
+    const p = Math.round(RATE / 170);
+    for (let a = 2400; a + 2 * p + 3 < y.length - 2400; a += p) {
+      let best = -1;
+      for (let lag = p - 3; lag <= p + 3; lag++) {
+        let xy = 0;
+        let xx = 0;
+        let yy = 0;
+        for (let i = 0; i < p; i++) {
+          xy += y[a + i] * y[a + i + lag];
+          xx += y[a + i] ** 2;
+          yy += y[a + i + lag] ** 2;
+        }
+        best = Math.max(best, xy / Math.sqrt(xx * yy));
+      }
+      expect(best).toBeGreaterThan(0.95);
+    }
+  });
+
   it('survives an empty or a tiny input without a single NaN', () => {
     expect(psola(new Float32Array(0), RATE, [], [], 240)).toHaveLength(0);
     const tiny = Float32Array.from([0.1, -0.1, 0.2]);

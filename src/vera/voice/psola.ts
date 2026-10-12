@@ -24,30 +24,56 @@ export const psola = (
   const frameAt = (t: number) => Math.max(0, Math.min(frames.length - 1, Math.round(t / hop)));
   const step = Math.max(1, Math.round(rate * UNVOICED_STEP_S));
 
-  // Analysis marks: one per period in voiced sound, each snapped to the
-  // loudest sample within a quarter-period, which is where the pulse is.
+  // Analysis marks: one per period in voiced sound. A run's first mark goes on
+  // the loudest sample within a quarter-period, which is where the pulse is.
+  // Every later one goes where this cycle best MATCHES the last: marking each
+  // cycle at its own loudest sample jumped between two near-equal peaks, and
+  // grains cut half a pulse apart cancelled into static (2026-10-12).
   const marks: number[] = [];
   let t = 0;
+  let inRun = false;
   while (t < n) {
     const f0 = frames[frameAt(t)].f0;
     if (f0) {
       const period = rate / f0;
       const reach = Math.max(1, Math.round(period / 4));
+      const last = marks.length ? marks[marks.length - 1] : -1;
       let best = t;
-      let peak = -1;
-      for (let i = Math.max(0, t - reach); i <= Math.min(n - 1, t + reach); i++) {
-        const a = Math.abs(x[i]);
-        if (a > peak) {
-          peak = a;
-          best = i;
+      if (!inRun) {
+        let peak = -1;
+        for (let i = Math.max(0, t - reach); i <= Math.min(n - 1, t + reach); i++) {
+          const a = Math.abs(x[i]);
+          if (a > peak) {
+            peak = a;
+            best = i;
+          }
+        }
+      } else {
+        const h = Math.round(period / 2);
+        let score = -Infinity;
+        for (let c = Math.max(0, t - reach); c <= Math.min(n - 1, t + reach); c++) {
+          let xy = 0;
+          let yy = 0;
+          for (let j = -h; j <= h; j++) {
+            const u = last + j >= 0 && last + j < n ? x[last + j] : 0;
+            const v = c + j >= 0 && c + j < n ? x[c + j] : 0;
+            xy += u * v;
+            yy += v * v;
+          }
+          const sc = xy / Math.sqrt(yy + 1e-12);
+          if (sc > score) {
+            score = sc;
+            best = c;
+          }
         }
       }
-      const last = marks.length ? marks[marks.length - 1] : -1;
       const mark = best > last ? best : last + 1;
       marks.push(mark);
+      inRun = true;
       t = mark + Math.max(1, Math.round(period));
     } else {
       marks.push(t);
+      inRun = false;
       t += step;
     }
   }
