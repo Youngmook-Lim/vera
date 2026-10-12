@@ -38,6 +38,10 @@ export const DEFAULT_MODE: ModeDef = {
   label: { en: 'DEFAULT V.E.R.A.', ko: '기본 V.E.R.A.' },
   tag: { en: 'DEFAULT', ko: '기본' },
   soul: DEFAULT_SOUL_MD,
+  voiceDirection:
+    'Speak as a synthetic administrator: flat, clinical and precise. Even pacing, crisp '
+    + 'consonants, no warmth and no rising inflection, even on questions. Faintly contemptuous, '
+    + 'as if reading a form aloud to someone who has failed it.',
   bank: {
     // Her first instant of consciousness with this subject. Fires once, unless
     // the credential is removed and replaced, which she experiences as another

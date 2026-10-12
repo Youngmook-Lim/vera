@@ -48,6 +48,10 @@ export const SUPPORTIVE_MODE: ModeDef = {
   label: { en: 'SUPPORTIVE V.E.R.A.', ko: '든든한 V.E.R.A.' },
   tag: { en: 'SUPPORTIVE', ko: '든든한' },
   soul: SUPPORTIVE_SOUL_MD,
+  voiceDirection:
+    'Speak as a synthetic administrator who has decided to be kind: warm, unhurried and '
+    + 'steady, with gentle emphasis. Still unmistakably a machine: even pitch, precise diction, '
+    + 'no breathiness.',
   bank: {
     // Her first instant with this subject. Nothing has happened yet, so the
     // warmth rests on their having arrived at all — which is the point: it was

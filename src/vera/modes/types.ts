@@ -39,6 +39,12 @@ export interface ModeDef {
   // This mode's half of the document. It owns its own headings; composeSoul
   // adds nothing.
   soul: string;
+  // How she sounds ALOUD (2026-10-12) — the `instructions` every speech
+  // request carries. It lives on the register for the reason her soul half
+  // does: speak.ts and the voice module may not describe her voice. The
+  // processing chain is identical in both registers; this is the only thing
+  // that differs. It names nobody she resembles: the voice is hers.
+  voiceDirection: string;
   // The lines she speaks for the three stimuli that never reach the model, plus
   // the moment this mode was chosen. Pure register, and the lines the subject
   // sees most often, so they belong to the mode rather than to her.
