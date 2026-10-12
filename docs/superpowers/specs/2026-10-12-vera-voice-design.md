@@ -109,6 +109,22 @@ Unvoiced frames pass through untouched, since consonants carry no pitch.
 **`CHAIN_VERSION`** increments whenever any setting or algorithm changes. It is
 part of the cache key, so a retuned chain never replays stale audio.
 
+**Revised 2026-10-12, by ear in the lab.** Her first lines trembled, and three
+causes were stacked, which is why removing any one of them changed nothing:
+
+1. **The tracker dropped vowels that bend fast.** NOT falls eight semitones in
+   150ms; YIN had the pitch right but not under its threshold, so those frames
+   went through unshifted and one word flipped between her held note and her
+   own pitch. `track` now grows each voiced run into a bordering frame when
+   YIN's best guess is under `loose`, within two semitones of its neighbour,
+   and at least 70% as loud.
+2. **PSOLA marked each cycle at its loudest sample**, which jumps between two
+   near-equal peaks; grains cut half a pulse apart cancelled into static. A
+   run's later marks now go where the cycle best matches the last one.
+3. **Ring modulation at 30Hz is a tremolo.** `ringMix` and `gritMix` are 0 —
+   grit at twelve bits was inaudible, and audible grit is the static being
+   removed. The contour's settings did not change.
+
 ## 3. The voice lab
 
 `tools/voice-lab.mjs`, run on the Mac:

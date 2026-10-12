@@ -32,14 +32,15 @@ const GEMINI_VOICES = [
 // her OpenRouter voice is Gemini's. OpenRouter forwards `instructions` to it as
 // Gemini's speech style, so the body did not change.
 //
-// Her casting is a decision made by ear, in the voice lab (Task 8) — not a
-// setting. Both `voice` values are provisional until then.
+// Her casting is a decision made by ear, in the voice lab — not a setting.
+// Callirrhoe was chosen from all thirty on 2026-10-12. The OpenAI route's `sage`
+// has never been heard: nobody here holds an OpenAI key to hear it with.
 const ROUTES: Record<string, TtsRoute> = {
   OPENROUTER: {
     url: 'https://openrouter.ai/api/v1/audio/speech',
     model: 'google/gemini-3.8-flash-tts',
     voices: GEMINI_VOICES,
-    voice: 'Kore',
+    voice: 'Callirrhoe',
   },
   OPENAI: {
     url: 'https://api.openai.com/v1/audio/speech',

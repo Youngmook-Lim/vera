@@ -5,6 +5,8 @@
 //
 // No imports outside src/vera/voice/: tools/voice-lab.mjs runs this exact file
 // under Node.
+// Confirmed by ear for Gemini on OpenRouter (2026-10-12): Callirrhoe's raw
+// line read at 24kHz runs 4.88s and sounds like her, not sped up or slowed.
 export const PCM_RATE = 24_000;
 
 export const fromS16LE = (bytes: Uint8Array): Float32Array => {
