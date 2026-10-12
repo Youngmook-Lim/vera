@@ -1,4 +1,4 @@
-import { DARK, LIGHT, PALETTES, emotionText, onLight, themed } from '../theme';
+import { DARK, LIGHT, PALETTES, emotionText, onLight, statusBarFor, themed } from '../theme';
 import { EMOTIONS } from '../../vera/emotions';
 
 // Shape, not values: every key at every depth, with its type. This is the one
@@ -143,3 +143,12 @@ describe('themed', () => {
     expect(S.light.box.backgroundColor).toBe(LIGHT.bg);
   });
 });
+
+// It names the ICONS, not the ground — the inversion is the whole rule.
+describe('statusBarFor', () => {
+  it('puts light icons on the dark ground and dark icons on the light one', () => {
+    expect(statusBarFor('dark')).toBe('light');
+    expect(statusBarFor('light')).toBe('dark');
+  });
+});
+

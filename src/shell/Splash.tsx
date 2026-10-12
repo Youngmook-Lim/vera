@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -9,7 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { faceFor } from '../core/appIcon';
-import { font, ms, themed, type Theme } from '../core/theme';
+import { font, ms, statusBarFor, themed, type Theme } from '../core/theme';
 import { EMOTIONS, isEmotionKey, type EmotionKey } from '../vera/emotions';
 import { Optic } from './Optic';
 
@@ -148,6 +149,9 @@ export function Splash({
 
   return (
     <View testID="splash" style={styles.splash}>
+      {/* The router's bar does not exist yet, so the splash sets its own —
+          otherwise the light splash showed the system default over it. */}
+      <StatusBar style={statusBarFor(theme)} />
       <View testID="splash-above-eye" style={styles.aboveEye} />
 
       <Optic emotion={emotion} size={OPTIC_PX} theme={theme} />

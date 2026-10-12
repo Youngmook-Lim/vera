@@ -3,7 +3,7 @@ import React, { useEffect, type ComponentType } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
 import type { View as ViewName } from '../core/store';
 import { useFacilityStore } from '../core/store';
-import { themed } from '../core/theme';
+import { statusBarFor, themed } from '../core/theme';
 import { registry } from '../modules/registry';
 import type { ModuleId } from '../modules/types';
 import { isModule } from '../modules/types';
@@ -49,7 +49,12 @@ function CurrentView({ view }: { view: ViewName }) {
 }
 
 // Conditional rendering on `view` IS the router (spec §3): instant swaps, no
-// navigation library. Every v2 surface is dark, so the status bar never flips.
+// navigation library.
+//
+// The status bar's icons follow the theme (2026-10-12). It said "every v2
+// surface is dark, so the status bar never flips", which stopped being true
+// with `2e` and left white clock and battery icons on a pale ground. Every room
+// takes its ground from the theme too, so one rule covers every view.
 // The cabinet and the credential panel are overlays, not views — they sit on
 // top of whatever room is showing, and stepBack closes them before it moves.
 export function ScreenRouter() {
@@ -70,7 +75,7 @@ export function ScreenRouter() {
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={statusBarFor(theme)} />
       <CurrentView view={view} />
       {cabinetOpen ? <Cabinet /> : null}
       {keyPanelOpen ? <KeyPanel /> : null}

@@ -386,6 +386,12 @@ export const onLight = (hex: string): string => {
 export const emotionText = (iris: string, theme: Theme): string =>
   theme === 'light' ? onLight(iris) : iris;
 
+// The status bar's ICONS, which is why it reads backwards: light icons on the
+// dark ground, dark icons on the light one. Read by the router and by the
+// splash, which draws the same bar before the router exists.
+export const statusBarFor = (theme: Theme): 'light' | 'dark' =>
+  theme === 'dark' ? 'light' : 'dark';
+
 // The 388px mock maps ~1:1 to device dp for layout, but type scales ×1.1.
 // Use for font sizes only.
 export const ms = (px: number) => Math.round(px * 1.1 * 2) / 2;

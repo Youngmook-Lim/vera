@@ -7,6 +7,16 @@ import { DARK, LIGHT } from '../../core/theme';
 import * as OpticModule from '../Optic';
 import { SPLASH_HOLD_MS, Splash, faceEmotion } from '../Splash';
 
+// The bar renders nothing under jest and its exports cannot be spied on, so it
+// is stood in for by text carrying the one prop worth checking.
+jest.mock('expo-status-bar', () => {
+  const { createElement } = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    StatusBar: ({ style }: { style: string }) => createElement(Text, { testID: 'status-bar' }, style),
+  };
+});
+
 const flat = (style: unknown): Record<string, unknown> =>
   Object.assign({}, ...[style].flat(Infinity).filter(Boolean) as object[]);
 
@@ -242,3 +252,14 @@ describe('Splash', () => {
     });
   });
 });
+
+// Before 2026-10-12 the splash drew no bar at all, so the light splash wore the
+// system default over it — white icons on a pale ground.
+describe('the splash status bar', () => {
+  it.each(['dark', 'light'] as const)('matches the %s ground', async (theme) => {
+    const view = await render(<Splash hasKey now={NOW} theme={theme} />);
+    expect(view.getByTestId('status-bar').props.children).toBe(theme === 'dark' ? 'light' : 'dark');
+    await view.unmount();
+  });
+});
+

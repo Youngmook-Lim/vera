@@ -27,6 +27,16 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
+// The bar renders nothing under jest and its exports cannot be spied on, so it
+// is stood in for by text carrying the one prop worth checking.
+jest.mock('expo-status-bar', () => {
+  const { createElement } = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    StatusBar: ({ style }: { style: string }) => createElement(Text, { testID: 'status-bar' }, style),
+  };
+});
+
 beforeEach(() => {
   jest.restoreAllMocks();
   useFacilityStore.setState({
@@ -175,3 +185,27 @@ test('an open credential panel closes before the view moves', async () => {
   expect(useFacilityStore.getState().keyPanelOpen).toBe(false);
   expect(useFacilityStore.getState().view).toBe('sys');
 });
+
+// Hardcoded to light icons until 2026-10-12, which put a white clock and
+// battery on every pale screen of the light theme.
+describe('the status bar', () => {
+  it.each([['dark', 'light'], ['light', 'dark']] as const)(
+    'wears %s-ground icons that read on it',
+    async (theme, icons) => {
+      useFacilityStore.setState({ theme });
+      const view = await render(<ScreenRouter />);
+      expect(view.getByTestId('status-bar').props.children).toBe(icons);
+      await view.unmount();
+    },
+  );
+
+  // A switch made on the stage reaches the bar without leaving the screen.
+  it('turns over the moment the theme does', async () => {
+    useFacilityStore.setState({ theme: 'dark' });
+    const view = await render(<ScreenRouter />);
+    await act(async () => useFacilityStore.setState({ theme: 'light' }));
+    expect(view.getByTestId('status-bar').props.children).toBe('dark');
+    await view.unmount();
+  });
+});
+
