@@ -1,8 +1,5 @@
 import { MODES } from '../../modes/registry';
-import {
-  TTS_VOICE, VOICES, buildSpeechRequest, fetchSpeech, ttsRouteFor, voiceSupported,
-  type BytesFetch,
-} from '../tts';
+import { buildSpeechRequest, fetchSpeech, ttsRouteFor, voiceSupported, type BytesFetch } from '../tts';
 
 const OR = ttsRouteFor('OPENROUTER')!;
 const REQ = { route: OR, key: 'sk-or-v1-abc', text: 'Noted.', direction: 'flat', voice: 'sage' };
@@ -19,12 +16,14 @@ const reply = (status: number, body: Uint8Array | string): BytesFetch => async (
 describe('routes', () => {
   // A retired TTS model 404s, and she would go silent while looking fine —
   // the same trap the chat models set (CLAUDE.md, 2026-08-28).
+  // OpenRouter delisted gpt-4o-mini-tts before she ever spoke (2026-10-12), which
+  // is this exact trap firing.
   it('pins the model on both routes that have one', () => {
-    expect(ttsRouteFor('OPENROUTER')).toEqual({
+    expect(ttsRouteFor('OPENROUTER')).toMatchObject({
       url: 'https://openrouter.ai/api/v1/audio/speech',
-      model: 'openai/gpt-4o-mini-tts-2025-12-15',
+      model: 'google/gemini-3.8-flash-tts',
     });
-    expect(ttsRouteFor('OPENAI')).toEqual({
+    expect(ttsRouteFor('OPENAI')).toMatchObject({
       url: 'https://api.openai.com/v1/audio/speech',
       model: 'gpt-4o-mini-tts-2025-12-15',
     });
@@ -37,9 +36,14 @@ describe('routes', () => {
     }
   });
 
-  it('casts one of the model\'s own voices', () => {
-    expect(VOICES).toHaveLength(13);
-    expect(VOICES).toContain(TTS_VOICE);
+  // The two models share no voice, so each route is cast on its own.
+  it('casts each route from its own model\'s voices', () => {
+    const or = ttsRouteFor('OPENROUTER')!;
+    const oa = ttsRouteFor('OPENAI')!;
+    expect(or.voices).toHaveLength(30);
+    expect(or.voices).toContain(or.voice);
+    expect(oa.voices).toHaveLength(13);
+    expect(oa.voices).toContain(oa.voice);
   });
 });
 

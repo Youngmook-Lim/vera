@@ -1,6 +1,6 @@
 // Listen to her before she is wired into anything. Fetches one line from the
 // speech endpoint and writes it twice — raw, and through her chain — for one
-// preset or for all thirteen, so her casting and every number in
+// preset or for every one the route's model has, so her casting and every number in
 // src/vera/voice/settings.ts are chosen by ear.
 //
 //   OPENROUTER_API_KEY=… node --no-warnings tools/voice-lab.mjs --all "Do not do that again."
@@ -20,7 +20,7 @@ register('./ts-resolve-hooks.mjs', import.meta.url);
 
 const { processVoice } = await import('../src/vera/voice/chain.ts');
 const { encodeWav, fromS16LE, PCM_RATE } = await import('../src/vera/voice/pcm.ts');
-const { TTS_VOICE, VOICES, fetchSpeech, ttsRouteFor } = await import('../src/vera/voice/tts.ts');
+const { fetchSpeech, ttsRouteFor } = await import('../src/vera/voice/tts.ts');
 const { DEFAULT_MODE } = await import('../src/vera/modes/default.ts');
 const { SUPPORTIVE_MODE } = await import('../src/vera/modes/supportive.ts');
 
@@ -47,7 +47,7 @@ if (!key || !text) {
 }
 const direction = (mode === 'supportive' ? SUPPORTIVE_MODE : DEFAULT_MODE).voiceDirection;
 const route = ttsRouteFor(label);
-const voices = all ? VOICES : [voice ?? TTS_VOICE];
+const voices = all ? route.voices : [voice ?? route.voice];
 
 mkdirSync(out, { recursive: true });
 for (const v of voices) {

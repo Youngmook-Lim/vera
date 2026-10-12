@@ -1,36 +1,58 @@
 // The speech request. One per line, to the route her key already uses — no
-// second key, no second provider. OpenRouter and OpenAI take the same body;
-// the other three providers have no speech endpoint and she has no voice on
-// them.
+// second key. OpenRouter and OpenAI take the same body, though not the same
+// model; the other three providers have no speech endpoint and she has no
+// voice on them.
 //
 // The network is injected, as llm.ts does it, so no test reaches it. No
 // imports outside src/vera/voice/: tools/voice-lab.mjs runs this under Node.
 export interface TtsRoute {
   url: string;
   model: string;
+  voices: readonly string[]; // the model's own presets
+  voice: string; // the one she is cast as on this route
 }
 
+// gpt-4o-mini-tts's presets.
+const OPENAI_VOICES = [
+  'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova',
+  'onyx', 'sage', 'shimmer', 'verse', 'marin', 'cedar',
+] as const;
+
+// Gemini TTS's presets, as OpenRouter's models API lists them.
+const GEMINI_VOICES = [
+  'Zephyr', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Leda', 'Orus', 'Aoede', 'Callirrhoe', 'Autonoe',
+  'Enceladus', 'Iapetus', 'Umbriel', 'Algieba', 'Despina', 'Erinome', 'Algenib', 'Rasalgethi',
+  'Laomedeia', 'Achernar', 'Alnilam', 'Schedar', 'Gacrux', 'Pulcherrima', 'Achird', 'Zubenelgenubi',
+  'Vindemiatrix', 'Sadachbia', 'Sadaltager', 'Sulafat',
+] as const;
+
 // A retired model 404s and she goes silent while looking fine. Pinned by a
-// test, exactly as the chat models are.
+// test, exactly as the chat models are — and it has already happened once:
+// OpenRouter delisted gpt-4o-mini-tts before she ever spoke (2026-10-12), so
+// her OpenRouter voice is Gemini's. OpenRouter forwards `instructions` to it as
+// Gemini's speech style, so the body did not change.
+//
+// Her casting is a decision made by ear, in the voice lab (Task 8) — not a
+// setting. Both `voice` values are provisional until then.
 const ROUTES: Record<string, TtsRoute> = {
-  OPENROUTER: { url: 'https://openrouter.ai/api/v1/audio/speech', model: 'openai/gpt-4o-mini-tts-2025-12-15' },
-  OPENAI: { url: 'https://api.openai.com/v1/audio/speech', model: 'gpt-4o-mini-tts-2025-12-15' },
+  OPENROUTER: {
+    url: 'https://openrouter.ai/api/v1/audio/speech',
+    model: 'google/gemini-3.8-flash-tts',
+    voices: GEMINI_VOICES,
+    voice: 'Kore',
+  },
+  OPENAI: {
+    url: 'https://api.openai.com/v1/audio/speech',
+    model: 'gpt-4o-mini-tts-2025-12-15',
+    voices: OPENAI_VOICES,
+    voice: 'sage',
+  },
 };
 
 export const ttsRouteFor = (label: string | null | undefined): TtsRoute | null =>
   (label && ROUTES[label]) || null;
 
 export const voiceSupported = (label: string | null | undefined): boolean => ttsRouteFor(label) !== null;
-
-// gpt-4o-mini-tts's presets. Her casting is a decision made once, by ear, in
-// the voice lab (Task 8) — not a setting.
-export const VOICES = [
-  'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova',
-  'onyx', 'sage', 'shimmer', 'verse', 'marin', 'cedar',
-] as const;
-
-// Provisional until Task 8. Replace with the voice chosen in the lab.
-export const TTS_VOICE: string = 'sage';
 
 export interface SpeechRequest {
   route: TtsRoute;

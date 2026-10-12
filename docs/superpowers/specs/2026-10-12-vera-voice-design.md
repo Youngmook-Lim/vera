@@ -36,7 +36,7 @@ an original voice.
 
 | key | endpoint | model |
 |---|---|---|
-| OPENROUTER | `https://openrouter.ai/api/v1/audio/speech` | `openai/gpt-4o-mini-tts-2025-12-15` |
+| OPENROUTER | `https://openrouter.ai/api/v1/audio/speech` | `google/gemini-3.8-flash-tts` |
 | OPENAI | `https://api.openai.com/v1/audio/speech` | `gpt-4o-mini-tts-2025-12-15` |
 | ANTHROPIC, DEEPSEEK, GOOGLE | none | none |
 
@@ -48,10 +48,17 @@ body, which is read and recorded the way `callLlm` records its failures.
 CLAUDE.md, 2026-08-28): a retired TTS model 404s, and she would go silent while
 looking fine. A test pins the id.
 
-**The preset voice** (`voice`) is one of gpt-4o-mini-tts's 13 — alloy, ash,
-ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse, marin, cedar. It
-is chosen **once, by ear, in the voice lab**, and committed as a constant. It
-is a casting decision, not a subject setting.
+**Revised 2026-10-12, during the lab:** OpenRouter had delisted
+`openai/gpt-4o-mini-tts-2025-12-15` (`400: Model … does not exist`), so her
+OpenRouter route speaks through Gemini 3.8 Flash TTS. The body is unchanged:
+OpenRouter forwards `instructions` to Gemini as its speech style, and `pcm` is
+24kHz mono.
+
+**The preset voice** (`voice`) is one of the route's model's own presets —
+Gemini's 30 on OpenRouter, gpt-4o-mini-tts's 13 on OpenAI — so each route
+carries its own list and its own cast. It is chosen **once, by ear, in the
+voice lab**, and committed as a constant. It is a casting decision, not a
+subject setting.
 
 **Delivery direction** (`instructions`) lives on the register. `ModeDef` gains
 `voiceDirection: string`, beside the rest of what each register says about how
