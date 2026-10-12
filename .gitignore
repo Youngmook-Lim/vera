@@ -46,3 +46,6 @@ glados_quotes.json
 
 # Gradle build caches inside the authored native modules
 .gradle/
+
+# tools/voice-lab.mjs writes its WAVs here
+voice-lab-out/
