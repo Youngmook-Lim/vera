@@ -173,6 +173,10 @@ it('voices Korean exactly as she said it', async () => {
 });
 
 describe('the setting', () => {
+  it('starts off, before anything is read from disk', () => {
+    expect(useFacilityStore.getInitialState().voice).toBe(false);
+  });
+
   it('is off for a blob that never had it, and survives a restart once on', async () => {
     await storage.set(KEYS.soul, JSON.stringify({ visits: 1, day: new Date().toDateString(), lastOpen: Date.now(), lang: 'en', cleared: 0 }));
     await useFacilityStore.getState().hydrate();

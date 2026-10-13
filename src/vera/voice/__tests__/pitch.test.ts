@@ -18,6 +18,13 @@ describe('yin', () => {
     expect(Math.abs(f! - hz) / hz).toBeLessThan(0.01);
   });
 
+  // A whole-sample lag is 0.4% off at 330Hz and 0.8% at 440Hz; the parabola
+  // through the dip is what gets under a tenth of that.
+  it.each([330, 440])('finds %iHz to a fraction of a sample', (hz) => {
+    const f = yin(sine(hz, 0.1), 0, 960, RATE);
+    expect(Math.abs(f! - hz) / hz).toBeLessThan(0.001);
+  });
+
   it('finds the fundamental, not a harmonic', () => {
     const f = yin(voiced(150, 0.1), 0, 960, RATE);
     expect(Math.abs(f! - 150) / 150).toBeLessThan(0.01);
