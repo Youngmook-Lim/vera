@@ -7,11 +7,13 @@ import { providerFor } from '../vera/providers';
 import { voiceSupported } from '../vera/voice/tts';
 import { T } from './strings';
 
-// Three bars, drawn — no icon library, no raster. Dim when she is silent; in
-// her own iris when she speaks, an object beside her pulse dot like the
-// theme slider's ring. Pressing it while she talks cuts her off at once
-// (setVoice stops the player); the text finishes drawing.
-const BARS = [5, 10, 7] as const;
+// Three bars, drawn — no icon library, no raster. Silent is a dim flat line;
+// speaking is a level, in her own iris, an object beside her pulse dot like
+// the theme slider's ring. The SHAPE carries the state, because her iris can
+// be the same grey as the dim bars. Pressing it while she talks cuts her off
+// at once (setVoice stops the player); the text finishes drawing.
+const LEVEL = [5, 10, 7] as const;
+const FLAT = [3, 3, 3] as const;
 
 export function VoiceToggle() {
   const theme = useFacilityStore((s) => s.theme);
@@ -35,8 +37,8 @@ export function VoiceToggle() {
       onPress={() => void setVoice(!voice)}
       style={styles.box}
     >
-      {BARS.map((height, i) => (
-        <View key={i} style={[styles.bar, { height }, lit]} />
+      {(voice ? LEVEL : FLAT).map((height, i) => (
+        <View key={i} testID="voice-bar" style={[styles.bar, { height }, lit]} />
       ))}
     </Pressable>
   );

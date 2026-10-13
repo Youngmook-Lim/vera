@@ -34,6 +34,10 @@ describe('fx', () => {
     expect(peakOf(normalize(Float32Array.from([0.1, -0.2]), 0.9))).toBeCloseTo(0.9);
     expect(Array.from(normalize(new Float32Array(3), 0.9))).toEqual([0, 0, 0]);
   });
+
+  it('never raises a take by more than its ceiling', () => {
+    expect(peakOf(normalize(Float32Array.from([0.001, -0.0003]), 0.9, 4))).toBeCloseTo(0.004);
+  });
 });
 
 describe('processVoice', () => {
@@ -57,6 +61,18 @@ describe('processVoice', () => {
       expect(y).toHaveLength(x.length);
       expect(Array.from(y).every(Number.isFinite)).toBe(true);
     }
+  });
+
+  // A "silent" take from a neural voice is hiss, not zeros. Normalised to full
+  // scale it was a 70dB boost: she would have blasted white noise (final
+  // review, 2026-10-13).
+  it('leaves a near-silent take near silent', () => {
+    let seed = 1;
+    const hiss = Float32Array.from({ length: RATE / 2 }, () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed / 2147483647 - 0.5) * 6e-4;
+    });
+    expect(peakOf(processVoice(hiss, RATE, '…'))).toBeLessThan(0.01);
   });
 });
 

@@ -72,8 +72,9 @@ neither may the TTS module:
 Both are drafts until heard in the lab. The processing chain is the same in
 both registers: she is one machine in two moods.
 
-**Korean:** the same voice and direction. gpt-4o-mini-tts is multilingual, and
-the request needs no language field.
+**Korean:** the same voice and direction. Both models are multilingual, and
+the request needs no language field. (Callirrhoe has not yet been heard in
+Korean.)
 
 **Keys with no TTS** (Anthropic, DeepSeek, Google): no voice. Her SYSTEM row
 says `NOT ON THIS KEY` rather than offering a switch that would do nothing.

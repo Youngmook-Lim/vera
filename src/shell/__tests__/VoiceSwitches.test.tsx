@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../core/store';
 import { Stage } from '../Stage';
@@ -61,6 +62,19 @@ describe('the stage glyph', () => {
     await fireEvent.press(view.getByTestId('voice-toggle'));
     expect(useFacilityStore.getState().voice).toBe(false);
     expect(stopVoice).toHaveBeenCalled();
+    await view.unmount();
+  });
+
+  // Her iris can sit on the same grey as the off bars (BORED in light, any
+  // dimmed state in dark), so colour alone could not say which it was (final
+  // review, 2026-10-13). Silent is a flat line; speaking is not.
+  it('shows silent as a flat line and speaking as a level, whatever colour she is', async () => {
+    const heights = (v: Awaited<ReturnType<typeof render>>) =>
+      v.getAllByTestId('voice-bar').map((b) => StyleSheet.flatten(b.props.style).height);
+    const view = await render(<VoiceToggle />);
+    expect(new Set(heights(view)).size).toBe(1);
+    await fireEvent.press(view.getByTestId('voice-toggle'));
+    expect(new Set(heights(view)).size).toBeGreaterThan(1);
     await view.unmount();
   });
 

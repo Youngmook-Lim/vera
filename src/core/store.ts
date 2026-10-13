@@ -717,7 +717,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         } catch (error) {
           voiceNote = { failure: error instanceof Error ? error.message : String(error) };
         }
-        set({ thinking: false });
+        // `thinking` is NOT dropped here: the `finally` drops it, as it always
+        // has. SEND reads it, and speak() refuses everything until it is done,
+        // so dropping it early lost a message sent the moment SEND lit.
       }
 
       // The record of what actually happened, for the prompt inspector. A raw

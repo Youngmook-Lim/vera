@@ -23,6 +23,7 @@ export interface ChainSettings extends ContourSettings {
   gritBits: number;
   gritMix: number;
   peak: number;
+  maxGain: number;
 }
 
 export const SETTINGS: ChainSettings = {
@@ -37,6 +38,9 @@ export const SETTINGS: ChainSettings = {
   gritBits: 12,
   gritMix: 0,
   peak: 0.89,
+  // Every one of Gemini's thirty raw takes needs 1.4x at most; 4x is room for a
+  // quiet one and nowhere near the 3000x a near-silent take asked for.
+  maxGain: 4,
 };
 
-export const CHAIN_VERSION = 2;
+export const CHAIN_VERSION = 3;

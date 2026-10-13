@@ -17,10 +17,12 @@ export const grit = (x: Float32Array, bits: number, mix: number): Float32Array =
   return x.map((v) => (1 - mix) * v + (mix * Math.round(v * levels)) / levels);
 };
 
-export const normalize = (x: Float32Array, peak: number): Float32Array => {
+// `maxGain` is how far a quiet take may be raised. A near-silent one is hiss,
+// and raising it to full scale is noise at full volume.
+export const normalize = (x: Float32Array, peak: number, maxGain = Infinity): Float32Array => {
   let max = 0;
   for (let i = 0; i < x.length; i++) max = Math.max(max, Math.abs(x[i]));
   if (max === 0 || !Number.isFinite(max)) return x.map((v) => (Number.isFinite(v) ? v : 0));
-  const scale = peak / max;
+  const scale = Math.min(peak / max, maxGain);
   return x.map((v) => v * scale);
 };

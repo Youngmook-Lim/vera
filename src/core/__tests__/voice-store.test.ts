@@ -80,6 +80,21 @@ describe('her text waits for her voice', () => {
     expect(useFacilityStore.getState().thinking).toBe(false);
   });
 
+  // SEND reads `thinking`, and speak() refuses anything while it is still
+  // finishing; dropping the dots before that let a message through to a
+  // refusal and lost it, the box already emptied (final review, 2026-10-13).
+  it('keeps the dots up until she has finished, not only until her voice is ready', async () => {
+    prepareVoice.mockResolvedValueOnce({ uri: 'u', durationMs: 350, cached: false, took: 1 });
+    let thinkingWhenLineLanded: boolean | null = null;
+    const unsub = useFacilityStore.subscribe((s, prev) => {
+      if (s.line === LINE && prev.line !== LINE) thinkingWhenLineLanded = s.thinking;
+    });
+    await useFacilityStore.getState().speak('subject_spoke', 'hi');
+    unsub();
+    expect(thinkingWhenLineLanded).toBe(true);
+    expect(useFacilityStore.getState().thinking).toBe(false);
+  });
+
   it('voices her authored lines too, and records nothing for them', async () => {
     prepareVoice.mockResolvedValueOnce({ uri: 'u', durationMs: 1000, cached: true, took: 1 });
     await useFacilityStore.getState().speak('subject_tapped_your_optic');

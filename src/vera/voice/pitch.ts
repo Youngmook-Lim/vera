@@ -64,10 +64,10 @@ const refine = (cmnd: Float64Array, tau: number, rate: number): number => {
   return rate / (denom !== 0 ? tau + (a - c) / (2 * denom) : tau);
 };
 
-export const yin = (x: Float32Array, start: number, size: number, rate: number): number | null => {
-  const m = cmndOf(x, start, size, rate);
-  if (!m) return null;
-  const { cmnd, minTau, maxTau } = m;
+type Cmnd = NonNullable<ReturnType<typeof cmndOf>>;
+
+// The first dip under the threshold: a pitch YIN is sure of.
+const sure = ({ cmnd, minTau, maxTau }: Cmnd, rate: number): number | null => {
   let tau = minTau;
   while (tau < maxTau && cmnd[tau] >= PITCH.threshold) tau++;
   if (tau >= maxTau) return null;
@@ -77,13 +77,15 @@ export const yin = (x: Float32Array, start: number, size: number, rate: number):
 
 // YIN's best guess when it is not sure: the deepest dip anywhere, if it is
 // under `loose`.
-const guess = (x: Float32Array, start: number, size: number, rate: number): number | null => {
-  const m = cmndOf(x, start, size, rate);
-  if (!m) return null;
-  const { cmnd, minTau, maxTau } = m;
+const guess = ({ cmnd, minTau, maxTau }: Cmnd, rate: number): number | null => {
   let tau = minTau;
   for (let t = minTau; t < maxTau; t++) if (cmnd[t] < cmnd[tau]) tau = t;
   return cmnd[tau] < PITCH.loose ? refine(cmnd, tau, rate) : null;
+};
+
+export const yin = (x: Float32Array, start: number, size: number, rate: number): number | null => {
+  const m = cmndOf(x, start, size, rate);
+  return m ? sure(m, rate) : null;
 };
 
 // Detected on a 2:1 average of the signal. A speaking voice's fundamental sits
@@ -96,8 +98,14 @@ export const track = (x: Float32Array, rate: number): { frames: PitchFrame[]; ho
   const hop = Math.round(rate * PITCH.hopS);
   const size = Math.round(r * PITCH.sizeS);
   const frames: PitchFrame[] = [];
+  const guesses: (number | null)[] = [];
   for (let at = 0; at < x.length; at += hop) {
-    frames.push({ at, f0: yin(half, Math.round(at / 2 - size / 2), size, r) });
+    // One difference function per frame, read twice: for a pitch YIN is sure
+    // of, and for the guess the growth below may use instead.
+    const m = cmndOf(half, Math.round(at / 2 - size / 2), size, r);
+    const f0 = m ? sure(m, r) : null;
+    frames.push({ at, f0 });
+    guesses.push(m && f0 === null ? guess(m, r) : null);
   }
 
   // Grow each voiced run outward, one frame at a time, forward then back.
@@ -106,7 +114,6 @@ export const track = (x: Float32Array, rate: number): { frames: PitchFrame[]; ho
     for (let i = Math.max(0, at - hop); i < Math.min(x.length, at + hop); i++) s += x[i] * x[i];
     return Math.sqrt(s / (2 * hop));
   });
-  const guesses = frames.map(({ at, f0 }) => (f0 === null ? guess(half, Math.round(at / 2 - size / 2), size, r) : null));
   const join = (i: number, from: number) => {
     const g = guesses[i];
     const nb = frames[from]?.f0;

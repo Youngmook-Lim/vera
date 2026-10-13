@@ -19,5 +19,5 @@ export const processVoice = (
   y = ringMod(y, rate, s.ringHz, s.ringMix);
   y = comb(y, rate, s.combMs, s.combFeedback, s.combMix);
   y = grit(y, s.gritBits, s.gritMix);
-  return normalize(y, s.peak);
+  return normalize(y, s.peak, s.maxGain);
 };
