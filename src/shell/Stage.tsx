@@ -41,6 +41,7 @@ import { useKeyboardInset, useKeyboardProgress } from './useKeyboardInset';
 import { SYSTEM_TEXT } from './systemText';
 import { T } from './strings';
 import { ThemeSlider } from './ThemeSlider';
+import { VoiceToggle } from './VoiceToggle';
 import { ThinkingDots } from './ThinkingDots';
 
 // Nothing on the stage but her: an eye, a label, one line of dialogue, and one
@@ -493,6 +494,10 @@ export function Stage() {
             {/* The theme's switch sits level with the register tag on the other
                 side of the header, and immediately left of the dots — the
                 design's own `gap:4` between the two. */}
+            {/* Her voice, left of the theme's switch: the two settings a
+                subject changes mid-conversation, side by side. Absent on a
+                key that cannot speak. */}
+            <VoiceToggle />
             <ThemeSlider />
             {/* Three drawn dots, not a "•••" glyph — the design sets them at
                 3px with a 3px gap, which no bullet run reproduces. */}

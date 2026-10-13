@@ -20,6 +20,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { syncLaunchTheme, syncLauncherIcon } from './src/core/launcher';
 import { useFacilityStore } from './src/core/store';
+import { stopVoice } from './src/core/voice';
 import { registry } from './src/modules/registry';
 import { isModule } from './src/modules/types';
 import { ScreenRouter } from './src/shell/ScreenRouter';
@@ -97,6 +98,8 @@ export default function App() {
     // The natural session boundary, and the trigger that catches most cases.
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'background') return;
+      // She does not go on talking from a pocket.
+      stopVoice();
       void useFacilityStore.getState().extractNow();
       // The launcher face rides the same boundary, and only this one: the
       // swap disables the alias the app is running under, which Android is

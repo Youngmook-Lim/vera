@@ -11,6 +11,7 @@ import { BatteryRow } from './BatteryRow';
 import { soulConstName } from '../vera/modes/registry';
 import { PrefRow } from './PrefRow';
 import { TransmissionRow } from './TransmissionRow';
+import { VoiceRow } from './VoiceRow';
 import { T } from './strings';
 
 // The subject's own control room: her two files, the language switch, and
@@ -164,6 +165,7 @@ export function SystemScreen() {
               contributed through ModuleDef.Settings: that hook exists so the
               shell never names a MODULE, and she is not one. */}
           <TransmissionRow />
+          <VoiceRow />
 
           {/* Rooms contribute their own rows. The shell names no module — the
               same promise registry.ts makes about Cabinet and ScreenRouter. */}
