@@ -85,3 +85,62 @@ jest.mock('expo-notifications', () => ({
   // is open — so this has to exist for the one call that closes that hole.
   setNotificationHandler: jest.fn(() => {}),
 }));
+
+// Native, with no jsdom counterpart, and reached by every test that renders
+// the store (src/core/voice.ts). A player that plays nothing; a disk that is a
+// Map. `__disk` is exported so voice.test.ts can look at what was written.
+jest.mock('expo-audio', () => ({
+  __esModule: true,
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    remove: jest.fn(),
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+  })),
+}));
+
+jest.mock('expo-file-system', () => {
+  const disk = new Map<string, { bytes: Uint8Array; at: number }>();
+  let clock = 0;
+  const join = (parent: { uri: string } | string, name?: string) => {
+    const base = typeof parent === 'string' ? parent : parent.uri;
+    return name ? `${base}/${name}` : base;
+  };
+  class File {
+    uri: string;
+    constructor(parent: { uri: string } | string, name?: string) {
+      this.uri = join(parent, name);
+    }
+    get name() {
+      return this.uri.slice(this.uri.lastIndexOf('/') + 1);
+    }
+    get exists() {
+      return disk.has(this.uri);
+    }
+    get lastModified() {
+      return disk.get(this.uri)?.at ?? null;
+    }
+    write(bytes: Uint8Array) {
+      disk.set(this.uri, { bytes, at: ++clock });
+    }
+    delete() {
+      disk.delete(this.uri);
+    }
+  }
+  class Directory {
+    uri: string;
+    constructor(parent: { uri: string } | string, name?: string) {
+      this.uri = join(parent, name);
+    }
+    get exists() {
+      return true;
+    }
+    create() {}
+    list() {
+      return [...disk.keys()]
+        .filter((k) => k.startsWith(`${this.uri}/`) && !k.slice(this.uri.length + 1).includes('/'))
+        .map((k) => new File(k));
+    }
+  }
+  return { __esModule: true, File, Directory, Paths: { cache: new Directory('file:///cache') }, __disk: disk };
+});
