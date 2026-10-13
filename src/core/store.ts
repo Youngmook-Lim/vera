@@ -14,10 +14,13 @@ import { capMemory, EMPTY_MEMORY, type Memory } from '../vera/memory';
 import { composeMemoryMd } from '../vera/memoryDoc';
 import { buildMessages, type Turn } from '../vera/messages';
 import { dueForSync } from '../modules/daily';
-import { isMode, type Mode } from '../vera/modes/registry';
+import { MODES, isMode, type Mode } from '../vera/modes/registry';
 import { requestTransmissions, syncTransmissions } from '../vera/transmissionsNotify';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
+import { typewriterPace } from '../vera/voice/pace';
+import { voiceSupported } from '../vera/voice/tts';
+import { prepareVoice, playVoice, stopVoice, type Prepared } from './voice';
 import { selectMemories } from '../vera/select';
 import type { ModuleId } from '../modules/types';
 import type { Trigger } from '../vera/speak';
@@ -66,6 +69,10 @@ export interface LogEntry {
 // answered "why did that reply look canned"; it did not earn the cost, and the
 // canned-looking case that actually needs diagnosing is a FALLBACK, which is a
 // live call and is still recorded with its failure beside it.
+// What became of her voice for this reply. Only live calls are recorded, as
+// with everything else on this record.
+export type VoiceNote = { took: number } | { cached: true } | { failure: string };
+
 export interface PromptRecord {
   at: number;
   trigger: Trigger;
@@ -98,6 +105,9 @@ export interface PromptRecord {
   // No 'bank' (2026-09-11): this record is about a request, and a stimulus
   // answered from the bank made none.
   outcome: 'model' | 'fallback';
+  // Absent when she was not asked to speak at all (voice off, or a key with no
+  // speech endpoint).
+  voice?: VoiceNote;
 }
 
 // The other call. Extraction reads finished exchanges into her file, is never
@@ -174,6 +184,7 @@ interface SoulBlob {
   cleared: number;
   mode: Mode;
   theme: Theme;
+  voice: boolean;
   transmissions: boolean;
   transmissionsSyncedOn: string | null;
 }
@@ -190,6 +201,7 @@ const saveSoul = async (s: FacilityState): Promise<void> => {
     cleared: s.cleared,
     mode: s.mode,
     theme: s.theme,
+    voice: s.voice,
     transmissions: s.transmissions,
     transmissionsSyncedOn: s.transmissionsSyncedOn,
   };
@@ -206,6 +218,9 @@ interface FacilityState {
   lang: Lang;
   // Dark or pale. Hers in no sense at all — she is told nothing about it.
   theme: Theme;
+  // Whether she speaks aloud. Off by default — she never starts talking out of
+  // a pocket — and, like the theme, nothing she is told about.
+  voice: boolean;
   // Her register. The core document is everything this cannot change.
   mode: Mode;
   // Whether she sends to the lock screen at eleven and at four, and the day
@@ -305,6 +320,7 @@ interface FacilityState {
   clearMemory: () => Promise<void>;
   setLang: (lang: Lang) => Promise<void>;
   setTheme: (theme: Theme) => Promise<void>;
+  setVoice: (on: boolean) => Promise<void>;
   setMode: (mode: Mode) => Promise<void>;
   setTransmissions: (on: boolean) => Promise<boolean>;
   syncTransmissionsIfDue: (now?: Date) => Promise<void>;
@@ -318,6 +334,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   view: 'stage',
   lang: 'en',
   theme: 'dark',
+  voice: false,
   mode: 'default',
   transmissions: false,
   transmissionsSyncedOn: null,
@@ -495,6 +512,8 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         // A blob written before the theme existed carries none, and an
         // unreadable one must not leave her painted in a colour nobody chose.
         theme: saved?.theme === 'light' ? 'light' : 'dark',
+        // A blob written before her voice existed carries none: she stays quiet.
+        voice: saved?.voice === true,
         log: Array.isArray(log) ? log.slice(-LOG_CAP) : [],
         cleared: typeof saved?.cleared === 'number' ? saved.cleared : 0,
         // A blob written before modes existed carries no register at all, and
@@ -681,6 +700,26 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       const took = Date.now() - startedAt;
       const { emotion, line, notice } = outcome;
 
+      // Her voice (2026-10-12). The text waits for it: her old line and the
+      // dots stay up while the audio is made, then the two start together.
+      // The bank path never showed the dots, and on a cache miss it does now,
+      // for the length of the synthesis. A failure or a timeout lets the line
+      // appear silently, exactly as it did before she had a voice.
+      const voiceRoute = providerFor(get().apiKey)?.label;
+      const speaksAloud = get().voice && voiceSupported(voiceRoute) && !notice && line.length > 0;
+      let prepared: Prepared | null = null;
+      let voiceNote: VoiceNote | undefined;
+      if (speaksAloud) {
+        if (!live) set({ thinking: true });
+        try {
+          prepared = await prepareVoice(line, voiceRoute, get().apiKey, MODES[spokenMode].voiceDirection);
+          voiceNote = prepared.cached ? { cached: true } : { took: prepared.took };
+        } catch (error) {
+          voiceNote = { failure: error instanceof Error ? error.message : String(error) };
+        }
+        set({ thinking: false });
+      }
+
       // The record of what actually happened, for the prompt inspector. A raw
       // reply present alongside a `fallback` source means the model answered
       // and the answer was unreadable — which looks identical to a dead
@@ -707,6 +746,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
             notice,
             took,
             outcome: outcome.source,
+            voice: voiceNote,
           },
         });
       }
@@ -767,14 +807,23 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // A new typewriter always cancels whatever was still ticking — the
       // guard above only blocks a second network call, not a leftover timer
       // from the previous reply's animation.
+      // A new line always stops the one she was saying — the same rule as the
+      // typewriter, and for the same reason.
+      stopVoice();
       if (typewriterHandle) clearTimeout(typewriterHandle);
       set({ shown: '' });
       if (line.length > 0) {
+        // Paced to her voice so the last character lands as she finishes;
+        // the 16ms it always was when she is silent. Read `voice` again:
+        // the subject may have switched it off while the audio was made.
+        const voiced = prepared && get().voice ? prepared : null;
+        const pace = typewriterPace(line.length, voiced?.durationMs ?? null);
+        if (voiced) playVoice(voiced);
         const tick = (i: number) => {
           set({ shown: line.slice(0, i) });
-          typewriterHandle = i < line.length ? setTimeout(() => tick(i + 1), 16) : null;
+          typewriterHandle = i < line.length ? setTimeout(() => tick(i + 1), pace) : null;
         };
-        typewriterHandle = setTimeout(() => tick(1), 16);
+        typewriterHandle = setTimeout(() => tick(1), pace);
       }
 
       // Queued for extraction, independent of the transcript so an erasure or
@@ -859,6 +908,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // The subject is rearranging their own furniture.
   setTheme: async (theme: Theme): Promise<void> => {
     set({ theme });
+    await saveSoul(get());
+  },
+
+  // A silent action, as switching the theme is: she is told nothing, nothing
+  // enters the transcript, no stimulus fires. Switching it off cuts her off
+  // mid-line; switching it on waits for her next one.
+  setVoice: async (on: boolean): Promise<void> => {
+    if (!on) stopVoice();
+    set({ voice: on });
     await saveSoul(get());
   },
 

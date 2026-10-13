@@ -260,6 +260,17 @@ describe('the extraction section', () => {
     expect(body).toContain('EXTRACTION');
     expect(body).toContain('no extraction has run yet this session');
   });
+
+  it('says what became of her voice, and nothing when she was not asked to speak', async () => {
+    show({ ...RECORD, voice: { took: 1200 } });
+    expect(await bodyOf()).toContain('voice: 1200ms');
+    show({ ...RECORD, voice: { cached: true } });
+    expect(await bodyOf()).toContain('voice: cached');
+    show({ ...RECORD, voice: { failure: 'http 402: Insufficient credits' } });
+    expect(await bodyOf()).toContain('voice: failed: http 402: Insufficient credits');
+    show(RECORD);
+    expect(await bodyOf()).not.toContain('voice:');
+  });
 });
 
 // The credential travels in the request headers, never in the prompt. If that

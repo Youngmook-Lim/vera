@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ExtractRecord, PromptRecord } from '../core/store';
+import type { ExtractRecord, PromptRecord, VoiceNote } from '../core/store';
 import { useFacilityStore } from '../core/store';
 import { font, ms, themed } from '../core/theme';
 import type { Memory } from '../vera/memory';
@@ -68,6 +68,9 @@ const spokenLine = (p: PromptRecord): string[] => {
 // Every turn is printed, in the order they were sent. The composed prompt is
 // only the last of them, and the conversation ahead of it went to the provider
 // just as literally.
+const voiceText = (v: VoiceNote): string =>
+  'failure' in v ? `failed: ${v.failure}` : 'cached' in v ? 'cached' : `${v.took}ms`;
+
 const buildReplyMd = (p: PromptRecord | null): string => {
   if (!p) return '# LAST PROMPT\n\n(nothing sent yet this session)';
 
@@ -83,6 +86,9 @@ const buildReplyMd = (p: PromptRecord | null): string => {
     `route: ${p.route || 'none'}`,
     `model: ${p.model || 'none'}`,
     `outcome: ${p.outcome}`,
+    // Her voice for this reply: how long the audio took to make, that it came
+    // from the cache, or why it failed. Absent when she was not asked to speak.
+    ...(p.voice ? [`voice: ${voiceText(p.voice)}`] : []),
     // What the optic took, after the clamp. Against the emotion in the raw
     // reply below it, this is the only place a word of hers that is not one of
     // her states shows itself — everywhere else it is indistinguishable from

@@ -656,7 +656,7 @@ describe('speak', () => {
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
       ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'theme', 'transmissions',
-        'transmissionsSyncedOn', 'visits'].sort(),
+        'transmissionsSyncedOn', 'visits', 'voice'].sort(),
     );
     expect(saved.day).toBe(new Date().toDateString());
     expect(saved.visits).toBe(3);
@@ -859,7 +859,7 @@ describe('setLang', () => {
     const saved = JSON.parse(raw as string);
     expect(Object.keys(saved).sort()).toEqual(
       ['cleared', 'day', 'lang', 'lastOpen', 'mode', 'theme', 'transmissions',
-        'transmissionsSyncedOn', 'visits'].sort(),
+        'transmissionsSyncedOn', 'visits', 'voice'].sort(),
     );
     expect(saved.lang).toBe('ko');
     expect(saved.visits).toBe(5);
