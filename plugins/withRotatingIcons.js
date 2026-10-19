@@ -31,9 +31,11 @@ const RES = 'android/app/src/main/res';
 const ANYDPI = 'mipmap-anydpi-v26';
 
 // The same list src/core/appIcon.ts rotates through, so an alias exists for
-// exactly the faces that can come up. Dormant is the no-key face and ships as
-// the app's own icon, so it needs no generated drawable — its alias points at
-// @mipmap/ic_launcher.
+// exactly the faces that can come up. Dormant is the no-key face, and it gets
+// a generated drawable like every other face (2026-10-19): it used to point at
+// @mipmap/ic_launcher, the app's own icon, until that icon became her calm
+// face. The app's own icon is what Settings, permission pop-ups and the badge
+// on a notification draw, and the subject did not want her dead eye there.
 const faces = require('../src/core/faces.json');
 const DORMANT = faces.dormant;
 const LIGHT = faces.lightPrefix;
@@ -120,10 +122,10 @@ const withGeneratedFaces = (config) =>
         );
       }
 
-      // The dark eight (dormant is the app's own icon), then all nine light —
-      // light dormant included, since nothing else would ever draw it.
+      // All nine dark — dormant included, since the app's own icon is calm now
+      // and no longer stands in for it — then all nine light.
       const work = [
-        ...facesFrom(projectRoot).map((face) => ({ face, light: false })),
+        ...[DORMANT, ...facesFrom(projectRoot)].map((face) => ({ face, light: false })),
         ...[DORMANT, ...faces.order].map((face) => ({ face, light: true })),
       ];
 
@@ -208,7 +210,7 @@ const withAliases = (config) =>
 
     const dark = [DORMANT, ...facesFrom(cfg.modRequest.projectRoot)];
     app['activity-alias'] = [
-      ...dark.map((face) => aliasFor(face, face === DORMANT ? 'ic_launcher' : resourceFor(face))),
+      ...dark.map((face) => aliasFor(face, resourceFor(face))),
       ...dark.map((face) => aliasFor(`${LIGHT}${face}`, resourceFor(face, true))),
     ];
 

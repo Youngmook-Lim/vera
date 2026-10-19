@@ -54,6 +54,13 @@ entries in the manifest (a config plugin, or prebuild + a manifest patch) with
 Ship dormant as the build-time default — a fresh install has no key yet, so the
 first face is correct before any code runs.
 
+**The app's own icon is calm, not dormant (2026-10-19).** That is the
+`foregroundImage` above and `icon.png` (calm over `icon-bg.png`, scaled to
+1024), and it is what Settings, permission pop-ups and the badge on a
+notification card draw — the subject did not want her dead eye there. The
+dormant FACE is unchanged: the `.Icon_Dormant` alias, still the one enabled at
+install, now has a generated drawable of its own (`ic_launcher_dormant`).
+
 Two caveats: some launchers cache the icon until a reboot or home-screen
 redraw, and an alias swap can drop a pinned shortcut.
 
