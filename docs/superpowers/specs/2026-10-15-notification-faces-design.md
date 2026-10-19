@@ -71,8 +71,11 @@ with `Notification.Builder.recoverBuilder` as a conversation card.
 - `setShortcutId(id)` after `pushDynamicShortcut`, with a long-lived
   `ShortcutInfo` carrying the same `Person`. The shortcut opens the app's
   launch intent.
-- Shortcut id: `face.<face>.<dark|light>`. That is at most 16, one per waking
-  face per finish, and each is removed 3s after posting.
+- Shortcut id: `face.<room>.<face>.<dark|light>`. **Revised 2026-10-19,
+  in the plan:** the room is in it so that two rooms sharing a face never
+  share a conversation title. Each is removed 3s after posting, and any
+  `face.*` shortcut an earlier card left behind is swept before each push,
+  in case the process died inside those three seconds.
 
 **The face's picture** is the launcher face already in the APK, drawn to a
 256px bitmap: `@mipmap/ic_launcher_<face>` dark, `ic_launcher_light_<face>`
