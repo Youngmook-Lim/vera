@@ -20,6 +20,7 @@ import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
 import { voiceSupported } from '../vera/voice/tts';
 import { prepareVoice, playVoice, stopVoice, type Prepared } from './voice';
+import { syncNotificationTheme } from './notificationFace';
 import { selectMemories } from '../vera/select';
 import type { ModuleId } from '../modules/types';
 import type { Trigger } from '../vera/speak';
@@ -538,6 +539,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
         notableSaid: null,
       });
 
+      // The receiver that draws her face on a card reads this, not the store.
+      syncNotificationTheme(get().theme);
+
       // THE OPEN IS ITSELF AN EVENT WORTH STAMPING. `lastOpen` used to be
       // written only by saveSoul, which runs when she SPEAKS — so the gap above
       // was measuring the time since her last line, not since the last open,
@@ -907,6 +911,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   // The subject is rearranging their own furniture.
   setTheme: async (theme: Theme): Promise<void> => {
     set({ theme });
+    syncNotificationTheme(theme);
     await saveSoul(get());
   },
 

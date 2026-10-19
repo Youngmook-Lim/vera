@@ -3,6 +3,9 @@ import { useFacilityStore } from '../store';
 import { KEYS, storage } from '../storage';
 import { DARK, LIGHT } from '../theme';
 import { usePalette } from '../useTheme';
+import NotificationFace from '../../../modules/notification-face/src/NotificationFaceModule';
+
+const face = NotificationFace as unknown as { setTheme: jest.Mock };
 
 // Nothing in this file is allowed to leave the process.
 jest.mock('../../vera/llm', () => ({
@@ -79,5 +82,26 @@ describe('usePalette', () => {
     const light = await renderHook(() => usePalette());
     expect(light.result.current).toBe(LIGHT);
     await light.unmount();
+  });
+});
+
+// The face on a card is drawn when the card ARRIVES, by native code that
+// cannot ask the store, so the store tells it (2026-10-19).
+describe('the finish her notification face is drawn in', () => {
+  beforeEach(() => face.setTheme.mockClear());
+
+  it('follows a switch of theme', async () => {
+    await useFacilityStore.getState().setTheme('light');
+    expect(face.setTheme).toHaveBeenLastCalledWith(false);
+    await useFacilityStore.getState().setTheme('dark');
+    expect(face.setTheme).toHaveBeenLastCalledWith(true);
+  });
+
+  // A cold start must hand it over too, or a phone switched to light before
+  // this build would draw dark faces until the next switch.
+  it('is handed over at hydrate, before anything is switched', async () => {
+    await storage.set(KEYS.soul, JSON.stringify({ visits: 3, theme: 'light' }));
+    await useFacilityStore.getState().hydrate();
+    expect(face.setTheme).toHaveBeenLastCalledWith(false);
   });
 });
