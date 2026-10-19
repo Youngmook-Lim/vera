@@ -62,10 +62,13 @@ describe('her text waits for her voice', () => {
     expect(playVoice).toHaveBeenCalledTimes(1);
     expect(useFacilityStore.getState().line).toBe(LINE);
 
-    jest.advanceTimersByTime(49);
+    // At its own speed, not hers: the two only start together (2026-10-13).
+    jest.advanceTimersByTime(15);
     expect(useFacilityStore.getState().shown).toBe('');
     jest.advanceTimersByTime(1);
     expect(useFacilityStore.getState().shown).toBe('B');
+    jest.advanceTimersByTime(16 * 6);
+    expect(useFacilityStore.getState().shown).toBe(LINE);
     expect(useFacilityStore.getState().lastPrompt?.voice).toEqual({ took: 900 });
   });
 

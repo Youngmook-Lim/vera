@@ -1,6 +1,5 @@
 import { processVoice } from '../chain';
 import { comb, grit, normalize, ringMod } from '../fx';
-import { typewriterPace } from '../pace';
 import { SETTINGS } from '../settings';
 
 const RATE = 24000;
@@ -74,14 +73,4 @@ describe('processVoice', () => {
     });
     expect(peakOf(processVoice(hiss, RATE, '…'))).toBeLessThan(0.01);
   });
-});
-
-describe('typewriterPace', () => {
-  it('is the silent 16ms with no voice', () => expect(typewriterPace(10, null)).toBe(16));
-  it('spreads the line over the voice', () => expect(typewriterPace(10, 500)).toBe(50));
-  it('never draws faster than 16ms or slower than 90ms', () => {
-    expect(typewriterPace(10, 50)).toBe(16);
-    expect(typewriterPace(10, 5000)).toBe(90);
-  });
-  it('does not divide by an empty line', () => expect(typewriterPace(0, 500)).toBe(16));
 });

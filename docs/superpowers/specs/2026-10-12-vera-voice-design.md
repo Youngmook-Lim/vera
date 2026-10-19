@@ -173,6 +173,10 @@ decided and before the typewriter starts:
 3. On failure, or past the **8s** timeout: the line appears exactly as it does
    today, at 16ms a character, silently.
 
+**Revised 2026-10-13, on the phone:** the text is no longer paced to her. Both
+still start together, but the typewriter keeps its own 16ms, because a line
+stretched to the length of her speech was too slow to read along with.
+
 With voice off, `speak()` behaves exactly as it does now.
 
 **The cache:** processed WAVs in the cache directory, named by an FNV-1a hash
@@ -197,7 +201,8 @@ and mostly age out.
 
 **Interruptions:**
 - A new line always stops the one playing — the same rule as the typewriter.
-- Backgrounding the app stops playback.
+- Backgrounding the app stops playback, and a line whose audio is ready only
+  after the subject has left is not played.
 - **Changing view does not.** The LOG screen has its own input box, so she
   can be answering while the subject is off the stage, and a view change that
   cut her off would silence exactly that reply.
@@ -235,7 +240,7 @@ $0.002 per spoken reply. Bank lines become free after their first play.
   recorded failure. No network.
 - **Store:**
   - voice off leaves every existing test passing unchanged;
-  - voice on holds the typewriter until `prepare` resolves, then paces it;
+  - voice on holds the typewriter until `prepare` resolves;
   - failure and timeout fall back to the 16ms silent typewriter;
   - mute mid-line stops playback;
   - a new line stops the old one;

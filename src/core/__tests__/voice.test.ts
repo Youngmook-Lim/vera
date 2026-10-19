@@ -1,4 +1,5 @@
 import { createAudioPlayer } from 'expo-audio';
+import { AppState } from 'react-native';
 import { toS16LE } from '../../vera/voice/pcm';
 import type { BytesFetch } from '../../vera/voice/tts';
 import { CACHE_CAP, VOICE_TIMEOUT_MS, cacheKey, playVoice, prepareVoice, stopVoice } from '../voice';
@@ -105,6 +106,20 @@ describe('playback', () => {
     stopVoice();
     stopVoice();
     expect(p.remove).toHaveBeenCalledTimes(1);
+  });
+
+  // A line whose audio was still being made when the subject left would
+  // otherwise start in their pocket: the background handler had nothing to
+  // stop yet (2026-10-13).
+  it('does not start while the app is in the background', () => {
+    const was = AppState.currentState;
+    AppState.currentState = 'background';
+    try {
+      playVoice(P);
+    } finally {
+      AppState.currentState = was;
+    }
+    expect(player).not.toHaveBeenCalled();
   });
 
   it('lets go of a player that has finished', () => {

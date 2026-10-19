@@ -18,7 +18,6 @@ import { MODES, isMode, type Mode } from '../vera/modes/registry';
 import { requestTransmissions, syncTransmissions } from '../vera/transmissionsNotify';
 import { migrateImpressions, type StoredImpression } from '../vera/migrate';
 import { providerFor, validateKey } from '../vera/providers';
-import { typewriterPace } from '../vera/voice/pace';
 import { voiceSupported } from '../vera/voice/tts';
 import { prepareVoice, playVoice, stopVoice, type Prepared } from './voice';
 import { selectMemories } from '../vera/select';
@@ -815,17 +814,15 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       if (typewriterHandle) clearTimeout(typewriterHandle);
       set({ shown: '' });
       if (line.length > 0) {
-        // Paced to her voice so the last character lands as she finishes;
-        // the 16ms it always was when she is silent. Read `voice` again:
+        // She and the text start together, and the text keeps its own 16ms
+        // rather than being stretched to her (2026-10-13). Read `voice` again:
         // the subject may have switched it off while the audio was made.
-        const voiced = prepared && get().voice ? prepared : null;
-        const pace = typewriterPace(line.length, voiced?.durationMs ?? null);
-        if (voiced) playVoice(voiced);
+        if (prepared && get().voice) playVoice(prepared);
         const tick = (i: number) => {
           set({ shown: line.slice(0, i) });
-          typewriterHandle = i < line.length ? setTimeout(() => tick(i + 1), pace) : null;
+          typewriterHandle = i < line.length ? setTimeout(() => tick(i + 1), 16) : null;
         };
-        typewriterHandle = setTimeout(() => tick(1), pace);
+        typewriterHandle = setTimeout(() => tick(1), 16);
       }
 
       // Queued for extraction, independent of the transcript so an erasure or

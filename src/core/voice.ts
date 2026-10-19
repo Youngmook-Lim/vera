@@ -8,6 +8,7 @@
 // so after their first playing a poke or a greeting is instant and free.
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
+import { AppState } from 'react-native';
 import { processVoice } from '../vera/voice/chain';
 import { hashText } from '../vera/voice/contour';
 import { PCM_RATE, encodeWav, fromS16LE } from '../vera/voice/pcm';
@@ -110,6 +111,10 @@ export const stopVoice = (): void => {
 
 export const playVoice = (prepared: Prepared): void => {
   stopVoice();
+  // A line can take seconds to make, and the subject can leave in the middle
+  // of it. The background handler has nothing to stop yet at that moment, so
+  // without this she would start talking from a pocket (2026-10-13).
+  if (AppState.currentState === 'background') return;
   try {
     const p = createAudioPlayer({ uri: prepared.uri });
     player = p;
