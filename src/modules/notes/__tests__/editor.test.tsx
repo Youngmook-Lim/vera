@@ -50,6 +50,28 @@ describe('the editor', () => {
     await view.unmount();
   });
 
+  it('starts a new note on calm, and saves the face chosen', async () => {
+    const view = await render(<NoteEditor onDone={() => {}} accent="#f4b43a" />);
+    expect(view.getByTestId('face-calm').props.accessibilityState.selected).toBe(true);
+
+    await fireEvent.changeText(view.getByTestId('note-text'), 'Breathe');
+    await fireEvent.press(view.getByTestId('day-1'));
+    await fireEvent.press(view.getByTestId('face-bored'));
+    await fireEvent.press(view.getByTestId('note-save'));
+
+    expect(saved()[0].face).toBe('bored');
+    await view.unmount();
+  });
+
+  it('opens an existing note on the face it wears', async () => {
+    const amused = { ...NOTE, face: 'amused' as const };
+    useNotesStore.setState({ notes: [amused] });
+    const view = await render(<NoteEditor note={amused} onDone={() => {}} accent="#f4b43a" />);
+
+    expect(view.getByTestId('face-amused').props.accessibilityState.selected).toBe(true);
+    await view.unmount();
+  });
+
   // fireEvent.press on a DISABLED element is a silent no-op, so pressing it
   // alone would pass against a save with no guard at all. Both halves.
   it('cannot be saved with nothing written', async () => {

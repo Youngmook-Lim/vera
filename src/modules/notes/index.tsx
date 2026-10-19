@@ -147,17 +147,25 @@ function NotesScreen() {
             onPress={() => setEditing(note)}
           >
             <View style={styles.rowText}>
-              <Text
-                style={[
-                  styles.rowTime,
-                  {
-                    fontFamily: font('mono', 600, lang),
-                    color: note.enabled ? accent : p.notes.inkDim,
-                  },
-                ]}
-              >
-                {`${pad(note.hour)}:${pad(note.minute)}`}
-              </Text>
+              <View style={styles.rowHead}>
+                <Text
+                  style={[
+                    styles.rowTime,
+                    {
+                      fontFamily: font('mono', 600, lang),
+                      color: note.enabled ? accent : p.notes.inkDim,
+                    },
+                  ]}
+                >
+                  {`${pad(note.hour)}:${pad(note.minute)}`}
+                </Text>
+                {/* The face this note's cards wear, in its raw iris: an object,
+                    not type. */}
+                <View
+                  testID={`notes-row-${note.id}-face`}
+                  style={[styles.faceDot, { backgroundColor: EMOTIONS[note.face].iris }]}
+                />
+              </View>
               <Text
                 testID={`notes-row-${note.id}-days`}
                 style={[styles.rowDays, { fontFamily: font('mono', 500, lang) }]}
@@ -266,6 +274,8 @@ const S = themed((p) => StyleSheet.create({
     borderColor: p.notes.rule,
   },
   rowText: { flex: 1 },
+  rowHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  faceDot: { width: 7, height: 7, borderRadius: 3.5 },
   rowTime: { fontSize: ms(15), letterSpacing: ms(15) * 0.04 },
   rowDays: { marginTop: 3, fontSize: ms(7.5), letterSpacing: ms(7.5) * 0.3, color: p.notes.inkDim },
   rowBody: { marginTop: 6, fontSize: ms(12) },
