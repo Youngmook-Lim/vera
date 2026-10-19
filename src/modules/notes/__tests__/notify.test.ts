@@ -7,7 +7,7 @@ const mocked = Notifications as unknown as Record<string, jest.Mock>;
 
 const note = (over: Partial<Note> = {}): Note => ({
   id: 'n1', text: 'Stay positive', hour: 9, minute: 0,
-  days: [1, 3, 5], enabled: true, ...over,
+  days: [1, 3, 5], enabled: true, face: 'calm', ...over,
 });
 
 const queued = () => mocked.scheduleNotificationAsync.mock.calls.map(([req]) => req);
@@ -42,7 +42,7 @@ describe('a note handed to Android', () => {
     await scheduleNote(note());
     for (const r of queued()) {
       expect(r.content.body).toBe('Stay positive');
-      expect(r.content.data).toEqual({ room: 'notes', id: 'n1' });
+      expect(r.content.data).toEqual({ room: 'notes', id: 'n1', face: 'calm' });
     }
   });
 
@@ -157,5 +157,13 @@ describe('the rooms and this room do not read each other’s cards', () => {
       notification: { request: { content: { data: { room: 'notes', id: 'n7' } } } },
     });
     expect(await readTapTarget()).toBe('n7');
+  });
+});
+
+describe('the face a note wears', () => {
+  it('rides on every one of its cards', async () => {
+    await scheduleNote(note({ face: 'suspicious' }));
+    expect(queued().length).toBeGreaterThan(0);
+    for (const r of queued()) expect(r.content.data.face).toBe('suspicious');
   });
 });

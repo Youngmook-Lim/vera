@@ -48,6 +48,7 @@ export function NoteEditor({
       minute,
       days,
       enabled: note?.enabled ?? true,
+      face: note?.face ?? 'calm',
     });
     if (ok) onDone();
     // The cap is the only reason a valid draft is refused once the permission

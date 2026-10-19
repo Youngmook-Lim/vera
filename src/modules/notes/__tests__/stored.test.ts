@@ -2,7 +2,7 @@ import { EMPTY_STORED, type Note, parse, serialize } from '../stored';
 
 const note = (over: Partial<Note> = {}): Note => ({
   id: 'n1', text: 'Stay positive', hour: 9, minute: 0,
-  days: [1, 3, 5], enabled: true, ...over,
+  days: [1, 3, 5], enabled: true, face: 'calm', ...over,
 });
 
 describe('a blob of notes', () => {
@@ -37,6 +37,25 @@ describe('a blob of notes', () => {
   it('drops a note whose hour is not on the clock', () => {
     expect(parse(JSON.stringify({ notes: [{ ...note(), hour: 24 }] })).notes).toEqual([]);
     expect(parse(JSON.stringify({ notes: [{ ...note(), minute: 60 }] })).notes).toEqual([]);
+  });
+
+  it('keeps the face each note wears', () => {
+    const stored = { notes: [note({ face: 'alarmed' })] };
+    expect(parse(serialize(stored)).notes[0].face).toBe('alarmed');
+  });
+
+  // Every note written before faces existed has none (2026-10-19). Dropping
+  // it, as a missing hour is dropped, would delete every note the subject has;
+  // a face, unlike an hour, has an honest default.
+  it('reads a note with no face as calm, and keeps it', () => {
+    const { face: _gone, ...old } = note({ face: 'bored' });
+    expect(parse(JSON.stringify({ notes: [old] })).notes).toEqual([note({ face: 'calm' })]);
+  });
+
+  it('reads a face that is not a waking state as calm', () => {
+    for (const face of ['dormant', 'wry', 7]) {
+      expect(parse(JSON.stringify({ notes: [{ ...note(), face }] })).notes[0].face).toBe('calm');
+    }
   });
 
   it('keeps the order they were made in', () => {

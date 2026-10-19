@@ -62,7 +62,7 @@ export const scheduleNote = async (note: Note): Promise<void> => {
         // The title is the room's, never hers. She did not compose this and is
         // not told it exists — putting her name on it is the thing
         // `systemNotice` is styled to prevent.
-        content: { title: CHANNEL_NAME, body: note.text, data: { room: ROOM, id: note.id } },
+        content: { title: CHANNEL_NAME, body: note.text, data: { room: ROOM, id: note.id, face: note.face } },
         // `channelId` rides on the TRIGGER, not the content: WeeklyTriggerInput
         // carries the field and the content type rejects it. Naming no channel
         // does not fall back to the one just created — Android files the card

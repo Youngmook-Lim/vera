@@ -20,7 +20,7 @@ const Screen = mod.Screen;
 
 const NOTE = {
   id: 'n1', text: 'Stay positive', hour: 9, minute: 0,
-  days: [1, 3, 5], enabled: true,
+  days: [1, 3, 5], enabled: true, face: 'calm' as const,
 };
 
 beforeEach(async () => {

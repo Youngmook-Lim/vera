@@ -1,3 +1,5 @@
+import { isWakingEmotion, type WakingEmotion } from '../../vera/emotions';
+
 // The whole of what module 03 keeps on disk. The first room whose corpus the
 // subject writes, so unlike the two that deal from a fixed book, the content
 // IS the stored thing rather than a set of marks against one.
@@ -16,6 +18,9 @@ export interface Note {
   // A switch, not a deletion. An alarm wanted back next month should not have
   // to be retyped.
   enabled: boolean;
+  // Which of her faces the card wears (2026-10-19). Drawn by
+  // modules/notification-face when the card arrives.
+  face: WakingEmotion;
 }
 
 export interface Stored {
@@ -28,7 +33,7 @@ export const serialize = (s: Stored): string =>
   JSON.stringify({
     notes: s.notes.map((n) => ({
       id: n.id, text: n.text, hour: n.hour, minute: n.minute,
-      days: [...n.days], enabled: n.enabled,
+      days: [...n.days], enabled: n.enabled, face: n.face,
     })),
   } satisfies Stored);
 
@@ -47,6 +52,10 @@ const readNote = (v: unknown): Note | null => {
   return {
     id: n.id, text: n.text, hour: n.hour, minute: n.minute,
     days: n.days, enabled: n.enabled,
+    // DEFAULTED, not dropped — the one field here that is. Every note written
+    // before faces existed has none, and a face, unlike an hour, has an honest
+    // answer when missing.
+    face: isWakingEmotion(n.face) ? n.face : 'calm',
   };
 };
 
