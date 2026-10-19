@@ -282,3 +282,25 @@ describe('the channel rule, on its own', () => {
     expect(mocked.deleteNotificationChannelAsync).not.toHaveBeenCalledWith('solo.v1');
   });
 });
+
+// The native side draws her face on a card only if the card says which one
+// (2026-10-19). A room that names none sends cards exactly as before.
+describe('the face a card wears', () => {
+  it('rides in the data of every card when the room names one', async () => {
+    const faced = makeDaily({
+      room: 'faced', channel: 'faced-channel', channelName: 'FACED', hour: 9,
+      face: 'pleased', count: () => 3, build: () => ({ title: 'T', body: 'b' }),
+    });
+    await faced.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+    expect(mocked.scheduleNotificationAsync).toHaveBeenCalled();
+    for (const [call] of mocked.scheduleNotificationAsync.mock.calls) {
+      expect(call.content.data.face).toBe('pleased');
+    }
+  });
+
+  it('is absent when the room names none', async () => {
+    await daily.sync(true, 'en', new Date(2026, 8, 8, 8, 0));
+    const [call] = mocked.scheduleNotificationAsync.mock.calls[0];
+    expect(call.content.data).not.toHaveProperty('face');
+  });
+});

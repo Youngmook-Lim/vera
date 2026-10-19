@@ -24,6 +24,8 @@ const notifierFor = (slot: TransmissionSlot, hour: number, mode: Mode) =>
     room: `transmission.${slot}`,
     channel: CHANNEL,
     channelName: TITLE,
+    // Calm in both registers: the subject chose one face for her cards.
+    face: 'calm',
     hour,
     days: TRANSMISSION_DAYS,
     plan: planBag,

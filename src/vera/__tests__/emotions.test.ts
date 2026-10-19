@@ -1,4 +1,6 @@
-import { EMOTIONS, emotionLabel, isEmotionKey, type EmotionKey } from '../emotions';
+import {
+  EMOTIONS, WAKING_EMOTIONS, emotionLabel, isEmotionKey, isWakingEmotion, type EmotionKey,
+} from '../emotions';
 
 // Exhaustive expected values transcribed independently from the design spec.
 // This is the backstop test — it catches regressions in any field of any state.
@@ -103,5 +105,18 @@ describe('emotionLabel', () => {
   it('answers in the reading language', () => {
     expect(emotionLabel('pleased', 'en')).toBe('PLEASED');
     expect(emotionLabel('pleased', 'ko')).toBe('기뻐요');
+  });
+});
+
+describe('the waking states', () => {
+  it('are every state but dormant, in the table’s order', () => {
+    expect(WAKING_EMOTIONS).toEqual(Object.keys(EMOTIONS).filter((k) => k !== 'dormant'));
+  });
+
+  it('recognise a waking state and nothing else', () => {
+    expect(isWakingEmotion('pleased')).toBe(true);
+    expect(isWakingEmotion('dormant')).toBe(false);
+    expect(isWakingEmotion('wry')).toBe(false);
+    expect(isWakingEmotion(undefined)).toBe(false);
   });
 });

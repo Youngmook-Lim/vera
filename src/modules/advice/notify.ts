@@ -17,6 +17,7 @@ const daily = makeDaily({
   channel: 'advice.v2',
   legacyChannel: 'advice',
   channelName: 'EXCELLENT ADVICE',
+  face: 'pleased',
   hour: NOTIFY_HOUR,
   count: () => QUOTES.length,
   build: (index, lang) => ({

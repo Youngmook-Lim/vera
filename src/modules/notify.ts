@@ -1,6 +1,7 @@
 import type { Lang } from '../core/i18n';
 import { askBatteryUnrestricted, isBatteryUnrestricted } from '../core/power';
 import { type Planner, planDaily } from './daily';
+import type { WakingEmotion } from '../vera/emotions';
 
 // The only file that touches expo-notifications. Everything about WHICH card
 // and WHEN is decided in daily.ts, which is pure; this hands the answer to
@@ -182,6 +183,10 @@ export interface DailyConfig {
   // a channel that was never created would be the orphan this exists to avoid.
   legacyChannel?: string;
   channelName: string;
+  // Which of her faces the card wears where Samsung draws the app's icon
+  // (2026-10-19). Drawn by modules/notification-face when the card arrives;
+  // a room that names none sends cards exactly as before.
+  face?: WakingEmotion;
   hour: number;
   // How far ahead to hand cards over. Ninety for a corpus that never changes;
   // a room whose content goes stale wants a shorter one, because everything
@@ -306,7 +311,7 @@ export const makeDaily = (cfg: DailyConfig): DailyNotifier => {
               // switching language in SYSTEM does not resync the queue, so a
               // pending card keeps the language it was scheduled under until the
               // next day's sync rewrites the horizon.
-              content: { title, body, data: { room: cfg.room, index } },
+              content: { title, body, data: { room: cfg.room, index, ...(cfg.face ? { face: cfg.face } : {}) } },
               // `channelId` rides on the TRIGGER, not the content — it is the
               // trigger types that carry it, and the content type rejects it.
               // Naming no channel does NOT fall back to the one ensureChannel

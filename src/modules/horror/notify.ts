@@ -17,6 +17,7 @@ const daily = makeDaily({
   channel: 'horror.v2',
   legacyChannel: 'horror',
   channelName: 'TWO SENTENCE HORROR',
+  face: 'alarmed',
   hour: NOTIFY_HOUR,
   count: () => STORIES.length,
   build: (index, lang) => ({
