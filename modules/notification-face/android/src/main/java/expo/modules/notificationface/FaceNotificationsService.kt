@@ -69,9 +69,16 @@ class FacePresentationDelegate(context: Context) : ExpoPresentationDelegate(cont
 
     val shortcuts = context.getSystemService(ShortcutManager::class.java)
     // Anything a previous card left behind first, in case its delayed removal
-    // never ran — the process can die inside those three seconds.
+    // never ran — the process can die inside those three seconds. Only STALE
+    // ones: cards due in the same minute are built concurrently (expo builds
+    // each on its own IO coroutine), and sweeping a shortcut another card has
+    // just pushed would post that card against nothing — the base eye, with
+    // its title gone. Caught in the final review, 2026-10-19.
+    val staleBefore = System.currentTimeMillis() - REMOVE_AFTER_MS
     shortcuts.removeDynamicShortcuts(
-      shortcuts.dynamicShortcuts.map { it.id }.filter { it.startsWith("face.") && it != shortcutId }
+      shortcuts.dynamicShortcuts
+        .filter { it.id.startsWith("face.") && it.id != shortcutId && it.lastChangedTimestamp < staleBefore }
+        .map { it.id }
     )
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
       ?: Intent(Intent.ACTION_MAIN).setPackage(context.packageName)
