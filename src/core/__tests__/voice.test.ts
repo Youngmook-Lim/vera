@@ -92,6 +92,16 @@ describe('playback', () => {
     expect(player.mock.results[0].value.play).toHaveBeenCalled();
   });
 
+  // She was too slow at 1× on the phone (2026-10-19). The pitch is the
+  // contour's whole character, so it must not rise with the speed.
+  it('plays her 1.2 times as fast, at her own pitch', () => {
+    playVoice(P);
+    const p = player.mock.results[0].value;
+    expect(p.setPlaybackRate).toHaveBeenCalledWith(1.2);
+    expect(p.shouldCorrectPitch).toBe(true);
+    expect(p.setPlaybackRate.mock.invocationCallOrder[0]).toBeLessThan(p.play.mock.invocationCallOrder[0]);
+  });
+
   it('stops the line already playing before starting the next', () => {
     playVoice(P);
     const first = player.mock.results[0].value;

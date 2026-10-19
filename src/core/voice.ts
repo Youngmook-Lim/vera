@@ -19,6 +19,11 @@ import { fetchSpeech, ttsRouteFor, type BytesFetch } from '../vera/voice/tts';
 // silently, as it always used to.
 export const VOICE_TIMEOUT_MS = 8_000;
 export const CACHE_CAP = 200;
+// How fast she is played back. Too slow at 1× on the phone (2026-10-19). Applied
+// at PLAYBACK, not in the chain, so the cache needs no new CHAIN_VERSION and the
+// voice lab's files are still the 1× take. Pitch is held: the contour is her
+// whole character, and a faster tape would raise it.
+export const VOICE_RATE = 1.2;
 
 export interface Prepared {
   uri: string;
@@ -118,6 +123,8 @@ export const playVoice = (prepared: Prepared): void => {
   try {
     const p = createAudioPlayer({ uri: prepared.uri });
     player = p;
+    p.shouldCorrectPitch = true;
+    p.setPlaybackRate(VOICE_RATE);
     p.addListener('playbackStatusUpdate', (status) => {
       if (status.didJustFinish && player === p) stopVoice();
     });
