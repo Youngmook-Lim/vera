@@ -36,13 +36,6 @@ jest.mock('./modules/power/src/PowerModule', () => ({
   },
 }));
 
-// Her face on a notification is drawn natively when the card arrives; the JS
-// side only records which finish to draw it in (2026-10-19).
-jest.mock('./modules/notification-face/src/NotificationFaceModule', () => ({
-  __esModule: true,
-  default: { setTheme: jest.fn(() => true) },
-}));
-
 // requireNativeModule throws the moment it is imported without a native
 // runtime, so the launcher module has to be stubbed rather than guarded at the
 // call site. The rotation's decision — which face today wears — is pure and

@@ -12,7 +12,6 @@ interface NotesStrings {
   placeholder: string;
   time: string;
   days: string;
-  face: string;
   save: string;
   del: string;
   full: string;
@@ -29,7 +28,6 @@ const en: NotesStrings = {
   placeholder: 'write it as you want to read it',
   time: 'TIME',
   days: 'DAYS',
-  face: 'FACE',
   save: 'SAVE',
   del: 'DELETE',
   full: 'twenty is the limit',
@@ -43,7 +41,6 @@ const ko: NotesStrings = {
   placeholder: '읽고 싶은 대로 써 두세요',
   time: '시간',
   days: '요일',
-  face: '표정',
   save: '저장',
   del: '삭제',
   full: '스무 개까지예요',

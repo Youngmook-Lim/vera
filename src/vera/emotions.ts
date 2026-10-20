@@ -90,16 +90,5 @@ export type EmotionKey = keyof typeof EMOTIONS;
 export const isEmotionKey = (v: unknown): v is EmotionKey =>
   typeof v === 'string' && v in EMOTIONS;
 
-// Every state she can be in while awake. `dormant` is the app's dead grey, not
-// a face of hers: no card is sent by a dormant app, and no note may ask for one.
-export type WakingEmotion = Exclude<EmotionKey, 'dormant'>;
-
-export const WAKING_EMOTIONS = (Object.keys(EMOTIONS) as EmotionKey[]).filter(
-  (k): k is WakingEmotion => k !== 'dormant',
-);
-
-export const isWakingEmotion = (v: unknown): v is WakingEmotion =>
-  isEmotionKey(v) && v !== 'dormant';
-
 export const emotionLabel = (key: EmotionKey, lang: Lang): string =>
   EMOTIONS[key].label[lang];

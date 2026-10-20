@@ -3,7 +3,7 @@ import type { Note } from '../stored';
 
 const note = (over: Partial<Note> = {}): Note => ({
   id: 'n1', text: 'Stay positive', hour: 9, minute: 0,
-  days: [1, 3, 5], enabled: true, face: 'calm', ...over,
+  days: [1, 3, 5], enabled: true, ...over,
 });
 
 describe('the weekday a notification is filed under', () => {

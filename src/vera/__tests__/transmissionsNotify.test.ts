@@ -96,16 +96,6 @@ describe('her transmissions', () => {
     expect(rooms).toEqual(new Set(SLOTS.map((s) => `transmission.${s.slot}`)));
   });
 
-  it('wears her calm face in either register', async () => {
-    for (const mode of ['default', 'supportive'] as const) {
-      jest.clearAllMocks();
-      mocked.getAllScheduledNotificationsAsync.mockResolvedValue([]);
-      await syncTransmissions(true, mode, NOW);
-      expect(queued().length).toBeGreaterThan(0);
-      for (const r of queued()) expect(r.content.data.face).toBe('calm');
-    }
-  });
-
   it('queues nothing when they are switched off', async () => {
     await syncTransmissions(false, 'default', NOW);
     expect(queued()).toHaveLength(0);

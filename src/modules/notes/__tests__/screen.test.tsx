@@ -1,7 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { fireEvent, render, within } from '@testing-library/react-native';
-import { EMOTIONS } from '../../../vera/emotions';
 import { storage } from '../../../core/storage';
 import { useFacilityStore } from '../../../core/store';
 import { notes as mod } from '..';
@@ -22,7 +20,7 @@ const Screen = mod.Screen;
 
 const NOTE = {
   id: 'n1', text: 'Stay positive', hour: 9, minute: 0,
-  days: [1, 3, 5], enabled: true, face: 'calm' as const,
+  days: [1, 3, 5], enabled: true,
 };
 
 beforeEach(async () => {
@@ -39,16 +37,6 @@ describe('the room', () => {
 
     expect(view.getByTestId('notes-list')).toBeTruthy();
     expect(view.queryByTestId('notes-card')).toBeNull();
-
-    await view.unmount();
-  });
-
-  it('marks each row with the face its cards wear', async () => {
-    useNotesStore.setState({ notes: [{ ...NOTE, face: 'alarmed' }] });
-    const view = await render(<Screen />);
-
-    expect(StyleSheet.flatten(view.getByTestId('notes-row-n1-face').props.style).backgroundColor)
-      .toBe(EMOTIONS.alarmed.iris);
 
     await view.unmount();
   });

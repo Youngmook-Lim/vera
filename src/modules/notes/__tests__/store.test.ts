@@ -12,7 +12,7 @@ jest.mock('../notify', () => ({
 }));
 const { scheduleNote, cancelNote, reconcile, requestNotes } = jest.requireMock('../notify');
 
-const draft = { text: 'Stay positive', hour: 9, minute: 0, days: [1, 3, 5], enabled: true, face: 'calm' as const };
+const draft = { text: 'Stay positive', hour: 9, minute: 0, days: [1, 3, 5], enabled: true };
 
 beforeEach(async () => {
   await storage.clearAll();
@@ -60,20 +60,6 @@ describe('saving a note', () => {
   // The id is what the pending notifications carry, so an edit has to take the
   // old triggers down BEFORE it puts the new ones up — the other order cancels
   // what it has just scheduled.
-  // A face is part of what a card says, so changing only the face is an edit
-  // like any other — old triggers down, new ones up (2026-10-19).
-  it('reschedules a note whose only change is its face', async () => {
-    await useNotesStore.getState().save(draft);
-    const { id } = useNotesStore.getState().notes[0];
-    jest.clearAllMocks();
-
-    await useNotesStore.getState().save({ ...draft, id, face: 'affectionate' });
-
-    expect(cancelNote).toHaveBeenCalledWith(id);
-    expect(scheduleNote).toHaveBeenCalledWith(expect.objectContaining({ face: 'affectionate' }));
-    expect(parse(await storage.get(KEYS.notes)).notes[0].face).toBe('affectionate');
-  });
-
   it('takes an edited note’s old triggers down first', async () => {
     await useNotesStore.getState().save(draft);
     const { id } = useNotesStore.getState().notes[0];
@@ -90,7 +76,7 @@ describe('saving a note', () => {
   it('refuses past the cap', async () => {
     useNotesStore.setState({
       notes: Array.from({ length: MAX_NOTES }, (_, i) => ({
-        id: `n${i}`, text: 't', hour: 9, minute: 0, days: [1], enabled: true, face: 'calm',
+        id: `n${i}`, text: 't', hour: 9, minute: 0, days: [1], enabled: true,
       })),
     });
 
@@ -101,7 +87,7 @@ describe('saving a note', () => {
   it('lets an existing note be edited even at the cap', async () => {
     useNotesStore.setState({
       notes: Array.from({ length: MAX_NOTES }, (_, i) => ({
-        id: `n${i}`, text: 't', hour: 9, minute: 0, days: [1], enabled: true, face: 'calm',
+        id: `n${i}`, text: 't', hour: 9, minute: 0, days: [1], enabled: true,
       })),
     });
 

@@ -78,7 +78,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       minute: draft.minute,
       days: [...draft.days],
       enabled: draft.enabled,
-      face: draft.face,
     };
 
     const notes = editing

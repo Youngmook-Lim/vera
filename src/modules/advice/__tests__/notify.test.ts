@@ -45,14 +45,6 @@ describe('the executor', () => {
     expect(content.body).toContain(SOURCE.author);
   });
 
-  it('wears her pleased face', async () => {
-    await syncDaily(true, 'en', new Date(2026, 8, 4, 8, 0));
-    expect(mocked.scheduleNotificationAsync).toHaveBeenCalled();
-    for (const [call] of mocked.scheduleNotificationAsync.mock.calls) {
-      expect(call.content.data.face).toBe('pleased');
-    }
-  });
-
   it('titles the card in the reading language', async () => {
     await syncDaily(true, 'ko', new Date(2026, 8, 4, 8, 0));
     const { content } = mocked.scheduleNotificationAsync.mock.calls[0][0];

@@ -1,9 +1,6 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
-import { EMOTIONS, WAKING_EMOTIONS } from '../../../vera/emotions';
 import { DayPicker } from '../DayPicker';
-import { FacePicker } from '../FacePicker';
 import { TimePicker } from '../TimePicker';
 import { MINUTE_STEP } from '../schedule';
 import { T } from '../strings';
@@ -107,39 +104,6 @@ describe('the time picker', () => {
     await fireEvent.press(view.getByTestId('hour-down'));
     expect(onChange).toHaveBeenLastCalledWith({ hour: 8, minute: 30 });
 
-    await view.unmount();
-  });
-});
-
-// Which of her faces a note's cards wear (2026-10-19).
-describe('the face picker', () => {
-  it('offers every waking face, each in its own iris, and rings the chosen one', async () => {
-    const view = await render(<FacePicker face="pleased" onChange={() => {}} lang="en" />);
-
-    for (const key of WAKING_EMOTIONS) {
-      expect(view.getByTestId(`face-${key}`).props.accessibilityState.selected).toBe(key === 'pleased');
-      expect(StyleSheet.flatten(view.getByTestId(`face-${key}-iris`).props.style).backgroundColor)
-        .toBe(EMOTIONS[key].iris);
-    }
-    expect(view.queryByTestId('face-dormant')).toBeNull();
-    expect(view.getByTestId('face-label')).toHaveTextContent('PLEASED');
-
-    await view.unmount();
-  });
-
-  it('hands back the face that was tapped', async () => {
-    const onChange = jest.fn();
-    const view = await render(<FacePicker face="calm" onChange={onChange} lang="en" />);
-
-    await fireEvent.press(view.getByTestId('face-alarmed'));
-    expect(onChange).toHaveBeenCalledWith('alarmed');
-
-    await view.unmount();
-  });
-
-  it('names the face in her language', async () => {
-    const view = await render(<FacePicker face="calm" onChange={() => {}} lang="ko" />);
-    expect(view.getByTestId('face-label')).toHaveTextContent(EMOTIONS.calm.label.ko);
     await view.unmount();
   });
 });

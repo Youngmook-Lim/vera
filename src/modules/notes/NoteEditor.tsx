@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFacilityStore } from '../../core/store';
 import { PALETTES, font, ms, serif, themed } from '../../core/theme';
-import type { WakingEmotion } from '../../vera/emotions';
 import { DayPicker } from './DayPicker';
-import { FacePicker } from './FacePicker';
 import { MAX_TEXT, isSavable } from './schedule';
 import type { Note } from './stored';
 import { useNotesStore } from './store';
@@ -36,7 +34,6 @@ export function NoteEditor({
   const [hour, setHour] = useState(note?.hour ?? 9);
   const [minute, setMinute] = useState(note?.minute ?? 0);
   const [days, setDays] = useState<readonly number[]>(note?.days ?? []);
-  const [face, setFace] = useState<WakingEmotion>(note?.face ?? 'calm');
   const [refused, setRefused] = useState(false);
 
   // The SEND rule: a control that accepts a tap and does nothing is worse than
@@ -51,7 +48,6 @@ export function NoteEditor({
       minute,
       days,
       enabled: note?.enabled ?? true,
-      face,
     });
     if (ok) onDone();
     // The cap is the only reason a valid draft is refused once the permission
@@ -89,9 +85,6 @@ export function NoteEditor({
 
       <Text style={[styles.legend, { fontFamily: font('mono', 500, lang) }]}>{t.days}</Text>
       <DayPicker days={days} onChange={setDays} lang={lang} accent={accent} />
-
-      <Text style={[styles.legend, { fontFamily: font('mono', 500, lang) }]}>{t.face}</Text>
-      <FacePicker face={face} onChange={setFace} lang={lang} />
 
       {refused ? (
         <Text style={[styles.refused, { fontFamily: font('mono', 500, lang) }]}>{t.full}</Text>
