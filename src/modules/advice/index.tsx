@@ -15,7 +15,7 @@ import {
   themed,
 } from '../../core/theme';
 import type { ModuleDef } from '../types';
-import { advance, current, goTo } from '../deck';
+import { advance, current, goTo, retreat } from '../deck';
 import { displayOrder } from '../favorites';
 import { QUOTES, SOURCE } from './quotes';
 import { useFavorites } from './store';
@@ -23,6 +23,7 @@ import { T } from './strings';
 import { AdviceSettings } from './Settings';
 import { onTap, readTapTarget } from './notify';
 import { useAdviceStore } from './store';
+import { useSwipeBack } from '../useSwipeBack';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 
@@ -167,6 +168,12 @@ export function AdviceScreen() {
     setListing(false);
   };
 
+  // A swipe right goes back one card within this pass (2026-10-29); a tap still
+  // deals the next. At the first card of a pass `retreat` hands back the same
+  // deck, so there is nothing to go back to and nothing happens.
+  const back = () => setDeck((d) => retreat(d));
+  const swipe = useSwipeBack(back);
+
   return (
     <View
       style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
@@ -279,15 +286,24 @@ export function AdviceScreen() {
             style={styles.cardScroller}
             contentContainerStyle={styles.cardScroll}
           >
-            <Pressable
-              testID="advice-card"
-              onPress={() => setDeck((d) => advance(d))}
-              style={styles.card}
-            >
-              <Text testID="advice-quote" style={styles.quote}>
-                {QUOTES[card]}
-              </Text>
-            </Pressable>
+            {/* The swipe sits on a wrapper, apart from the press: a responder
+                that declines every touch START would otherwise mark the card
+                as refusing events. */}
+            <View {...swipe}>
+              <Pressable
+                testID="advice-card"
+                onPress={() => setDeck((d) => advance(d))}
+                style={styles.card}
+                accessibilityActions={[{ name: 'back', label: t.back }]}
+                onAccessibilityAction={(e) => {
+                  if (e.nativeEvent.actionName === 'back') back();
+                }}
+              >
+                <Text testID="advice-quote" style={styles.quote}>
+                  {QUOTES[card]}
+                </Text>
+              </Pressable>
+            </View>
           </ScrollView>
 
           <View style={styles.footer}>

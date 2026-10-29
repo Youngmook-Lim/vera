@@ -10,6 +10,7 @@ export interface AdviceStrings {
   first: string;
   keep: string;
   release: string;
+  back: string;
   hint: string;
   daily: string;
   on: string;
@@ -24,6 +25,7 @@ const en: AdviceStrings = {
   first: 'FIRST',
   keep: 'keep this one',
   release: 'let this one go',
+  back: 'previous card',
   hint: 'tap the card for another',
   daily: 'DAILY ADVICE',
   on: 'ON',
@@ -38,6 +40,7 @@ const ko: AdviceStrings = {
   first: '먼저',
   keep: '이 조언을 간직하기',
   release: '이 조언을 놓아주기',
+  back: '이전 카드',
   hint: '카드를 누르면 다른 조언이 나옵니다',
   daily: '매일의 조언',
   on: '켬',

@@ -351,3 +351,39 @@ describe('the tap', () => {
     await view.unmount();
   });
 });
+
+// Going back (2026-10-29). A swipe right on the card; the tests reach it
+// through the card's screen-reader action, since a PanResponder cannot be
+// driven from jest and the decision itself lives in ../../swipe.ts.
+describe('going back', () => {
+  const back = (view: Awaited<ReturnType<typeof render>>) =>
+    fireEvent(view.getByTestId('advice-card'), 'accessibilityAction', { nativeEvent: { actionName: 'back' } });
+  const quoteOn = (view: Awaited<ReturnType<typeof render>>) =>
+    view.getByTestId('advice-quote').props.children as string;
+
+  it('returns to the card before', async () => {
+    const view = await render(<Screen />);
+    const first = quoteOn(view);
+    await fireEvent.press(view.getByTestId('advice-card'));
+    expect(quoteOn(view)).not.toBe(first);
+    await back(view);
+    expect(quoteOn(view)).toBe(first);
+    await view.unmount();
+  });
+
+  it('stays put at the first card of a pass', async () => {
+    const view = await render(<Screen />);
+    const first = quoteOn(view);
+    await back(view);
+    expect(quoteOn(view)).toBe(first);
+    expect(useAdviceStore.getState().deck.at).toBe(0);
+    await view.unmount();
+  });
+
+  it('offers the way back to a screen reader by name', async () => {
+    const view = await render(<Screen />);
+    const actions = view.getByTestId('advice-card').props.accessibilityActions;
+    expect(actions).toEqual([{ name: 'back', label: 'previous card' }]);
+    await view.unmount();
+  });
+});
