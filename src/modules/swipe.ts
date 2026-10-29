@@ -1,6 +1,10 @@
-// Every decision the poster's swipe makes, pure and out of the gesture, because
+// Every decision a card's swipe makes, pure and out of the gesture, because
 // a worklet and a PanResponder are both unreachable from jest (the stage's
 // dock button taught that a mutation inside one survives the whole suite).
+//
+// Shared since 2026-10-29: the affirmations poster swipes both ways, and the
+// advice and horror cards swipe right to go back. One set of thresholds, so
+// the three rooms cannot come to disagree about what a swipe is.
 
 export type Swipe = 'next' | 'prev' | 'stay';
 

@@ -31,7 +31,7 @@ import { onTap, readTapTarget } from './notify';
 import { AffirmationsSettings } from './Settings';
 import { useAffirmationsStore, useFavorites } from './store';
 import { T } from './strings';
-import { type Swipe, claims, settle } from './swipe';
+import { type Swipe, claims, settle } from '../swipe';
 
 const GRID_TILE_PX = 86; // the cabinet's grid cell, shared by every slot
 const SLIDE_MS = 220;
