@@ -1,10 +1,11 @@
 import { advice } from './advice';
+import { affirmations } from './affirmations';
 import { horror } from './horror';
 import { notes } from './notes';
 import type { RegistryEntry } from './types';
 
-// Six slots, three to a row: 01 advice, 02 horror, 03 notes, 04 through 06
-// empty. This array is the only place a module is named — the cabinet builds its tiles
+// Six slots, three to a row: 01 advice, 02 horror, 03 notes, 04 affirmations,
+// 05 and 06 empty. This array is the only place a module is named — the cabinet builds its tiles
 // from it and ScreenRouter builds its module screens from it, so a new room is
 // one folder exporting a ModuleDef plus one line here.
 //
@@ -18,7 +19,7 @@ export const registry: RegistryEntry[] = [
   advice,
   horror,
   notes,
-  { slot: '04' },
+  affirmations,
   { slot: '05' },
   { slot: '06' },
 ];

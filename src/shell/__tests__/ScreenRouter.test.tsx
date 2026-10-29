@@ -107,17 +107,17 @@ test('the rooms come from the registry', async () => {
   // blank surface that back still works from, never a crash. It takes the
   // theme like everything else: a DARK blank on a pale app would read as the
   // crash it was built not to be.
-  useFacilityStore.setState({ view: 'mod04' });
+  useFacilityStore.setState({ view: 'mod05' });
   const empty = await render(<ScreenRouter />);
   const ground = (v: Awaited<ReturnType<typeof render>>) =>
     Object.assign(
       {},
-      ...[v.getByTestId('view-mod04').props.style].flat(Infinity).filter(Boolean) as object[],
+      ...[v.getByTestId('view-mod05').props.style].flat(Infinity).filter(Boolean) as object[],
     ).backgroundColor;
   expect(ground(empty)).toBe(DARK.bg);
   await empty.unmount();
 
-  useFacilityStore.setState({ view: 'mod04', theme: 'light' });
+  useFacilityStore.setState({ view: 'mod05', theme: 'light' });
   const pale = await render(<ScreenRouter />);
   expect(ground(pale)).toBe(LIGHT.bg);
 });
@@ -128,7 +128,7 @@ test('the cabinet is an overlay, not a view', async () => {
   // The sheet's own header. It used to be distinguished from the stage's
   // handle label, which also said CABINET; the handle is gone with `1d` and
   // the count is what identifies the sheet now.
-  expect(getByText('03 / 06')).toBeTruthy();
+  expect(getByText('04 / 06')).toBeTruthy();
   // The stage is still underneath it. Anchored on the optic, not her line: the
   // window holding her words collapses to its status strip when she has not
   // said anything yet, and this stage has an empty transcript. The eye is on

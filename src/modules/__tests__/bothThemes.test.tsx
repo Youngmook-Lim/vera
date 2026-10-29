@@ -4,11 +4,13 @@ import { useFacilityStore } from '../../core/store';
 import { DARK, LIGHT, emotionText, type Palette } from '../../core/theme';
 import { EMOTIONS } from '../../vera/emotions';
 import { AdviceScreen } from '../advice';
+import { affirmations } from '../affirmations';
 import { HorrorScreen } from '../horror';
 // The notes room exposes only its ModuleDef, as its own suite does it.
 import { notes } from '../notes';
 
 const NotesScreen = notes.Screen;
+const AffirmationsScreen = affirmations.Screen;
 
 jest.mock('../../vera/llm', () => ({
   ...jest.requireActual('../../vera/llm'),
@@ -39,6 +41,7 @@ const ROOMS: [string, React.ComponentType, string, (p: Palette) => string][] = [
   ['advice', AdviceScreen, 'view-mod01', (p) => p.advice.bg],
   ['horror', HorrorScreen, 'view-mod02', (p) => p.horror.bg],
   ['notes', NotesScreen, 'view-mod03', (p) => p.notes.bg],
+  ['affirmations', AffirmationsScreen, 'view-mod04', (p) => p.affirmations.room.bg],
 ];
 
 describe.each(ROOMS)('the %s room', (_name, Screen, testID, ground) => {

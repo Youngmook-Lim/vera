@@ -15,7 +15,7 @@ describe('Cabinet', () => {
   it('counts what is allocated', async () => {
     const view = await render(<Cabinet />);
     expect(view.getByText('CABINET')).toBeTruthy();
-    expect(view.getByText('03 / 06')).toBeTruthy();
+    expect(view.getByText('04 / 06')).toBeTruthy();
   });
 
   // The word left the header with the rest of `1d` — the sheet reads CABINET
@@ -24,8 +24,8 @@ describe('Cabinet', () => {
   // so the control still announces what pressing it does.
   it('says CLOSE to a screen reader and not to the eye', async () => {
     const view = await render(<Cabinet />);
-    expect(view.queryByText('03 / 06 · CLOSE')).toBeNull();
-    expect(view.getByLabelText('ALLOCATED 03 / 06 · CLOSE')).toBeTruthy();
+    expect(view.queryByText('04 / 06 · CLOSE')).toBeNull();
+    expect(view.getByLabelText('ALLOCATED 04 / 06 · CLOSE')).toBeTruthy();
   });
 
   it('opens the first room', async () => {
@@ -46,13 +46,19 @@ describe('Cabinet', () => {
     expect(useFacilityStore.getState().view).toBe('mod02');
   });
 
-  it('shows the three unfurnished rooms as numerals, and they do nothing', async () => {
+  it('shows the two unfurnished rooms as numerals, and they do nothing', async () => {
     const view = await render(<Cabinet />);
-    for (const slot of ['04', '05', '06']) {
+    for (const slot of ['05', '06']) {
       expect(view.getByText(slot)).toBeTruthy();
     }
-    await fireEvent.press(view.getByText('04'));
+    await fireEvent.press(view.getByText('05'));
     expect(useFacilityStore.getState().view).toBe('stage');
+  });
+
+  it('opens the fourth room', async () => {
+    const view = await render(<Cabinet />);
+    await fireEvent.press(view.getByTestId('tile-mod04'));
+    expect(useFacilityStore.getState().view).toBe('mod04');
   });
 
   it('opens the third room', async () => {
@@ -79,7 +85,7 @@ describe('Cabinet', () => {
 
   it('closes on the close control', async () => {
     const view = await render(<Cabinet />);
-    await fireEvent.press(view.getByText('03 / 06'));
+    await fireEvent.press(view.getByText('04 / 06'));
     expect(useFacilityStore.getState().cabinetOpen).toBe(false);
   });
 
