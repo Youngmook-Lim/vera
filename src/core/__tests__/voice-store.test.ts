@@ -41,6 +41,7 @@ beforeEach(() => {
   useFacilityStore.setState({
     apiKey: OPENROUTER, emotion: 'calm', line: 'Before.', shown: 'Before.', thinking: false,
     log: [], lang: 'en', mode: 'default', voice: true, systemNotice: null, lastPrompt: null,
+    view: 'stage',
   });
   callLlm.mockResolvedValue(`{"emotion":"amused","line":"${LINE}"}`);
 });
@@ -156,6 +157,27 @@ describe('when she does not speak', () => {
     const pending = useFacilityStore.getState().speak('subject_spoke', 'hi');
     await jest.advanceTimersByTimeAsync(0);
     await useFacilityStore.getState().setVoice(false);
+    voice.resolve({ uri: 'u', durationMs: 350, cached: false, took: 1 });
+    await pending;
+    expect(playVoice).not.toHaveBeenCalled();
+  });
+
+  // A tap on a card opens its room before the greeting runs, and the greeting
+  // is drawn on a stage nobody is looking at (2026-10-29).
+  it('asks for nothing when the subject is inside a room', async () => {
+    useFacilityStore.getState().openQuote(3);
+    await useFacilityStore.getState().speak('open');
+    expect(prepareVoice).not.toHaveBeenCalled();
+    expect(playVoice).not.toHaveBeenCalled();
+    expect(useFacilityStore.getState().thinking).toBe(false);
+  });
+
+  it('plays nothing if the subject walked into a room while it was being made', async () => {
+    const voice = deferred();
+    prepareVoice.mockReturnValueOnce(voice.promise);
+    const pending = useFacilityStore.getState().speak('subject_spoke', 'hi');
+    await jest.advanceTimersByTimeAsync(0);
+    useFacilityStore.getState().setView('mod02');
     voice.resolve({ uri: 'u', durationMs: 350, cached: false, took: 1 });
     await pending;
     expect(playVoice).not.toHaveBeenCalled();

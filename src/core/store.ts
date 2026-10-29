@@ -28,6 +28,9 @@ import type { Trigger } from '../vera/speak';
 // library, instant swaps.
 export type View = 'stage' | 'log' | 'sys' | 'mem' | 'soul' | 'mode' | 'prompt' | ModuleId;
 
+// Every room's view id is `mod` and its slot, and nothing else starts so.
+const inRoom = (view: View): boolean => view.startsWith('mod');
+
 // `system` is the app speaking, not her, rendered in danger red and a mono
 // face so it cannot be mistaken for a line of hers. Both codes are
 // configuration problems only the subject can fix — a credential the provider
@@ -705,7 +708,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       // for the length of the synthesis. A failure or a timeout lets the line
       // appear silently, exactly as it did before she had a voice.
       const voiceRoute = providerFor(get().apiKey)?.label;
-      const speaksAloud = get().voice && voiceSupported(voiceRoute) && !notice && line.length > 0;
+      // Not inside a room (2026-10-29): her line is drawn on the stage, and a
+      // card's tap opens its room before the greeting runs, so she was talking
+      // over a room that shows nothing of hers.
+      const speaksAloud = get().voice && voiceSupported(voiceRoute) && !notice && line.length > 0 && !inRoom(get().view);
       let prepared: Prepared | null = null;
       let voiceNote: VoiceNote | undefined;
       if (speaksAloud) {
@@ -816,8 +822,9 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
       if (line.length > 0) {
         // She and the text start together, and the text keeps its own 16ms
         // rather than being stretched to her (2026-10-13). Read `voice` again:
-        // the subject may have switched it off while the audio was made.
-        if (prepared && get().voice) playVoice(prepared);
+        // the subject may have switched it off while the audio was made, and
+        // the view again, since they may have walked into a room meanwhile.
+        if (prepared && get().voice && !inRoom(get().view)) playVoice(prepared);
         const tick = (i: number) => {
           set({ shown: line.slice(0, i) });
           typewriterHandle = i < line.length ? setTimeout(() => tick(i + 1), 16) : null;
