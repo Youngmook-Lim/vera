@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -107,9 +108,12 @@ export function AffirmationsScreen() {
   // list too, since the tap asked to see the card.
   useEffect(() => {
     if (pending == null) return;
+    useFacilityStore.setState({ pendingAffirmation: null });
+    // A card already in the shade from before a re-run of the script that
+    // dropped lines can name one that is gone; `goTo` would land on nothing.
+    if (pending < 0 || pending >= LINES.length) return;
     setDeck((d) => goTo(d, pending));
     setListing(false);
-    useFacilityStore.setState({ pendingAffirmation: null });
   }, [pending]);
 
   const card = current(deck);
@@ -257,6 +261,10 @@ export function AffirmationsScreen() {
           { backgroundColor: field.bg, paddingTop: insets.top, paddingBottom: insets.bottom },
         ]}
       >
+        {/* The poster runs behind the status bar and ignores the theme, so the
+            clock and battery follow the field. The latest mounted bar wins,
+            and leaving for the list hands it back to the router's. */}
+        <StatusBar style={field.bar} />
         {/* The doorway rule's one exit, in this room's ink — which on a
             poster is the card's, since no fixed ink reads on all six. */}
         <View style={styles.header}>

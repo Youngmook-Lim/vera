@@ -31,6 +31,9 @@ interface RoomInk {
 export interface Field {
   bg: string;
   ink: string;
+  // The status bar's icons, which sit on the poster too — named for the ICONS,
+  // as `statusBarFor` is: light icons on a dark field.
+  bar: 'light' | 'dark';
 }
 
 // The six, written ONCE and handed to both palettes (2026-10-29). They are the
@@ -39,12 +42,12 @@ export interface Field {
 // `organism`, nothing here is waiting to be themed. Each pair holds 4.5:1,
 // which is why the red is #cc3a22 and not the mockup's #e8452c (3.95:1).
 const AFFIRMATION_FIELDS: readonly Field[] = [
-  { bg: '#2f3bd6', ink: '#ffffff' },
-  { bg: '#cc3a22', ink: '#ffffff' },
-  { bg: '#f5c518', ink: '#15161a' },
-  { bg: '#127a5a', ink: '#ffffff' },
-  { bg: '#ec7fb4', ink: '#15161a' },
-  { bg: '#1d1d1f', ink: '#ffffff' },
+  { bg: '#2f3bd6', ink: '#ffffff', bar: 'light' },
+  { bg: '#cc3a22', ink: '#ffffff', bar: 'light' },
+  { bg: '#f5c518', ink: '#15161a', bar: 'dark' },
+  { bg: '#127a5a', ink: '#ffffff', bar: 'light' },
+  { bg: '#ec7fb4', ink: '#15161a', bar: 'dark' },
+  { bg: '#1d1d1f', ink: '#ffffff', bar: 'light' },
 ];
 
 // One shape, two values. `palettes.test.ts` compares the two recursively, so a

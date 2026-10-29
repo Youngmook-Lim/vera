@@ -10,6 +10,16 @@ import { affirmations } from '../index';
 import { LINES } from '../lines';
 import { useAffirmationsStore } from '../store';
 
+// The status bar stood in by a file-local mock that renders its style as text,
+// the router's own way of reading it: expo-status-bar's exports cannot be spied on.
+jest.mock('expo-status-bar', () => {
+  const { createElement } = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  return {
+    StatusBar: ({ style }: { style: string }) => createElement(Text, { testID: 'status-bar' }, style),
+  };
+});
+
 const Screen = affirmations.Screen;
 const pad3 = (n: number) => String(n).padStart(3, '0');
 const swipe = (view: Awaited<ReturnType<typeof render>>, actionName: 'increment' | 'decrement') =>
@@ -171,5 +181,39 @@ describe('the boot', () => {
     expect(useFacilityStore.getState().view).toBe('mod04');
     expect(useFacilityStore.getState().pendingAffirmation).toBe(7);
     if (typeof off === 'function') off();
+  });
+});
+
+// The final review's two (2026-10-29).
+describe('what the poster owes the phone around it', () => {
+  // The poster is painted behind the status bar, and the fields do not follow
+  // the theme, so the clock and battery have to follow the field instead.
+  it('draws the status bar\'s icons in whichever ink the field carries', async () => {
+    for (const index of [0, 2, 4, 5]) {
+      useAffirmationsStore.setState({ deck: { order: [index, ...LINES.map((_, i) => i).filter((i) => i !== index)], at: 0 } });
+      const view = await render(<Screen />);
+      expect(view.getByTestId('status-bar').props.children).toBe(fieldFor(index).bar);
+      await view.unmount();
+    }
+  });
+
+  it('leaves the status bar to the theme on the list', async () => {
+    const view = await render(<Screen />);
+    await fireEvent.press(view.getByTestId('affirmations-mode-list'));
+    expect(view.queryByTestId('status-bar')).toBeNull();
+    await view.unmount();
+  });
+
+  // A card already in the shade from before a re-run that dropped lines can
+  // name an index that no longer exists. It must not take the room down.
+  it('ignores a tapped card that is no longer in the corpus', async () => {
+    const view = await render(<Screen />);
+    const before = lineOn(view);
+    await act(async () => {
+      useFacilityStore.getState().openAffirmation(LINES.length + 5);
+    });
+    expect(lineOn(view)).toBe(before);
+    expect(useFacilityStore.getState().pendingAffirmation).toBeNull();
+    await view.unmount();
   });
 });

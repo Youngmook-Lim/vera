@@ -161,6 +161,14 @@ describe('the affirmations room', () => {
     expect(LIGHT.affirmations.fields).toBe(DARK.affirmations.fields);
   });
 
+  // The status bar's icons sit on the poster too, so each field names the bar
+  // that reads on it — light icons on a dark field, dark on a light one.
+  it('gives every field the status bar its type colour implies', () => {
+    for (const { bg, bar } of DARK.affirmations.fields) {
+      expect(bar).toBe(contrast('#ffffff', bg) >= contrast('#000000', bg) ? 'light' : 'dark');
+    }
+  });
+
   it('pairs every field with type that reads on it', () => {
     for (const { bg, ink } of DARK.affirmations.fields) {
       expect(contrast(ink, bg)).toBeGreaterThanOrEqual(4.5);
