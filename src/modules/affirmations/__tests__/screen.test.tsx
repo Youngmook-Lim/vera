@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { storage } from '../../../core/storage';
 import { useFacilityStore } from '../../../core/store';
 import { LIGHT } from '../../../core/theme';
@@ -134,5 +134,42 @@ describe('the list', () => {
     await fireEvent.press(view.getByTestId('affirmations-row-9-star'));
     expect(view.getByTestId('affirmations-sort').props.accessibilityState.disabled).toBe(false);
     await view.unmount();
+  });
+});
+
+describe('a card tapped on the lock screen', () => {
+  it('opens the poster on that card, and is taken once', async () => {
+    const view = await render(<Screen />);
+    await act(async () => {
+      useFacilityStore.getState().openAffirmation(12);
+    });
+    await waitFor(() => expect(lineOn(view)).toBe(LINES[12]));
+    expect(useFacilityStore.getState().pendingAffirmation).toBeNull();
+    await view.unmount();
+  });
+
+  // Review Focus 5.
+  it('takes the room off the list to show it', async () => {
+    const view = await render(<Screen />);
+    await fireEvent.press(view.getByTestId('affirmations-mode-list'));
+    await act(async () => {
+      useFacilityStore.getState().openAffirmation(12);
+    });
+    await waitFor(() => expect(lineOn(view)).toBe(LINES[12]));
+    await view.unmount();
+  });
+});
+
+describe('the boot', () => {
+  it('opens the room on a card Android held while the app was dead', async () => {
+    const notifs = jest.requireMock('expo-notifications') as Record<string, jest.Mock>;
+    notifs.getLastNotificationResponseAsync.mockResolvedValueOnce({
+      notification: { request: { content: { data: { room: 'affirmations', index: 7 } } } },
+    });
+    useFacilityStore.setState({ view: 'stage' });
+    const off = await affirmations.onBoot!();
+    expect(useFacilityStore.getState().view).toBe('mod04');
+    expect(useFacilityStore.getState().pendingAffirmation).toBe(7);
+    if (typeof off === 'function') off();
   });
 });

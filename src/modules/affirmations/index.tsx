@@ -26,6 +26,8 @@ import { advance, current, goTo, retreat } from '../deck';
 import { displayOrder } from '../favorites';
 import { fieldFor } from './colour';
 import { LINES, SOURCE } from './lines';
+import { onTap, readTapTarget } from './notify';
+import { AffirmationsSettings } from './Settings';
 import { useAffirmationsStore, useFavorites } from './store';
 import { T } from './strings';
 import { type Swipe, claims, settle } from './swipe';
@@ -97,6 +99,18 @@ export function AffirmationsScreen() {
     setDeck((d) => goTo(d, index));
     setListing(false);
   };
+
+  const pending = useFacilityStore((s) => s.pendingAffirmation);
+
+  // A card the 10:00 notification asked for. Taken once and cleared; goTo moves
+  // within this pass rather than starting a new one. It takes the room off the
+  // list too, since the tap asked to see the card.
+  useEffect(() => {
+    if (pending == null) return;
+    setDeck((d) => goTo(d, pending));
+    setListing(false);
+    useFacilityStore.setState({ pendingAffirmation: null });
+  }, [pending]);
 
   const card = current(deck);
   const field = fieldFor(card);
@@ -336,6 +350,19 @@ export const affirmations: ModuleDef = {
   slot: '04',
   Tile: AffirmationsTile,
   Screen: AffirmationsScreen,
+  Settings: AffirmationsSettings,
+  // The advice room's boot: hydrate, refresh the horizon if the day turned
+  // over, take a tap Android held while the app was dead, then listen for the
+  // ones that arrive while it runs.
+  onBoot: async () => {
+    await useAffirmationsStore.getState().hydrate();
+    void useAffirmationsStore.getState().syncIfDue(useFacilityStore.getState().lang);
+
+    const tapped = await readTapTarget();
+    if (tapped != null) useFacilityStore.getState().openAffirmation(tapped);
+
+    return onTap((index) => useFacilityStore.getState().openAffirmation(index));
+  },
 };
 
 const S = themed((p) => StyleSheet.create({

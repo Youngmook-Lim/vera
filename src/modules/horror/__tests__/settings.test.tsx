@@ -95,6 +95,6 @@ describe('the nightly horror row', () => {
 describe('the PREFERENCES section', () => {
   it('carries a row from each room that offers one, and names no room', () => {
     const offered = registry.filter(isModule).filter((m) => m.Settings);
-    expect(offered.map((m) => m.id)).toEqual(['mod01', 'mod02']);
+    expect(offered.map((m) => m.id)).toEqual(['mod01', 'mod02', 'mod04']);
   });
 });
