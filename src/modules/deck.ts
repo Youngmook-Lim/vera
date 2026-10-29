@@ -51,3 +51,11 @@ export const goTo = (deck: Deck, card: number): Deck => ({
   order: deck.order,
   at: deck.order.indexOf(card),
 });
+
+// One card back, for a room you swipe through (module 04). It never crosses
+// the seam: the previous pass's order was thrown away when `advance` dealt a
+// new one, so the first card of a pass is where going back stops. It hands
+// back the SAME deck there rather than an equal one, which is how a caller
+// tells that nothing moved.
+export const retreat = (deck: Deck): Deck =>
+  deck.at === 0 ? deck : { order: deck.order, at: deck.at - 1 };

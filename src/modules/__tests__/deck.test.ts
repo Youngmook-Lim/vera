@@ -1,4 +1,4 @@
-import { advance, current, goTo, newDeck } from '../deck';
+import { advance, current, goTo, newDeck, retreat } from '../deck';
 
 // A deterministic stand-in for Math.random: hands back the given values in
 // order and then repeats them, so a shuffle can be reasoned about exactly.
@@ -60,5 +60,25 @@ describe('the deck', () => {
     const rand = seq(0.5);
     const deck = advance(newDeck(1, rand), rand);
     expect(current(deck)).toBe(0);
+  });
+  // Swiping back (module 04). Only ever within the pass: the previous pass's
+  // order is gone the moment `advance` crosses the seam.
+  it('steps back one card within the pass', () => {
+    const deck = advance(advance(newDeck(5, seq(0.1, 0.7, 0.3, 0.9))));
+    const back = retreat(deck);
+    expect(back.order).toBe(deck.order);
+    expect(back.at).toBe(deck.at - 1);
+  });
+
+  it('does nothing at the first card of a pass, and says so by identity', () => {
+    const deck = newDeck(5, seq(0.4));
+    expect(retreat(deck)).toBe(deck);
+  });
+
+  it('never steps back across the seam into a pass that is gone', () => {
+    let deck = newDeck(3, seq(0.2, 0.8));
+    deck = advance(advance(advance(deck)));
+    expect(deck.at).toBe(0);
+    expect(retreat(deck)).toBe(deck);
   });
 });
