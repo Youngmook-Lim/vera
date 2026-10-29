@@ -93,3 +93,46 @@ describe('the poster', () => {
     await view.unmount();
   });
 });
+
+describe('the list', () => {
+  const openList = async () => {
+    const view = await render(<Screen />);
+    await fireEvent.press(view.getByTestId('affirmations-mode-list'));
+    return view;
+  };
+
+  it('shows every card with a chip in its own field', async () => {
+    const view = await openList();
+    expect(view.getByTestId('affirmations-list')).toBeTruthy();
+    const chip = StyleSheet.flatten(view.getByTestId('affirmations-row-2-chip').props.style);
+    expect(chip.backgroundColor).toBe(fieldFor(2).bg);
+    await view.unmount();
+  });
+
+  it('opens a card from its row, on the poster', async () => {
+    const view = await openList();
+    await fireEvent.press(view.getByTestId('affirmations-row-4'));
+    expect(lineOn(view)).toBe(LINES[4]);
+    await view.unmount();
+  });
+
+  it('keeps a card from its row without opening it', async () => {
+    const view = await openList();
+    await fireEvent.press(view.getByTestId('affirmations-row-4-star'));
+    expect(useAffirmationsStore.getState().favorites.has(LINES[4])).toBe(true);
+    expect(view.getByTestId('affirmations-list')).toBeTruthy();
+    await view.unmount();
+  });
+
+  it('offers the sort only in the list, and only with something kept', async () => {
+    const poster = await render(<Screen />);
+    expect(poster.queryByTestId('affirmations-sort')).toBeNull();
+    await poster.unmount();
+
+    const view = await openList();
+    expect(view.getByTestId('affirmations-sort').props.accessibilityState.disabled).toBe(true);
+    await fireEvent.press(view.getByTestId('affirmations-row-9-star'));
+    expect(view.getByTestId('affirmations-sort').props.accessibilityState.disabled).toBe(false);
+    await view.unmount();
+  });
+});

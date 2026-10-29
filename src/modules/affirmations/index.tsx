@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  FlatList,
   PanResponder,
   Pressable,
   ScrollView,
@@ -19,9 +20,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Lang } from '../../core/i18n';
 import { useFacilityStore } from '../../core/store';
-import { font, ms, themed } from '../../core/theme';
+import { PALETTES, font, ms, themed } from '../../core/theme';
 import type { ModuleDef } from '../types';
 import { advance, current, goTo, retreat } from '../deck';
+import { displayOrder } from '../favorites';
 import { fieldFor } from './colour';
 import { LINES, SOURCE } from './lines';
 import { useAffirmationsStore, useFavorites } from './store';
@@ -81,6 +83,20 @@ export function AffirmationsScreen() {
   const setDeck = useAffirmationsStore((s) => s.setDeck);
   const [listing, setListing] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
+
+  const p = PALETTES[theme];
+  // A way of looking at the list, not a thing you own: it starts off every
+  // visit. Derived rather than reset, so letting the last card go withdraws
+  // the sort and keeping one again restores it — the advice room's rule.
+  const [favoritesFirst, setFavoritesFirst] = useState(false);
+  const canSort = favorites.size > 0;
+  const sorting = favoritesFirst && canSort;
+  const order = useMemo(() => displayOrder(LINES, favorites, sorting), [favorites, sorting]);
+
+  const onPick = (index: number) => {
+    setDeck((d) => goTo(d, index));
+    setListing(false);
+  };
 
   const card = current(deck);
   const field = fieldFor(card);
@@ -146,6 +162,77 @@ export function AffirmationsScreen() {
       </View>
     );
   };
+
+  if (listing) {
+    const ink = p.affirmations.room;
+    return (
+      <View testID="view-mod04" style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={[styles.header, styles.listHeader]}>
+          <Pressable testID="module-exit" onPress={() => setView('stage')} style={styles.exit} hitSlop={4}>
+            <Text style={[styles.exitGlyph, { color: ink.inkSoft }]}>‹</Text>
+          </Pressable>
+          <Text style={[styles.label, { color: ink.inkDim, fontFamily: font('mono', 500, lang) }]}>
+            {t.label}
+          </Text>
+        </View>
+        <FlatList
+          testID="affirmations-list"
+          data={order}
+          style={styles.list}
+          keyExtractor={(index) => String(index)}
+          contentContainerStyle={styles.listBody}
+          extraData={favorites.size}
+          renderItem={({ item: index, index: position }) => (
+            // The numeral is the card's own number, so under the sort — where
+            // the list runs out of order — it still says where a card lives.
+            <Pressable
+              testID={`affirmations-row-${index}`}
+              onPress={() => onPick(index)}
+              style={[styles.row, position > 0 && styles.rowRule]}
+            >
+              <View
+                testID={`affirmations-row-${index}-chip`}
+                style={[styles.chip, { backgroundColor: fieldFor(index).bg }]}
+              />
+              <View style={styles.rowText}>
+                <Text style={[styles.rowIndex, { fontFamily: font('mono', 500) }]}>{pad3(index + 1)}</Text>
+                <Text style={styles.rowLine}>{LINES[index]}</Text>
+              </View>
+              <Star
+                testID={`affirmations-row-${index}-star`}
+                on={favorites.has(LINES[index])}
+                ink={favorites.has(LINES[index]) ? ink.ink : ink.inkGhost}
+                onPress={() => void toggleFavorite(LINES[index])}
+                lang={lang}
+                style={styles.rowStar}
+              />
+            </Pressable>
+          )}
+        />
+        <View style={[styles.footerRow, styles.listFooter]}>
+          {/* The sort orders the list, so it is only offered here. */}
+          <Pressable
+            testID="affirmations-sort"
+            onPress={() => setFavoritesFirst((on) => !on)}
+            disabled={!canSort}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sorting, disabled: !canSort }}
+          >
+            <Text
+              style={[
+                styles.mode,
+                { color: sorting ? ink.ink : ink.inkGhost, fontFamily: font('mono', 500, lang) },
+              ]}
+            >
+              {`${STAR_ON} ${t.first} ${favorites.size}`}
+            </Text>
+          </Pressable>
+          {modes(ink.ink, ink.inkGhost)}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View testID="view-mod04" style={styles.screen}>
@@ -345,6 +432,57 @@ const S = themed((p) => StyleSheet.create({
   mode: {
     fontSize: ms(8.5),
     letterSpacing: ms(8.5) * 0.16,
+  },
+  listHeader: {
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderColor: p.affirmations.room.rule,
+  },
+  list: {
+    flex: 1,
+  },
+  listBody: {
+    paddingHorizontal: 22,
+    paddingBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  rowRule: {
+    borderTopWidth: 1,
+    borderColor: p.affirmations.room.rule,
+  },
+  chip: {
+    width: 10,
+    height: 34,
+    borderRadius: 2,
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowIndex: {
+    fontSize: ms(8),
+    letterSpacing: ms(8) * 0.15,
+    color: p.affirmations.room.inkGhost,
+    marginBottom: 3,
+  },
+  rowLine: {
+    fontFamily: font('display', 600),
+    fontSize: ms(13),
+    lineHeight: ms(13) * 1.25,
+    color: p.affirmations.room.ink,
+  },
+  rowStar: {
+    fontSize: ms(13),
+  },
+  listFooter: {
+    paddingHorizontal: 22,
+    paddingBottom: 22,
+    borderTopWidth: 1,
+    borderColor: p.affirmations.room.rule,
   },
 }));
 
