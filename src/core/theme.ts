@@ -27,6 +27,26 @@ interface RoomInk {
   inkGhost: string;
 }
 
+// Module 04's poster: one full field of colour and the type that reads on it.
+export interface Field {
+  bg: string;
+  ink: string;
+}
+
+// The six, written ONCE and handed to both palettes (2026-10-29). They are the
+// cards themselves, so the theme switch does not touch them, and a light half
+// would be a second set of cards. That is a decision, not a gap: unlike
+// `organism`, nothing here is waiting to be themed. Each pair holds 4.5:1,
+// which is why the red is #cc3a22 and not the mockup's #e8452c (3.95:1).
+const AFFIRMATION_FIELDS: readonly Field[] = [
+  { bg: '#2f3bd6', ink: '#ffffff' },
+  { bg: '#cc3a22', ink: '#ffffff' },
+  { bg: '#f5c518', ink: '#15161a' },
+  { bg: '#127a5a', ink: '#ffffff' },
+  { bg: '#ec7fb4', ink: '#15161a' },
+  { bg: '#1d1d1f', ink: '#ffffff' },
+];
+
 // One shape, two values. `palettes.test.ts` compares the two recursively, so a
 // token added here and filled in on only one side fails the suite rather than
 // rendering as `undefined` on a device.
@@ -75,6 +95,7 @@ export interface Palette {
   advice: RoomInk;
   notes: RoomInk;
   horror: RoomInk & { redaction: string };
+  affirmations: { room: RoomInk; fields: readonly Field[] };
   organism: {
     bg: string;
     card: string;
@@ -225,6 +246,20 @@ export const DARK: Palette = {
     inkDim: '#6a675f',
     inkGhost: '#45433d',
   },
+  // module 04 — the list's neutral ground; the posters wear the fields.
+  affirmations: {
+    room: {
+      bg: '#101012',
+      card: '#17171a',
+      cardBorder: '#26262b',
+      rule: '#1f1f23',
+      ink: '#ecebe8',
+      inkSoft: '#9b9a96',
+      inkDim: '#6b6a66',
+      inkGhost: '#46454a',
+    },
+    fields: AFFIRMATION_FIELDS,
+  },
 };
 
 // `2e COOL CLINICAL` from `design/Theme Options.dc.html`, picked by
@@ -338,6 +373,21 @@ export const LIGHT: Palette = {
     inkDim: '#837777',
     inkGhost: '#b1a7a7',
     redaction: '#ded4d4',
+  },
+  // Neutral and untinted, the advice ladder's shape: this room's colour is on
+  // the posters, not the list.
+  affirmations: {
+    room: {
+      bg: '#f3f3f4',
+      card: '#fcfcfd',
+      cardBorder: '#e0e1e4',
+      rule: '#e6e7ea',
+      ink: '#18181b',
+      inkSoft: '#5f6066',
+      inkDim: '#76777d',
+      inkGhost: '#b1b2b7',
+    },
+    fields: AFFIRMATION_FIELDS,
   },
   // NOT themed. Off the registry since 2026-09-07 and unreachable, so reviving
   // the room means authoring its light half — a better line to leave than

@@ -152,3 +152,24 @@ describe('statusBarFor', () => {
   });
 });
 
+
+// Module 04's six fields are the cards themselves, so the theme switch does
+// not touch them — the same object in both palettes, not two equal copies.
+describe('the affirmations room', () => {
+  it('wears the same six fields in dark and light', () => {
+    expect(DARK.affirmations.fields).toHaveLength(6);
+    expect(LIGHT.affirmations.fields).toBe(DARK.affirmations.fields);
+  });
+
+  it('pairs every field with type that reads on it', () => {
+    for (const { bg, ink } of DARK.affirmations.fields) {
+      expect(contrast(ink, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('themes the list, where the fields are only chips', () => {
+    expect(LIGHT.affirmations.room.bg).not.toBe(DARK.affirmations.room.bg);
+    expect(contrast(LIGHT.affirmations.room.ink, LIGHT.affirmations.room.card)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(DARK.affirmations.room.ink, DARK.affirmations.room.card)).toBeGreaterThanOrEqual(4.5);
+  });
+});
