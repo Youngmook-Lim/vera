@@ -386,6 +386,8 @@ The three code defects found underneath, each invisible to `npm test`:
 
 **`npm test` cannot see the swipe's feel, the colours, or the card arriving** — the device is the detector, as it is for every animated surface in this app.
 
+**The advice and horror cards swipe right to go back (2026-10-29).** A tap still deals forward, exactly as before; a swipe right steps back one card within the pass through the shared `retreat`, and does nothing at the first card of a pass. `useSwipeBack` in `src/modules/` is the one hook both use, on the thresholds in `swipe.ts`, which moved out of the affirmations room so the three rooms cannot come to disagree about what a swipe is. A swipe left is claimed and dropped rather than read as the tap. **No animation** — the card changes in place, as a tap has always changed it. **A story you go back to comes back turned**: you only ever deal past one after turning it, so re-hiding it would make you ask again for an ending already read; at the start of a pass nothing moves and the redaction stays. The swipe sits on a wrapper around the Pressable for the affirmations poster's reason, and each card carries a named `back` screen-reader action (`previous card` / `previous story`), which is also how the tests reach it.
+
 **The six stores (spec §8).**
 
 | store | key | engine | contents |

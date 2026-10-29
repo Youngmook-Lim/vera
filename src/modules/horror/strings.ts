@@ -17,6 +17,7 @@ export interface HorrorStrings {
   keep: string;
   release: string;
   reveal: string;
+  back: string;
   hintReveal: string;
   hintNext: string;
   on: string;
@@ -35,6 +36,7 @@ const en: HorrorStrings = {
   keep: 'keep this one',
   release: 'let this one go',
   reveal: 'reveal the second sentence',
+  back: 'previous story',
   hintReveal: 'tap the card to reveal',
   hintNext: 'tap the card for another',
   on: 'ON',
@@ -51,6 +53,7 @@ const ko: HorrorStrings = {
   keep: '이 이야기를 간직하기',
   release: '이 이야기를 놓아주기',
   reveal: '두 번째 문장 보기',
+  back: '이전 이야기',
   hintReveal: '카드를 누르면 뒷문장이 나옵니다',
   hintNext: '카드를 누르면 다른 이야기가 나옵니다',
   on: '켬',

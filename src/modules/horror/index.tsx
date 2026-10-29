@@ -7,7 +7,8 @@ import { useFacilityStore } from '../../core/store';
 import { EMOTIONS } from '../../vera/emotions';
 import { PALETTES, emotionText, font, ms, serif, themed } from '../../core/theme';
 import type { ModuleDef } from '../types';
-import { advance, current, goTo } from '../deck';
+import { advance, current, goTo, retreat } from '../deck';
+import { useSwipeBack } from '../useSwipeBack';
 import { displayOrder } from '../favorites';
 import { compactScore, storyKey } from './card';
 import { SOURCE, STORIES } from './stories';
@@ -182,6 +183,20 @@ export function HorrorScreen() {
     setRevealed(false);
   };
 
+  // A swipe right goes back one story within this pass (2026-10-29), and it
+  // comes back TURNED: you only ever deal past a story after turning it, so
+  // re-hiding it would make you ask again for an ending already read. At the
+  // first story of a pass there is nothing behind it, and `retreat` says so by
+  // handing back the same deck — then nothing moves and nothing is revealed.
+  const back = () => {
+    const was = useHorrorStore.getState().deck;
+    const next = retreat(was);
+    if (next === was) return;
+    setDeck(() => next);
+    setRevealed(true);
+  };
+  const swipe = useSwipeBack(back);
+
   // Turning withholding back ON has to take the sentence on screen with it,
   // or the setting would read HIDDEN over a card showing its own ending.
   const onToggleHidden = () => {
@@ -320,24 +335,33 @@ export function HorrorScreen() {
             style={styles.cardScroller}
             contentContainerStyle={styles.cardScroll}
           >
-            <Pressable
-              testID="horror-card"
-              onPress={onCard}
-              style={styles.card}
-              accessibilityRole="button"
-              accessibilityLabel={shown ? undefined : t.reveal}
-            >
-              <Text testID="horror-setup" style={styles.sentence}>
-                {story.setup}
-              </Text>
-              {shown ? (
-                <Text testID="horror-turn" style={[styles.sentence, styles.turn]}>
-                  {story.turn}
+            {/* The swipe sits on a wrapper, apart from the press: a responder
+                that declines every touch START would otherwise mark the card
+                as refusing events. */}
+            <View {...swipe}>
+              <Pressable
+                testID="horror-card"
+                onPress={onCard}
+                style={styles.card}
+                accessibilityRole="button"
+                accessibilityLabel={shown ? undefined : t.reveal}
+                accessibilityActions={[{ name: 'back', label: t.back }]}
+                onAccessibilityAction={(e) => {
+                  if (e.nativeEvent.actionName === 'back') back();
+                }}
+              >
+                <Text testID="horror-setup" style={styles.sentence}>
+                  {story.setup}
                 </Text>
-              ) : (
-                <Redaction />
-              )}
-            </Pressable>
+                {shown ? (
+                  <Text testID="horror-turn" style={[styles.sentence, styles.turn]}>
+                    {story.turn}
+                  </Text>
+                ) : (
+                  <Redaction />
+                )}
+              </Pressable>
+            </View>
           </ScrollView>
 
           <View style={styles.footer}>

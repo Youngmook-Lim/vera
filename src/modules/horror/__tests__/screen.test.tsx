@@ -298,3 +298,43 @@ describe('the safe area', () => {
     await view.unmount();
   });
 });
+
+// Going back (2026-10-29): a swipe right on the card, reached here through its
+// screen-reader action. You only ever deal past a story after turning it, so
+// the one you return to comes back turned.
+describe('going back', () => {
+  const back = (view: Awaited<ReturnType<typeof render>>) =>
+    fireEvent(view.getByTestId('horror-card'), 'accessibilityAction', { nativeEvent: { actionName: 'back' } });
+  const setupOn = (view: Awaited<ReturnType<typeof render>>) =>
+    view.getByTestId('horror-setup').props.children as string;
+
+  it('returns to the story before, with its ending showing', async () => {
+    const view = await render(<HorrorScreen />);
+    const first = setupOn(view);
+    await fireEvent.press(view.getByTestId('horror-card')); // turn it
+    await fireEvent.press(view.getByTestId('horror-card')); // deal the next
+    expect(setupOn(view)).not.toBe(first);
+    expect(view.queryByTestId('horror-turn')).toBeNull();
+    await back(view);
+    expect(setupOn(view)).toBe(first);
+    expect(view.getByTestId('horror-turn')).toBeTruthy();
+    await view.unmount();
+  });
+
+  // Nothing to go back to, so nothing changes — not even the redaction.
+  it('stays put, still withheld, at the first story of a pass', async () => {
+    const view = await render(<HorrorScreen />);
+    const first = setupOn(view);
+    await back(view);
+    expect(setupOn(view)).toBe(first);
+    expect(view.queryByTestId('horror-turn')).toBeNull();
+    await view.unmount();
+  });
+
+  it('offers the way back to a screen reader by name', async () => {
+    const view = await render(<HorrorScreen />);
+    const actions = view.getByTestId('horror-card').props.accessibilityActions;
+    expect(actions).toEqual([{ name: 'back', label: 'previous story' }]);
+    await view.unmount();
+  });
+});
