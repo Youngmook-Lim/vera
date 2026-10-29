@@ -1538,6 +1538,17 @@ describe('openQuote', () => {
   });
 });
 
+describe('openAffirmation', () => {
+  it('opens the room on a card, and closes the drawer on the way', async () => {
+    useFacilityStore.setState({ view: 'stage', cabinetOpen: true, pendingAffirmation: null });
+    useFacilityStore.getState().openAffirmation(17);
+    const s = useFacilityStore.getState();
+    expect(s.view).toBe('mod04');
+    expect(s.cabinetOpen).toBe(false);
+    expect(s.pendingAffirmation).toBe(17);
+  });
+});
+
 // The record is the one thing the subject could not correct. A wrong verdict
 // about them was permanent; a wrong thread rode first and uncharged in every
 // prompt until it aged out. This is the transcript's erase, for her file.

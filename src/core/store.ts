@@ -306,6 +306,11 @@ interface FacilityState {
   pendingNote: string | null;
   openNote: (id: string) => void;
 
+  // The affirmations room's, for a tap on its 10:00 card. Not persisted, for
+  // pendingQuote's reason.
+  pendingAffirmation: number | null;
+  openAffirmation: (index: number) => void;
+
   setView: (view: View) => void;
   setDraft: (draft: string) => void;
   setCabinet: (open: boolean) => void;
@@ -375,6 +380,7 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
   pendingQuote: null,
   pendingStory: null,
   pendingNote: null,
+  pendingAffirmation: null,
 
   // The notification's way in. It closes the cabinet because the tap did not
   // come through it — and on a dormant stage there is no cabinet to come
@@ -394,6 +400,10 @@ export const useFacilityStore = create<FacilityState>((set, get) => ({
 
   openNote: (id: string): void => {
     set({ view: 'mod03', pendingNote: id, cabinetOpen: false });
+  },
+
+  openAffirmation: (index: number): void => {
+    set({ view: 'mod04', pendingAffirmation: index, cabinetOpen: false });
   },
 
   setView: (view) => set({ view, cabinetOpen: false }),
