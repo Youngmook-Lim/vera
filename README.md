@@ -8,6 +8,8 @@ She now lives on one handset. One eye, no exit. She thinks on credentials that b
 
 She is a live model, not a script.
 
+> **For the engineers:** React Native 0.86 on Expo SDK 57, TypeScript (strict), Skia, Reanimated 4 and Zustand, plus two hand-written Kotlin Expo modules. **1,219 Jest tests across 92 suites.** Bring your own key for any of five LLM providers, with no server anywhere. Designed and built July–November 2026 with Claude Code, through 17 design specs and 20 implementation plans that are all in [`docs/superpowers/`](docs/superpowers/). The interesting parts are summarised in [Under the hood](#under-the-hood).
+
 ---
 
 ## The stage
@@ -54,20 +56,32 @@ She speaks **English or Korean**, and the Korean is not a translation — each l
 
 Six slots, behind a square of dots next to the input box — press it and a sheet rises over the stage. Rooms are rooms in her building, not screens in her app: the shell owns the tile, the bleed, one exit and her dot, and everything past the threshold belongs to the room.
 
-- **01 · EXCELLENT ADVICE** — 232 highlights from Kevin Kelly's *Excellent Advice for Living*. One card at a time or the whole list, with a star on each. The room is lit in whatever she is wearing, so walking in after she was alarmed gives you a red room.
-- **02 · TWO SENTENCE HORROR** — 6,861 stories from r/TwoSentenceHorror. The second sentence is withheld behind a redaction until you tap, and whether you want to be spoiled is a standing preference rather than a setting for one card.
+- **01 · EXCELLENT ADVICE** — a book of short advice (on the author's own build, Kevin Kelly's *Excellent Advice for Living*). One card at a time or the whole list, with a star on each. The room is lit in whatever she is wearing, so walking in after she was alarmed gives you a red room.
+- **02 · TWO SENTENCE HORROR** — two-sentence horror stories (on the author's own build, r/TwoSentenceHorror's best). The second sentence is withheld behind a redaction until you tap, and whether you want to be spoiled is a standing preference rather than a setting for one card.
 - **03 · NOTES TO MYSELF** — the one room whose corpus you write. A note, a time, and the weekdays it should arrive on; it lands on the lock screen in your own words until you switch it off, and tapping it opens the note as a card.
-- **04–06** — empty. Specimen-03, a terrarium with its own hunger, is benched rather than deleted: every file is still on disk and still tested.
+- **04 · AFFIRMATIONS** — one affirmation at a time on a full field of colour, swiped through. It is sincere, and she does not light it: a sincere room should not turn red because she was alarmed.
+- **05–06** — empty. Specimen-03, a terrarium with its own hunger, is benched rather than deleted: every file is still on disk and still tested.
 
-Both rooms deal from a shuffled deck that gives you every card before it repeats any. **The pass survives leaving the room** and is reset only by restarting the app.
+Every room deals from a shuffled deck that gives you every card before it repeats any. **The pass survives leaving the room** and is reset only by restarting the app.
+
+**The decks in this repo are samples.** The real corpora are other people's writing, so they are never committed. A fresh clone deals from small decks written for the repo (`src/modules/*/*.sample.ts`). A build that has the real ones picks them up automatically from gitignored `*.local.ts` files beside them:
+
+```sh
+node tools/build-horror.mjs reddit_cleansed_data.csv   # → horror/stories.local.ts (the CSV's URL is in the script)
+node tools/build-affirmations.mjs                      # → affirmations/lines.local.ts
+# advice/quotes.local.ts comes from a personal Kindle export and has no generator
+```
+
+Each corpus module requires its local file optionally and falls back to the sample, so Metro bundles whichever exists and Jest always runs the samples. The full-corpus invariants run as their own tests wherever the local files are present.
 
 ## What arrives when you are not looking
 
-Four sources, all off by default. Three have a switch under `SYSTEM → PREFERENCES`; the fourth is per-note, inside module 03.
+Five sources, all off by default. Four have a switch under `SYSTEM → PREFERENCES`; the fifth is per-note, inside module 03.
 
 | | when | what |
 |---|---|---|
 | **EXCELLENT ADVICE** | 09:00 | one highlight, and the book under it |
+| **AFFIRMATIONS** | 10:00 | one line — tapping it opens the poster on that card |
 | **TWO SENTENCE HORROR** | 22:00 | the setup, with the turn redacted — tapping opens it already turned over |
 | **NOTES TO MYSELF** | whenever you said | your own note, repeating on the weekdays you chose |
 | **TRANSMISSIONS** | 11:00 and 16:00 | **her**, unprompted, in your chosen register |
@@ -92,6 +106,23 @@ There is no server and no shared credential. You paste your own key; it goes int
 
 A key from an unlisted provider is refused at the gate — the accepted cost of matching by shape. Remove the key and she goes dormant mid-sentence, with the record intact underneath.
 
+## Under the hood
+
+- **A persona as a prompt contract.** Her system prompt is two documents joined per request: an immutable core and the active register. Only one of five stimuli reaches the model; the rest come from authored banks and are kept out of the transcript. When the register changes, the old register's turns stop being replayed, so the model never argues with its own previous voice.
+- **Memory by extraction, not by transcript.** A separate call works through the queue of recent exchanges in batches and rewrites a structured record of dated facts, verdicts and open threads (`src/vera/extract.ts`, `memory.ts`). A failed batch stays queued for the next attempt. The transcript is capped and can be burned; the record survives it. The exact prompt and extraction are inspectable on-device under `SYSTEM → PROMPT`.
+- **Bring your own key, five providers, no server.** The key's shape picks the provider (`providers.ts`), the key lives in the Android Keystore, and requests go straight from the handset. There is no backend to run, secure or pay for.
+- **A voice built, not chosen.** Provider TTS is only the raw material, and it goes through a DSP chain written from scratch in TypeScript (`src/vera/voice/`):
+  - YIN pitch tracking finds the pitch.
+  - Her contour is pulled almost flat, snapped, and stepped by fixed intervals.
+  - PSOLA resynthesis lays the voice back down at the new pitch without changing its duration.
+  - A speaker-grille and room stage finishes it.
+  
+  It is pure and I/O-free, so the same chain runs under Node in `tools/voice-lab.mjs`.
+- **An optic with nine moods.** It is drawn in Skia from a pure geometry module (`opticGeometry.ts`), so lids, drift, blink and catchlight are computed and tested rather than hand-animated.
+- **Her face on the launcher.** Android cannot change an app icon at runtime. So a config plugin (`plugins/withRotatingIcons.js`) generates one `<activity-alias>` per emotion, and a Kotlin module (`modules/app-icon`) switches which one is enabled.
+- **Notifications with no background work.** Every card is scheduled ahead with its text baked in. A second Kotlin module (`modules/power`) reads the battery-optimisation whitelist, so the app can say honestly whether Samsung's Freecess will hold its alarms.
+- **Logic is pure, components are thin.** Everything that decides anything is a React-free module with its own tests. Native pieces are no-ops under Jest, so the suite runs anywhere in about 25 seconds.
+
 ## Repo map
 
 - [`CLAUDE.md`](CLAUDE.md) — the working brief: what exists, why it is the way it is, and every gotcha that cost a day
@@ -106,7 +137,7 @@ Everything that decides anything is a pure module with no React in it and its ow
 
 ```sh
 npm install
-npm test && npx tsc --noEmit    # both are the gate — 1010 tests, 75 suites
+npm test && npx tsc --noEmit    # both are the gate — 1,219 tests, 92 suites
 npx expo start                  # needs an EAS dev build, not Expo Go
 ```
 
@@ -118,4 +149,4 @@ npx eas-cli@latest build -p android --profile development
 
 After a React Native version bump, add `--clear-cache` or the APK crashes on launch.
 
-Incubated in the [brainstorming](https://github.com/Youngmook-Lim/brainstorming) idea vault.
+Incubated in a private idea vault, and built with Claude Code from the specs and plans in `docs/superpowers/`.
