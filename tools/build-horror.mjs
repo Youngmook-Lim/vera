@@ -1,4 +1,4 @@
-// Builds `src/modules/horror/stories.ts` from a scrape of r/TwoSentenceHorror.
+// Builds `src/modules/horror/stories.local.ts` (gitignored) from a scrape of r/TwoSentenceHorror.
 //
 // The corpus is NOT in this repo - it is 20MB and it is not ours. Fetch it:
 //
@@ -18,7 +18,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const OUT = 'src/modules/horror/stories.ts';
+const OUT = 'src/modules/horror/stories.local.ts';
 
 const args = process.argv.slice(2);
 const csvPath = args.find((a) => !a.startsWith('--')) ?? 'reddit_cleansed_data.csv';

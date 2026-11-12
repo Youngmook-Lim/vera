@@ -3,7 +3,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { useFacilityStore } from '../../../core/store';
 import { storage } from '../../../core/storage';
 import { HorrorScreen, horror } from '..';
-import { STORIES } from '../stories';
+import { SOURCE, STORIES } from '../stories';
 import { newDeck } from '../../deck';
 import { useHorrorStore } from '../store';
 
@@ -158,8 +158,9 @@ describe('the card', () => {
 
   it('shows the upvotes and the community, since no story carries an author', async () => {
     const view = await render(<HorrorScreen />);
+    const community = SOURCE.community.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
     expect(view.getByTestId('horror-score').props.children).toMatch(
-      /^▲ [\d.]+k? · r\/TwoSentenceHorror$/,
+      new RegExp(`^▲ [\\d.]+k? · ${community}$`),
     );
     await view.unmount();
   });

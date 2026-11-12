@@ -49,3 +49,6 @@ glados_quotes.json
 
 # tools/voice-lab.mjs writes its WAVs here
 voice-lab-out/
+
+# real corpora: other people's text, built locally, never committed
+src/modules/*/*.local.ts

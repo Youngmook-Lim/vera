@@ -1,0 +1,65 @@
+// The deck a fresh clone deals from: fifty placeholder lines written for this
+// repo, so the room builds, runs and tests without the real corpus.
+//
+// The real deck is `quotes.local.ts` — 232 highlights from a Kindle export of
+// Kevin Kelly's book. It is gitignored and never committed, because the text is
+// not ours to publish. See `quotes.ts` for how one is chosen over the other.
+
+export const SOURCE = {
+  title: 'Sample Advice: placeholder lines for public builds',
+  shortTitle: 'Sample Advice',
+  author: 'V.E.R.A. sample deck',
+} as const;
+
+export const QUOTES: readonly string[] = [
+  'Finish the small thing before starting the next one.',
+  'Ask one more question than feels polite. The second answer is usually the real one.',
+  'Write the decision down before you make it, then see if you still agree.',
+  'If you are early, you get to be calm. That is worth the wait.',
+  'Reply to the hard message first; the easy ones will keep.',
+  'Keep a list of things that went well. You will not remember them otherwise.',
+  'Most problems are smaller the morning after.',
+  'When you borrow something, return it better than you found it.',
+  'Learn the names of the people who clean the building.',
+  'A good apology has no "but" in it.',
+  'Say the number out loud before you agree to it.',
+  'Put your phone in another room for the first hour of the day.',
+  'Read the instructions after it fails, and before you try again.',
+  'If you can explain it to a child, you understand it. If you cannot, you have homework.',
+  'Carry a pen. Ideas do not wait for you to find one.',
+  'The best time to fix a leak is when it is still a drip.',
+  'Leave every meeting knowing who does what next.',
+  'Do not argue with someone who is tired. Feed them first.',
+  'Spend money on things that save you time, and time on things that save your health.',
+  'Tell people when they did something well, and say exactly what it was.',
+  'If two choices seem equal, pick the one that is easier to undo.',
+  'Walk when you are stuck. The answer is often three blocks away.',
+  'Never make a promise while angry or a plan while excited.',
+  'Practise saying "I do not know yet." It buys you time to find out.',
+  'A clean desk at night is a gift to your morning self.',
+  'Be the person who reads the whole email.',
+  'When you visit, bring something. When you leave, offer to help clean up.',
+  'Start the boring task for five minutes. Momentum does the rest.',
+  'Keep one friendship from every chapter of your life.',
+  'Do not compare your first draft to someone else\'s finished work.',
+  'Sleep is not lost time. It is where the day gets filed.',
+  'Ask for help sooner than feels comfortable.',
+  'The quietest person in the room has usually noticed the most.',
+  'A habit you can keep at your worst is better than one you only keep at your best.',
+  'Wait a day before buying anything you did not plan to buy.',
+  'Write thank-you notes by hand. Nobody throws them away.',
+  'Choose the slower road once in a while. You will see something new.',
+  'If a rule seems silly, find out why it exists before you break it.',
+  'Look up. The ceiling of an old building is often the best part.',
+  'Treat your future self like a friend you are doing a favour for.',
+  'Most of being reliable is simply showing up when you said you would.',
+  'Before you criticise a system, try running it for a week.',
+  'Leave room in the plan for the thing you did not think of.',
+  'Learn to cook one meal well enough to share it.',
+  'Silence in a conversation is not a problem to be solved.',
+  'Back up the thing you would cry about losing. Today.',
+  'Notice what you do when nobody is asking you to do anything.',
+  'Keep your word small and keep it often.',
+  'You can be kind and still say no.',
+  'End the day by deciding the first thing you will do tomorrow.',
+];

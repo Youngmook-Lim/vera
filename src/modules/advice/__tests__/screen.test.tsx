@@ -45,7 +45,7 @@ describe('Module 02', () => {
   // derived from the quote on screen rather than hardcoded, because the deck is
   // shuffled fresh on every mount and no fixed number could be right twice.
   const counterFor = (quote: string) =>
-    `${String(QUOTES.indexOf(quote) + 1).padStart(3, '0')} / 232`;
+    `${String(QUOTES.indexOf(quote) + 1).padStart(3, '0')} / ${QUOTES.length}`;
 
   it('deals a different card on a tap, and numbers each by the book', async () => {
     const view = await render(<Screen />);
@@ -67,7 +67,7 @@ describe('Module 02', () => {
     await fireEvent.press(view.getByTestId('mode-list'));
     await fireEvent.press(view.getByTestId('advice-row-3'));
 
-    expect(view.getByTestId('advice-counter').props.children).toBe('004 / 232');
+    expect(view.getByTestId('advice-counter').props.children).toBe(`004 / ${QUOTES.length}`);
     await view.unmount();
   });
 
@@ -95,7 +95,7 @@ describe('Module 02', () => {
 
   // A pass you did not finish is worth keeping (2026-09-22). Asserted on the
   // deck itself rather than on the card, because a fresh shuffle would land on
-  // the same quote once in 232 and this must not flake.
+  // the same quote once in a deck and this must not flake.
   it('keeps the pass when you leave the room and come back', async () => {
     const view = await render(<Screen />);
     await fireEvent.press(view.getByTestId('advice-card'));

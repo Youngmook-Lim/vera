@@ -1,4 +1,4 @@
-// Builds `src/modules/affirmations/lines.ts` from Louise Hay's own site.
+// Builds `src/modules/affirmations/lines.local.ts` (gitignored) from Louise Hay's own site.
 //
 //   node tools/build-affirmations.mjs
 //
@@ -21,7 +21,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-const OUT = 'src/modules/affirmations/lines.ts';
+const OUT = 'src/modules/affirmations/lines.local.ts';
 const BEST = 'https://www.louisehay.com/101-best-louise-hay-positive-affirmations/';
 const GALLERY = 'https://www.louisehay.com/affirmations/';
 
