@@ -65,7 +65,7 @@ const OPTIC_PX = 234; // 60% of the 388 frame, the icon's own proportion
 //
 // Exported because App.tsx waits it out and this is the screen it is waiting
 // on; the number belongs with the thing it holds up.
-export const SPLASH_HOLD_MS = 2000;
+export const SPLASH_HOLD_MS = 1000;
 
 // 2a put the wordmark at bottom:54 and at ms(10). This is the title card and
 // the only screen her name gets to be the subject of, so it is bigger and

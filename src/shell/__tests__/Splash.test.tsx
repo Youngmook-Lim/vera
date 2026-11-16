@@ -181,7 +181,7 @@ describe('Splash', () => {
     });
 
     it('holds the day’s face long enough to be read', () => {
-      expect(SPLASH_HOLD_MS).toBe(2000);
+      expect(SPLASH_HOLD_MS).toBe(1000);
     });
   });
 
